@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import * as XLSX from 'xlsx';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -231,8 +232,28 @@ export const UnitImport: React.FC<UnitImportProps> = ({ onImportComplete, onCanc
     setProgress(10);
 
     try {
-      const text = await file.text();
-      const lines = text.split('\n').filter(line => line.trim());
+      let lines: string[] = [];
+      
+      // Determine file type and process accordingly
+      const fileExtension = file.name.toLowerCase().split('.').pop();
+      
+      if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+        // Process Excel file
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        
+        // Get first worksheet
+        const worksheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[worksheetName];
+        
+        // Convert to CSV format
+        const csvData = XLSX.utils.sheet_to_csv(worksheet);
+        lines = csvData.split('\n').filter(line => line.trim());
+      } else {
+        // Process CSV file
+        const text = await file.text();
+        lines = text.split('\n').filter(line => line.trim());
+      }
       
       if (lines.length === 0) {
         throw new Error('El archivo está vacío');
@@ -466,7 +487,7 @@ export const UnitImport: React.FC<UnitImportProps> = ({ onImportComplete, onCanc
         <Alert>
           <FileText className="h-4 w-4" />
           <AlertDescription>
-            <strong>Formato esperado:</strong> CSV con datos de vehículos. 
+            <strong>Formatos soportados:</strong> CSV y Excel (XLSX/XLS). 
             El sistema detectará automáticamente la cabecera y mapeará las columnas.
             <br />
             <strong>Campos requeridos:</strong> Código Fábrica, Pedido, Marca, Modelo, Color Exterior
@@ -481,7 +502,7 @@ export const UnitImport: React.FC<UnitImportProps> = ({ onImportComplete, onCanc
               <div>
                 <h3 className="text-lg font-semibold">Subir archivo de importación</h3>
                 <p className="text-muted-foreground">
-                  Arrastra tu archivo CSV aquí o haz clic para seleccionar
+                  Arrastra tu archivo CSV o Excel aquí o haz clic para seleccionar
                 </p>
               </div>
               <Button onClick={() => fileInputRef.current?.click()}>
@@ -490,7 +511,7 @@ export const UnitImport: React.FC<UnitImportProps> = ({ onImportComplete, onCanc
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".csv,.txt"
+                accept=".csv,.xlsx,.xls"
                 onChange={handleFileSelect}
                 className="hidden"
               />
