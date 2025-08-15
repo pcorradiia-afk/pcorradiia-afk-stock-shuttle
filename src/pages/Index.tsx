@@ -21,8 +21,70 @@ const Index = () => {
     );
   }
 
+  // Show demo interface when Supabase is not configured
   if (!user) {
-    return <AuthPage />;
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="border-b bg-background/95 backdrop-blur">
+          <div className="container mx-auto px-4">
+            <div className="flex h-16 items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="h-6 w-6 bg-primary rounded"></div>
+                <span className="text-xl font-bold">Stock Vehicular - DEMO</span>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Complete la integración de Supabase para usar la aplicación
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-2xl mx-auto text-center space-y-6">
+            <h1 className="text-4xl font-bold">Sistema de Gestión de Stock Vehicular</h1>
+            <p className="text-xl text-muted-foreground">
+              Una aplicación completa para gestionar inventario de vehículos 0km
+            </p>
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h3 className="font-semibold text-yellow-800 mb-2">🔧 Configuración Requerida</h3>
+              <p className="text-yellow-700">
+                Para usar esta aplicación, necesita completar la integración con Supabase:
+              </p>
+              <ol className="mt-2 text-left text-yellow-700 space-y-1">
+                <li>1. Haga clic en el botón verde "Supabase" (arriba a la derecha)</li>
+                <li>2. Complete el proceso de conexión</li>
+                <li>3. La aplicación se activará automáticamente</li>
+              </ol>
+            </div>
+            <div className="grid md:grid-cols-2 gap-6 mt-8">
+              <div className="bg-card border rounded-lg p-6">
+                <h3 className="font-semibold mb-2">🚗 Gestión de Inventario</h3>
+                <p className="text-sm text-muted-foreground">
+                  Controle el stock de vehículos, estados, ubicaciones y precios
+                </p>
+              </div>
+              <div className="bg-card border rounded-lg p-6">
+                <h3 className="font-semibold mb-2">📊 Dashboard & KPIs</h3>
+                <p className="text-sm text-muted-foreground">
+                  Métricas en tiempo real y alertas de gestión
+                </p>
+              </div>
+              <div className="bg-card border rounded-lg p-6">
+                <h3 className="font-semibold mb-2">🔒 Control de Reservas</h3>
+                <p className="text-sm text-muted-foreground">
+                  Evite sobreasignaciones con sistema de compromisos
+                </p>
+              </div>
+              <div className="bg-card border rounded-lg p-6">
+                <h3 className="font-semibold mb-2">📈 Reportes & Auditoría</h3>
+                <p className="text-sm text-muted-foreground">
+                  Reportes exportables y trazabilidad completa
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const renderContent = () => {
