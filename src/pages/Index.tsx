@@ -93,6 +93,10 @@ const Index = () => {
         return <Dashboard />;
       case 'catalog':
         return <VehicleCatalog />;
+      case 'units':
+        return React.createElement(
+          React.lazy(() => import('../components/units/UnitsManagement').then(m => ({ default: m.UnitsManagement })))
+        );
       case 'holds':
         return (
           <div className="p-8 text-center">
