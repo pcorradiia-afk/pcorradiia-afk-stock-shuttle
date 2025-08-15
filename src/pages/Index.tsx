@@ -32,8 +32,16 @@ const Index = () => {
                 <div className="h-6 w-6 bg-primary rounded"></div>
                 <span className="text-xl font-bold">Stock Vehicular - DEMO</span>
               </div>
-              <div className="text-sm text-muted-foreground">
-                Complete la integración de Supabase para usar la aplicación
+              <div className="flex items-center gap-4">
+                <div className="text-sm text-muted-foreground">
+                  Sistema completo disponible
+                </div>
+                <button 
+                  onClick={() => window.location.href = '/auth'}
+                  className="bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors"
+                >
+                  Acceder al Sistema
+                </button>
               </div>
             </div>
           </div>
