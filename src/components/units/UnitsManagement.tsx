@@ -20,31 +20,7 @@ import {
 import { UnitForm } from './UnitForm';
 import { UnitImport } from './UnitImport';
 import { UnitDetails } from './UnitDetails';
-
-export interface Unit {
-  id: string;
-  vin?: string;
-  codigo_fabrica: string;
-  pedido_fabrica: string;
-  marca: string;
-  modelo: string;
-  version: string;
-  anio_modelo: number;
-  color_exterior: string;
-  color_interior?: string;
-  estado_stock: 'disponible' | 'reservado' | 'comprometido' | 'vendido' | 'entregado' | 'cancelado' | 'en_transito' | 'asignado_fabrica';
-  ubicacion: 'sucursal_central' | 'sucursal_norte' | 'sucursal_sur' | 'deposito_principal' | 'deposito_auxiliar' | 'en_transito';
-  precio_lista: number;
-  precio_minimo?: number;
-  costo: number;
-  bonificacion: number;
-  impuestos: number;
-  fecha_arribo_estimada?: string;
-  fecha_arribo_real?: string;
-  lote?: string;
-  created_at: string;
-  updated_at: string;
-}
+import { Unit, StockStatus, LocationType } from '@/types/units';
 
 const ESTADO_COLORS = {
   disponible: 'hsl(var(--status-disponible))',

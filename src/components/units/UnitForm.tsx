@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { Save, X, AlertCircle } from 'lucide-react';
-import { Unit } from './UnitsManagement';
+import { Unit, UnitInsert, UnitUpdate, StockStatus, LocationType } from '@/types/units';
 
 interface UnitFormProps {
   unit?: Unit | null;
@@ -28,8 +28,8 @@ interface FormData {
   anio_modelo: number;
   color_exterior: string;
   color_interior: string;
-  estado_stock: Unit['estado_stock'];
-  ubicacion: Unit['ubicacion'];
+  estado_stock: StockStatus;
+  ubicacion: LocationType;
   precio_lista: number;
   precio_minimo: number;
   costo: number;

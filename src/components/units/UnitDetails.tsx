@@ -11,7 +11,7 @@ import {
   Car, Calendar, MapPin, DollarSign, FileText, Edit2, 
   History, Image, Info, Clock, Package
 } from 'lucide-react';
-import { Unit } from './UnitsManagement';
+import { Unit } from '@/types/units';
 
 interface UnitDetailsProps {
   unit: Unit;
