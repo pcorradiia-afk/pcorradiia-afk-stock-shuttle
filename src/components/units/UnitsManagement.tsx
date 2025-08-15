@@ -33,7 +33,7 @@ export interface Unit {
   color_exterior: string;
   color_interior?: string;
   estado_stock: 'disponible' | 'reservado' | 'comprometido' | 'vendido' | 'entregado' | 'cancelado' | 'en_transito' | 'asignado_fabrica';
-  ubicacion: 'sucursal_central' | 'sucursal_neuquen' | 'sucursal_rio_negro' | 'sucursal_trelew' | 'sucursal_esquel' | 'planta_fabrica' | 'transito' | 'taller';
+  ubicacion: 'sucursal_central' | 'sucursal_norte' | 'sucursal_sur' | 'deposito_principal' | 'deposito_auxiliar' | 'en_transito';
   precio_lista: number;
   precio_minimo?: number;
   costo: number;
@@ -58,14 +58,12 @@ const ESTADO_COLORS = {
 };
 
 const UBICACION_LABELS = {
-  sucursal_central: 'Central',
-  sucursal_neuquen: 'Neuquén',
-  sucursal_rio_negro: 'Río Negro', 
-  sucursal_trelew: 'Trelew',
-  sucursal_esquel: 'Esquel',
-  planta_fabrica: 'Planta Fábrica',
-  transito: 'En Tránsito',
-  taller: 'Taller'
+  sucursal_central: 'Sucursal Central',
+  sucursal_norte: 'Sucursal Norte',
+  sucursal_sur: 'Sucursal Sur',
+  deposito_principal: 'Depósito Principal',
+  deposito_auxiliar: 'Depósito Auxiliar',
+  en_transito: 'En Tránsito'
 };
 
 export const UnitsManagement = () => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useAuth } from '@/components/auth/AuthProvider';
 import { AuthPage } from '@/pages/AuthPage';
 import { Navbar } from '@/components/layout/Navbar';
@@ -94,8 +94,11 @@ const Index = () => {
       case 'catalog':
         return <VehicleCatalog />;
       case 'units':
-        return React.createElement(
-          React.lazy(() => import('../components/units/UnitsManagement').then(m => ({ default: m.UnitsManagement })))
+        const UnitsPage = React.lazy(() => import('./UnitsPage'));
+        return (
+          <Suspense fallback={<div>Cargando...</div>}>
+            <UnitsPage />
+          </Suspense>
         );
       case 'holds':
         return (

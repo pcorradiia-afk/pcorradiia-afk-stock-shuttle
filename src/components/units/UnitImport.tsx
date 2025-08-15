@@ -68,13 +68,11 @@ const STATUS_MAPPINGS = {
 
 const UBICACION_MAPPINGS = {
   'sucursal_central': ['central', 'sucursal_central', 'main'],
-  'sucursal_neuquen': ['neuquen', 'neuquén', 'sucursal_neuquen'],
-  'sucursal_rio_negro': ['rio_negro', 'río_negro', 'rionegro', 'sucursal_rio_negro'],
-  'sucursal_trelew': ['trelew', 'sucursal_trelew'],
-  'sucursal_esquel': ['esquel', 'sucursal_esquel'],
-  'planta_fabrica': ['planta_fabrica', 'fabrica', 'factory', 'plant'],
-  'transito': ['transito', 'tránsito', 'transit'],
-  'taller': ['taller', 'workshop', 'service']
+  'sucursal_norte': ['norte', 'north', 'sucursal_norte'],
+  'sucursal_sur': ['sur', 'south', 'sucursal_sur'],
+  'deposito_principal': ['deposito_principal', 'deposito', 'warehouse', 'main_warehouse'],
+  'deposito_auxiliar': ['deposito_auxiliar', 'aux_warehouse', 'auxiliary'],
+  'en_transito': ['transito', 'tránsito', 'transit', 'en_transito']
 };
 
 export const UnitImport: React.FC<UnitImportProps> = ({ onImportComplete, onCancel }) => {
@@ -386,12 +384,33 @@ export const UnitImport: React.FC<UnitImportProps> = ({ onImportComplete, onCanc
 
       for (let i = 0; i < validRows.length; i += batchSize) {
         const batch = validRows.slice(i, i + batchSize);
-        const insertData = batch.map(row => ({
-          ...row.data,
-          // Apply default values for missing fields
-          ubicacion: row.data.ubicacion || defaultValues.ubicacion || 'sucursal_central',
-          estado_stock: row.data.estado_stock || defaultValues.estado_stock || 'disponible'
-        }));
+        const insertData = batch.map(row => {
+          const baseData = { ...row.data };
+          
+          // Ensure required fields are present
+          return {
+            anio_modelo: baseData.anio_modelo || new Date().getFullYear(),
+            codigo_fabrica: baseData.codigo_fabrica,
+            color_exterior: baseData.color_exterior,
+            marca: baseData.marca,
+            modelo: baseData.modelo,
+            version: baseData.version || '',
+            pedido_fabrica: baseData.pedido_fabrica,
+            vin: baseData.vin || null,
+            color_interior: baseData.color_interior || null,
+            bonificacion: baseData.bonificacion || 0,
+            costo: baseData.costo || 0,
+            impuestos: baseData.impuestos || 0,
+            precio_lista: baseData.precio_lista || 0,
+            precio_minimo: baseData.precio_minimo || null,
+            fecha_arribo_estimada: baseData.fecha_arribo_estimada || null,
+            fecha_arribo_real: baseData.fecha_arribo_real || null,
+            lote: baseData.lote || null,
+            // Apply default values for missing fields
+            ubicacion: baseData.ubicacion || defaultValues.ubicacion || 'sucursal_central',
+            estado_stock: baseData.estado_stock || defaultValues.estado_stock || 'disponible'
+          };
+        });
 
         const { error } = await supabase
           .from('units')
@@ -554,10 +573,10 @@ export const UnitImport: React.FC<UnitImportProps> = ({ onImportComplete, onCanc
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="sucursal_central">Sucursal Central</SelectItem>
-                    <SelectItem value="sucursal_neuquen">Sucursal Neuquén</SelectItem>
-                    <SelectItem value="sucursal_rio_negro">Sucursal Río Negro</SelectItem>
-                    <SelectItem value="sucursal_trelew">Sucursal Trelew</SelectItem>
-                    <SelectItem value="sucursal_esquel">Sucursal Esquel</SelectItem>
+                    <SelectItem value="sucursal_norte">Sucursal Norte</SelectItem>
+                    <SelectItem value="sucursal_sur">Sucursal Sur</SelectItem>
+                    <SelectItem value="deposito_principal">Depósito Principal</SelectItem>
+                    <SelectItem value="deposito_auxiliar">Depósito Auxiliar</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -573,7 +592,6 @@ export const UnitImport: React.FC<UnitImportProps> = ({ onImportComplete, onCanc
                   <SelectContent>
                     <SelectItem value="disponible">Disponible</SelectItem>
                     <SelectItem value="en_transito">En Tránsito</SelectItem>
-                    <SelectItem value="reservado">Reservado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

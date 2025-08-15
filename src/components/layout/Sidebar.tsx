@@ -30,6 +30,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
       roles: ['administrador', 'ventas', 'logistica', 'gerencia']
     },
     {
+      id: 'units',
+      label: 'Gestión de Unidades',
+      icon: Car,
+      roles: ['administrador', 'logistica']
+    },
+    {
       id: 'catalog',
       label: 'Catálogo de Stock',
       icon: Car,

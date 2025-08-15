@@ -41,13 +41,11 @@ const ESTADO_COLORS = {
 
 const UBICACION_LABELS = {
   sucursal_central: 'Sucursal Central',
-  sucursal_neuquen: 'Sucursal Neuquén',
-  sucursal_rio_negro: 'Sucursal Río Negro', 
-  sucursal_trelew: 'Sucursal Trelew',
-  sucursal_esquel: 'Sucursal Esquel',
-  planta_fabrica: 'Planta Fábrica',
-  transito: 'En Tránsito',
-  taller: 'Taller'
+  sucursal_norte: 'Sucursal Norte',
+  sucursal_sur: 'Sucursal Sur',
+  deposito_principal: 'Depósito Principal',
+  deposito_auxiliar: 'Depósito Auxiliar',
+  en_transito: 'En Tránsito'
 };
 
 export const UnitDetails: React.FC<UnitDetailsProps> = ({ unit, onClose, onEdit }) => {

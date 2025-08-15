@@ -53,13 +53,11 @@ const ESTADOS = [
 
 const UBICACIONES = [
   { value: 'sucursal_central', label: 'Sucursal Central' },
-  { value: 'sucursal_neuquen', label: 'Sucursal Neuquén' },
-  { value: 'sucursal_rio_negro', label: 'Sucursal Río Negro' },
-  { value: 'sucursal_trelew', label: 'Sucursal Trelew' },
-  { value: 'sucursal_esquel', label: 'Sucursal Esquel' },
-  { value: 'planta_fabrica', label: 'Planta Fábrica' },
-  { value: 'transito', label: 'En Tránsito' },
-  { value: 'taller', label: 'Taller' }
+  { value: 'sucursal_norte', label: 'Sucursal Norte' },
+  { value: 'sucursal_sur', label: 'Sucursal Sur' },
+  { value: 'deposito_principal', label: 'Depósito Principal' },
+  { value: 'deposito_auxiliar', label: 'Depósito Auxiliar' },
+  { value: 'en_transito', label: 'En Tránsito' }
 ];
 
 export const UnitForm: React.FC<UnitFormProps> = ({ unit, onSave, onCancel }) => {
