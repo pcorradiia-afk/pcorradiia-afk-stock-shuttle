@@ -1,67 +1,72 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Mi Álbum Mundial 2026">
   <defs>
-    <linearGradient id="bvM" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"   stop-color="#1d4ed8"/>
-      <stop offset="100%" stop-color="#7c3aed"/>
+    <linearGradient id="skyM" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0%"   stop-color="#bae6fd"/>
+      <stop offset="55%"  stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
     </linearGradient>
-    <linearGradient id="roM" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"   stop-color="#ef4444"/>
-      <stop offset="100%" stop-color="#f97316"/>
+    <linearGradient id="bandM" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.9"/>
     </linearGradient>
-    <linearGradient id="amM" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"   stop-color="#fbbf24"/>
+    <linearGradient id="goldM" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#fde68a"/>
       <stop offset="100%" stop-color="#f59e0b"/>
     </linearGradient>
-    <linearGradient id="emM" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"   stop-color="#10b981"/>
-      <stop offset="100%" stop-color="#0ea5e9"/>
+    <linearGradient id="numShadeM" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e3a8a"/>
     </linearGradient>
-    <linearGradient id="fpM" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%"   stop-color="#ec4899"/>
-      <stop offset="100%" stop-color="#a855f7"/>
-    </linearGradient>
-    <radialGradient id="glowM" cx="0.5" cy="0.5" r="0.55">
-      <stop offset="0%"   stop-color="rgba(255,255,255,0.35)"/>
-      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
-    </radialGradient>
     <linearGradient id="ballM" x1="0.3" y1="0.2" x2="0.8" y2="0.9">
       <stop offset="0%"   stop-color="#ffffff"/>
       <stop offset="60%"  stop-color="#e5e7eb"/>
       <stop offset="100%" stop-color="#9ca3af"/>
     </linearGradient>
+    <radialGradient id="glowM" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%"   stop-color="rgba(255,255,255,0.55)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
   </defs>
 
-  <!-- Sin clip-path: la máscara la aplica el launcher. -->
-  <!-- Cualquier contenido en los 51 px del borde puede recortarse. -->
-  <rect width="512" height="512" fill="#0f172a"/>
+  <!-- Sin clipPath: la máscara la aplica el launcher.
+       Safe zone: 51 → 461 (centro 80%). Contenido importante adentro. -->
+  <rect width="512" height="512" fill="url(#skyM)"/>
 
-  <!-- Paneles de fondo (cubren bordes; pueden recortarse sin problema) -->
-  <path d="M 0,0 L 320,0 C 250,90 220,170 200,260 C 110,280 50,300 0,320 Z" fill="url(#bvM)"/>
-  <path d="M 320,0 L 512,0 L 512,260 C 430,230 360,250 300,290 C 280,200 280,120 320,0 Z" fill="url(#roM)"/>
-  <path d="M 0,320 C 70,310 140,320 200,260 C 240,300 280,330 300,400 C 200,420 100,430 0,440 Z" fill="url(#amM)"/>
-  <path d="M 512,260 L 512,500 C 420,490 350,470 300,400 C 320,360 360,310 430,290 C 460,280 490,275 512,260 Z" fill="url(#emM)"/>
-  <path d="M 0,440 L 0,512 L 512,512 L 512,500 C 420,490 350,470 300,400 C 200,420 100,430 0,440 Z" fill="url(#fpM)"/>
-
-  <!-- Glow central -->
-  <circle cx="256" cy="270" r="200" fill="url(#glowM)"/>
-
-  <!-- Contenido CRÍTICO dentro del safe zone (entre 102 y 410, ~80%) -->
-
-  <!-- Pelota -->
-  <g transform="translate(256 165)">
-    <circle r="48" fill="url(#ballM)" stroke="#0f172a" stroke-width="7"/>
-    <polygon points="0,-24 23,-8 14,20 -14,20 -23,-8" fill="#0f172a"/>
-    <polygon points="-32,-12 -38,4 -30,20 -18,20 -10,4 -18,-12" fill="#0f172a" opacity="0.85"/>
-    <polygon points="32,-12 38,4 30,20 18,20 10,4 18,-12" fill="#0f172a" opacity="0.85"/>
+  <!-- Líneas estilo cancha -->
+  <g stroke="rgba(255,255,255,0.18)" stroke-width="2" fill="none">
+    <circle cx="256" cy="256" r="170"/>
+    <line x1="0" y1="256" x2="512" y2="256"/>
   </g>
 
-  <!-- 26 gigante centrado -->
-  <g transform="translate(256 360)">
+  <!-- Brillo central -->
+  <circle cx="256" cy="256" r="240" fill="url(#glowM)"/>
+
+  <!-- Banda blanca diagonal central (dentro del safe zone) -->
+  <path d="M 30,290 L 482,210 L 482,330 L 30,410 Z" fill="url(#bandM)"/>
+
+  <!-- 3 estrellitas doradas centradas en safe zone -->
+  <g fill="url(#goldM)" stroke="#92400e" stroke-width="1.5">
+    <polygon transform="translate(180 130) scale(0.95)" points="0,-18 5.3,-5.6 18,-5.6 7.9,2.1 11.1,14.6 0,7.2 -11.1,14.6 -7.9,2.1 -18,-5.6 -5.3,-5.6"/>
+    <polygon transform="translate(256 110) scale(1.15)"  points="0,-18 5.3,-5.6 18,-5.6 7.9,2.1 11.1,14.6 0,7.2 -11.1,14.6 -7.9,2.1 -18,-5.6 -5.3,-5.6"/>
+    <polygon transform="translate(332 130) scale(0.95)"  points="0,-18 5.3,-5.6 18,-5.6 7.9,2.1 11.1,14.6 0,7.2 -11.1,14.6 -7.9,2.1 -18,-5.6 -5.3,-5.6"/>
+  </g>
+
+  <!-- Pelota chiquita arriba a la derecha (dentro safe zone) -->
+  <g transform="translate(400 200)">
+    <circle r="38" fill="url(#ballM)" stroke="#0f172a" stroke-width="5"/>
+    <polygon points="0,-19 18,-6 11,15 -11,15 -18,-6" fill="#0f172a"/>
+    <polygon points="-25,-10 -30,3 -23,15 -14,15 -8,3 -14,-10" fill="#0f172a" opacity="0.85"/>
+    <polygon points="25,-10 30,3 23,15 14,15 8,3 14,-10" fill="#0f172a" opacity="0.85"/>
+  </g>
+
+  <!-- "26" gigante centrado -->
+  <g transform="translate(256 350)">
     <text text-anchor="middle"
-          font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
-          font-weight="900" font-size="240" fill="#ffffff"
-          stroke="#0f172a" stroke-width="12"
+          font-family="'Helvetica Neue','Arial Black',Arial,sans-serif"
+          font-weight="900" font-size="230"
+          fill="url(#numShadeM)"
+          stroke="#ffffff" stroke-width="12"
           paint-order="stroke fill"
-          style="letter-spacing:-8px">26</text>
+          style="letter-spacing:-10px">26</text>
   </g>
 </svg>
