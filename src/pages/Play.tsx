@@ -204,16 +204,44 @@ function RoundHeader({
   correct: number;
   streak: number;
 }) {
+  const wrong = done - correct;
+  const items = Array.from({ length: total }, (_, i) => {
+    if (i < correct) return "correct" as const;
+    if (i < correct + wrong) return "wrong" as const;
+    if (i === done) return "current" as const;
+    return "pending" as const;
+  });
   return (
-    <div className="flex items-center justify-between mb-3 text-sm">
-      <div className="font-bold text-slate-600">
-        Pregunta {Math.min(done + 1, total)} / {total}
+    <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-1.5">
+        {items.map((kind, i) => (
+          <div
+            key={i}
+            className={
+              kind === "correct"
+                ? "w-2.5 h-2.5 rounded-full bg-emerald-500 shadow"
+                : kind === "wrong"
+                ? "w-2.5 h-2.5 rounded-full bg-rose-400"
+                : kind === "current"
+                ? "w-2.5 h-2.5 rounded-full bg-violet-500 ring-2 ring-violet-200 animate-pulse"
+                : "w-2.5 h-2.5 rounded-full bg-slate-200"
+            }
+          />
+        ))}
+        <span className="ml-2 text-xs font-bold text-slate-500">
+          {Math.min(done + 1, total)}/{total}
+        </span>
       </div>
-      <div className="flex items-center gap-3">
-        <span className="text-emerald-600 font-bold">✅ {correct}</span>
+      <div className="flex items-center gap-2">
+        {correct > 0 && (
+          <span className="inline-flex items-center gap-1 text-emerald-600 font-extrabold text-sm">
+            <span>✅</span>
+            <span>{correct}</span>
+          </span>
+        )}
         {streak >= 2 && (
-          <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-extrabold text-xs">
-            🔥 racha x{streak}
+          <span className="px-2 py-0.5 rounded-full bg-gradient-to-br from-orange-400 to-rose-500 text-white font-extrabold text-xs shadow">
+            🔥 x{streak}
           </span>
         )}
       </div>
