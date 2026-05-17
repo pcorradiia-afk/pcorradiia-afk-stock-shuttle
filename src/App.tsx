@@ -41,8 +41,9 @@ const App = () => {
         duration: 6000,
       }),
   });
+  const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={basename}>
       <Sonner position="top-center" />
       <Routes>
         <Route path="/bienvenida" element={<Welcome />} />

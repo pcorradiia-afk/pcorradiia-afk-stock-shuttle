@@ -1,10 +1,6 @@
-const CACHE = "mundial-2026-v1";
-const ASSETS = ["/", "/index.html", "/manifest.webmanifest", "/icon.svg"];
+const CACHE = "mundial-2026-v2";
 
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).catch(() => null)
-  );
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
@@ -15,8 +11,8 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
       )
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
@@ -28,8 +24,10 @@ self.addEventListener("fetch", (event) => {
     caches.match(req).then((cached) => {
       const network = fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => null);
+          if (res && res.status === 200 && res.type === "basic") {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => null);
+          }
           return res;
         })
         .catch(() => cached);
