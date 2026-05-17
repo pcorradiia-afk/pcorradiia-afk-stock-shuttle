@@ -1,4 +1,4 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { ALL_STICKERS, Sticker } from "@/data/stickers";
 import { Category } from "@/data/trivia";
 
@@ -46,6 +46,9 @@ export interface PlayerState {
   bestStreak: number;
   byCategory: Record<Category, CategoryStats>;
   unopenedPacks: number;
+  sessionElapsedMs: number;
+  restingUntil: number | null;
+  lastWarnedAtMs: number;
 }
 
 export interface GameState {
@@ -71,6 +74,31 @@ function emptyPlayerState(): PlayerState {
       futbol: { asked: 0, correct: 0 },
     },
     unopenedPacks: 0,
+    sessionElapsedMs: 0,
+    restingUntil: null,
+    lastWarnedAtMs: 0,
+  };
+}
+
+export const SESSION_LIMIT_MS = 30 * 60 * 1000;
+export const REST_DURATION_MS = 20 * 60 * 1000;
+const WARN_5_MS = 25 * 60 * 1000;
+const WARN_1_MS = 29 * 60 * 1000;
+const TICK_INTERVAL_MS = 5000;
+const MAX_TICK_DELTA_MS = 15000;
+
+export type SessionStatus =
+  | { kind: "playing"; playMsRemaining: number; elapsedMs: number }
+  | { kind: "resting"; restMsRemaining: number };
+
+export function getSessionStatus(p: PlayerState, now = Date.now()): SessionStatus {
+  if (p.restingUntil && p.restingUntil > now) {
+    return { kind: "resting", restMsRemaining: p.restingUntil - now };
+  }
+  return {
+    kind: "playing",
+    elapsedMs: p.sessionElapsedMs,
+    playMsRemaining: Math.max(0, SESSION_LIMIT_MS - p.sessionElapsedMs),
   };
 }
 
@@ -313,4 +341,138 @@ export function useStorageSync() {
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
+}
+
+// --- Session timer (Pomodoro-like for kids) ---
+
+type SessionEvent = "warn-5" | "warn-1" | "rest-start" | null;
+
+function addSessionTime(deltaMs: number): SessionEvent {
+  let event: SessionEvent = null;
+  setState((s) => {
+    if (!s.activePlayer) return s;
+    const id = s.activePlayer;
+    const p = s.players[id];
+
+    // Already resting: don't accumulate. If rest finished, clear it.
+    if (p.restingUntil) {
+      if (p.restingUntil <= Date.now()) {
+        return {
+          ...s,
+          players: {
+            ...s.players,
+            [id]: { ...p, restingUntil: null, sessionElapsedMs: 0, lastWarnedAtMs: 0 },
+          },
+        };
+      }
+      return s;
+    }
+
+    const elapsed = p.sessionElapsedMs + deltaMs;
+    const prev = p.sessionElapsedMs;
+    let lastWarn = p.lastWarnedAtMs;
+
+    if (elapsed >= SESSION_LIMIT_MS) {
+      event = "rest-start";
+      return {
+        ...s,
+        players: {
+          ...s.players,
+          [id]: {
+            ...p,
+            sessionElapsedMs: 0,
+            restingUntil: Date.now() + REST_DURATION_MS,
+            lastWarnedAtMs: 0,
+          },
+        },
+      };
+    }
+    if (prev < WARN_1_MS && elapsed >= WARN_1_MS && lastWarn < WARN_1_MS) {
+      event = "warn-1";
+      lastWarn = WARN_1_MS;
+    } else if (prev < WARN_5_MS && elapsed >= WARN_5_MS && lastWarn < WARN_5_MS) {
+      event = "warn-5";
+      lastWarn = WARN_5_MS;
+    }
+
+    return {
+      ...s,
+      players: {
+        ...s.players,
+        [id]: { ...p, sessionElapsedMs: elapsed, lastWarnedAtMs: lastWarn },
+      },
+    };
+  });
+  return event;
+}
+
+export interface SessionTickerHandlers {
+  onWarn5?: () => void;
+  onWarn1?: () => void;
+  onRestStart?: () => void;
+}
+
+export function useSessionTicker(handlers: SessionTickerHandlers = {}) {
+  const handlersRef = handlers;
+  useEffect(() => {
+    let lastTick = Date.now();
+    let visible = typeof document !== "undefined" ? !document.hidden : true;
+
+    function onVisibility() {
+      visible = !document.hidden;
+      lastTick = Date.now();
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+
+    const intervalId = window.setInterval(() => {
+      // If a player is resting and the rest expired, clear it.
+      const s = state;
+      if (s.activePlayer) {
+        const p = s.players[s.activePlayer];
+        if (p.restingUntil && p.restingUntil <= Date.now()) {
+          addSessionTime(0);
+        }
+      }
+      if (!visible) {
+        lastTick = Date.now();
+        return;
+      }
+      if (!s.activePlayer) {
+        lastTick = Date.now();
+        return;
+      }
+      const now = Date.now();
+      const delta = Math.min(now - lastTick, MAX_TICK_DELTA_MS);
+      lastTick = now;
+      if (delta <= 0) return;
+      const event = addSessionTime(delta);
+      if (event === "warn-5") handlersRef.onWarn5?.();
+      else if (event === "warn-1") handlersRef.onWarn1?.();
+      else if (event === "rest-start") handlersRef.onRestStart?.();
+    }, TICK_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
+
+// Live countdown hook (re-renders every second when active)
+export function useLiveNow(active: boolean) {
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    const id = window.setInterval(() => setTick((t) => t + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [active]);
+  return Date.now();
+}
+
+export function formatClock(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
 }

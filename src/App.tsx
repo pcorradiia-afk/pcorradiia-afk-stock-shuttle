@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { useStorageSync, useGameState } from "@/store/game";
+import { Toaster as Sonner, toast } from "sonner";
+import { useGameState, useSessionTicker, useStorageSync } from "@/store/game";
 import { Welcome } from "@/pages/Welcome";
 import { Home } from "@/pages/Home";
 import { Album } from "@/pages/Album";
@@ -9,6 +9,7 @@ import { Play } from "@/pages/Play";
 import { Profile } from "@/pages/Profile";
 import { NotFound } from "@/pages/NotFound";
 import { BottomNav } from "@/components/BottomNav";
+import { SessionGate } from "@/components/SessionGate";
 
 function Protected({ children }: { children: React.ReactNode }) {
   const game = useGameState();
@@ -23,6 +24,23 @@ function Protected({ children }: { children: React.ReactNode }) {
 
 const App = () => {
   useStorageSync();
+  useSessionTicker({
+    onWarn5: () =>
+      toast("⏰ Quedan 5 minutos del partido", {
+        description: "Después toca un descanso de 20 minutos.",
+        duration: 5000,
+      }),
+    onWarn1: () =>
+      toast("⏰ ¡Último minuto del partido!", {
+        description: "Apurate a meter el último golazo.",
+        duration: 5000,
+      }),
+    onRestStart: () =>
+      toast("⏸️ ¡Medio tiempo!", {
+        description: "Hora de descansar 20 minutos.",
+        duration: 6000,
+      }),
+  });
   return (
     <BrowserRouter>
       <Sonner position="top-center" />
@@ -31,7 +49,16 @@ const App = () => {
         <Route path="/" element={<Protected><Home /></Protected>} />
         <Route path="/album" element={<Protected><Album /></Protected>} />
         <Route path="/album/:code" element={<Protected><TeamDetail /></Protected>} />
-        <Route path="/jugar" element={<Protected><Play /></Protected>} />
+        <Route
+          path="/jugar"
+          element={
+            <Protected>
+              <SessionGate>
+                <Play />
+              </SessionGate>
+            </Protected>
+          }
+        />
         <Route path="/perfil" element={<Protected><Profile /></Protected>} />
         <Route path="*" element={<NotFound />} />
       </Routes>

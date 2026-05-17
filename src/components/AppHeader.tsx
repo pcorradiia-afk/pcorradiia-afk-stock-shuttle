@@ -1,6 +1,12 @@
-import { useActivePlayer } from "@/store/game";
+import {
+  formatClock,
+  getSessionStatus,
+  SESSION_LIMIT_MS,
+  useActivePlayer,
+  useLiveNow,
+} from "@/store/game";
 import { ALL_STICKERS } from "@/data/stickers";
-import { Package } from "lucide-react";
+import { Hourglass, Package, Timer } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 interface Props {
@@ -11,10 +17,14 @@ interface Props {
 export function AppHeader({ title, showStats = true }: Props) {
   const active = useActivePlayer();
   const navigate = useNavigate();
+  useLiveNow(!!active);
   if (!active) return null;
 
   const owned = Object.keys(active.state.ownedCounts).length;
   const total = ALL_STICKERS.length;
+  const status = getSessionStatus(active.state);
+  const isResting = status.kind === "resting";
+  const lowTime = status.kind === "playing" && status.playMsRemaining <= 5 * 60 * 1000;
 
   return (
     <header className="safe-top sticky top-0 z-30 bg-gradient-to-br from-sky-500 via-violet-500 to-fuchsia-500 text-white shadow-md">
@@ -51,6 +61,33 @@ export function AppHeader({ title, showStats = true }: Props) {
               {active.state.unopenedPacks}
             </span>
           </button>
+        )}
+      </div>
+
+      {/* Match minute bar */}
+      <div className="max-w-md mx-auto px-4 pb-2 -mt-1">
+        {isResting ? (
+          <div className="flex items-center justify-between gap-2 bg-white/15 rounded-full px-3 py-1 text-xs font-bold">
+            <span className="flex items-center gap-1">
+              <Hourglass className="w-3.5 h-3.5" />
+              Medio tiempo · descansando
+            </span>
+            <span>{formatClock(status.restMsRemaining)}</span>
+          </div>
+        ) : (
+          <div className={`flex items-center justify-between gap-2 rounded-full px-3 py-1 text-xs font-bold ${lowTime ? "bg-yellow-400/90 text-black" : "bg-white/15"}`}>
+            <span className="flex items-center gap-1">
+              <Timer className="w-3.5 h-3.5" />
+              1er tiempo
+            </span>
+            <div className="flex-1 mx-2 h-1.5 rounded-full bg-black/15 overflow-hidden">
+              <div
+                className={`h-full rounded-full ${lowTime ? "bg-red-600" : "bg-white"}`}
+                style={{ width: `${(status.elapsedMs / SESSION_LIMIT_MS) * 100}%` }}
+              />
+            </div>
+            <span>{formatClock(status.playMsRemaining)}</span>
+          </div>
         )}
       </div>
     </header>
