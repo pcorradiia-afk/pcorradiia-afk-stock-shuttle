@@ -1,20 +1,26 @@
 {
   "name": "Mundial 2026 - Mi Álbum",
-  "short_name": "Mundial 2026",
+  "short_name": "Mi Álbum 2026",
   "description": "Álbum digital del Mundial 2026 con trivia para chicos.",
   "lang": "es-AR",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0ea5e9",
-  "theme_color": "#0ea5e9",
+  "background_color": "#0f172a",
+  "theme_color": "#7c3aed",
   "icons": [
     {
       "src": "/icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     }
   ]
 }

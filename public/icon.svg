@@ -1,13 +1,107 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Mi Álbum Mundial 2026">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0ea5e9"/>
-      <stop offset="0.5" stop-color="#7c3aed"/>
-      <stop offset="1" stop-color="#ec4899"/>
+    <clipPath id="rounded">
+      <rect width="512" height="512" rx="96"/>
+    </clipPath>
+    <linearGradient id="blueViolet" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="redOrange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#ef4444"/>
+      <stop offset="100%" stop-color="#f97316"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+    <linearGradient id="emerald" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#0ea5e9"/>
+    </linearGradient>
+    <linearGradient id="fuchsiaPink" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#ec4899"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <radialGradient id="bigGlow" cx="0.5" cy="0.5" r="0.6">
+      <stop offset="0%"   stop-color="rgba(255,255,255,0.35)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+    <linearGradient id="ballShade" x1="0.3" y1="0.2" x2="0.8" y2="0.9">
+      <stop offset="0%"   stop-color="#ffffff"/>
+      <stop offset="60%"  stop-color="#e5e7eb"/>
+      <stop offset="100%" stop-color="#9ca3af"/>
     </linearGradient>
   </defs>
-  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
-  <circle cx="256" cy="240" r="120" fill="#ffffff"/>
-  <path d="M256 144 l28 36 l44 4 l-32 32 l8 44 l-48 -22 l-48 22 l8 -44 l-32 -32 l44 -4z" fill="#0f172a"/>
-  <text x="256" y="430" text-anchor="middle" font-family="Arial,sans-serif" font-weight="900" font-size="84" fill="#ffffff">2026</text>
+
+  <g clip-path="url(#rounded)">
+    <!-- Base -->
+    <rect width="512" height="512" fill="#0f172a"/>
+
+    <!-- 5 paneles curvos tipo álbum -->
+    <!-- panel A: azul-violeta arriba a la izquierda -->
+    <path d="M 0,0 L 320,0 C 250,90 220,170 200,260 C 110,280 50,300 0,320 Z"
+          fill="url(#blueViolet)"/>
+    <!-- panel B: rojo-naranja arriba a la derecha -->
+    <path d="M 320,0 L 512,0 L 512,260 C 430,230 360,250 300,290 C 280,200 280,120 320,0 Z"
+          fill="url(#redOrange)"/>
+    <!-- panel C: amarillo medio izquierda -->
+    <path d="M 0,320 C 70,310 140,320 200,260 C 240,300 280,330 300,400 C 200,420 100,430 0,440 Z"
+          fill="url(#amber)"/>
+    <!-- panel D: verde-cian derecha -->
+    <path d="M 512,260 L 512,500 C 420,490 350,470 300,400 C 320,360 360,310 430,290 C 460,280 490,275 512,260 Z"
+          fill="url(#emerald)"/>
+    <!-- panel E: fucsia abajo -->
+    <path d="M 0,440 L 0,512 L 512,512 L 512,500 C 420,490 350,470 300,400 C 200,420 100,430 0,440 Z"
+          fill="url(#fuchsiaPink)"/>
+
+    <!-- Glow radial central -->
+    <circle cx="256" cy="280" r="220" fill="url(#bigGlow)"/>
+
+    <!-- Banner superior -->
+    <g>
+      <rect x="68" y="40" width="376" height="60" rx="30" fill="#0f172a" opacity="0.92"/>
+      <rect x="68" y="40" width="376" height="60" rx="30" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
+      <text x="256" y="80" text-anchor="middle"
+            font-family="'Trebuchet MS','Arial Black',Arial,sans-serif"
+            font-weight="900" font-size="30" fill="#ffffff" letter-spacing="6">MI ÁLBUM</text>
+    </g>
+
+    <!-- Número 26 gigante -->
+    <g transform="translate(256 305)">
+      <text text-anchor="middle"
+            font-family="'Arial Black','Helvetica Neue',Arial,sans-serif"
+            font-weight="900" font-size="300" fill="#ffffff"
+            stroke="#0f172a" stroke-width="14"
+            paint-order="stroke fill"
+            style="letter-spacing:-10px">26</text>
+    </g>
+
+    <!-- Pelota de fútbol decorativa -->
+    <g transform="translate(370 138)">
+      <circle r="44" fill="url(#ballShade)" stroke="#0f172a" stroke-width="6"/>
+      <!-- pentágono central -->
+      <polygon points="0,-22 21,-7 13,18 -13,18 -21,-7" fill="#0f172a"/>
+      <!-- hexágonos chiquitos -->
+      <polygon points="-30,-10 -36,4 -28,18 -16,18 -10,4 -16,-10" fill="#0f172a" opacity="0.85"/>
+      <polygon points="30,-10 36,4 28,18 16,18 10,4 16,-10" fill="#0f172a" opacity="0.85"/>
+    </g>
+
+    <!-- Cinta inferior MUNDIAL -->
+    <g>
+      <rect x="100" y="438" width="312" height="42" rx="21" fill="#ffffff" opacity="0.92"/>
+      <text x="256" y="468" text-anchor="middle"
+            font-family="'Trebuchet MS','Arial Black',Arial,sans-serif"
+            font-weight="900" font-size="22" fill="#0f172a" letter-spacing="10">MUNDIAL</text>
+    </g>
+
+    <!-- Estrellitas brillantes -->
+    <g fill="#ffffff" opacity="0.9">
+      <circle cx="60" cy="180" r="3"/>
+      <circle cx="450" cy="220" r="2.5"/>
+      <circle cx="120" cy="380" r="2.5"/>
+      <circle cx="430" cy="380" r="3"/>
+      <circle cx="80" cy="80" r="2"/>
+    </g>
+  </g>
 </svg>
