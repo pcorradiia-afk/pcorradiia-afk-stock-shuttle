@@ -2,7 +2,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import { ALL_STICKERS, Sticker } from "@/data/stickers";
 import { CATEGORIES, Category, Level, LEVEL_META } from "@/data/trivia";
 
-export type PlayerId = "dante" | "otto";
+export type PlayerId = string;
 
 export interface PlayerProfile {
   id: PlayerId;
@@ -12,22 +12,22 @@ export interface PlayerProfile {
   color: string;
 }
 
-export const PLAYERS: Record<PlayerId, PlayerProfile> = {
-  otto: {
-    id: "otto",
-    name: "Otto",
-    emoji: "🦊",
-    defaultLevel: "primaria-baja",
-    color: "from-orange-400 to-amber-500",
-  },
-  dante: {
-    id: "dante",
-    name: "Dante",
-    emoji: "⚡",
-    defaultLevel: "primaria-alta",
-    color: "from-sky-400 to-indigo-500",
-  },
-};
+export const PROFILE_COLORS: string[] = [
+  "from-sky-400 to-indigo-500",
+  "from-orange-400 to-amber-500",
+  "from-emerald-400 to-teal-500",
+  "from-pink-400 to-rose-500",
+  "from-violet-400 to-fuchsia-500",
+  "from-yellow-400 to-orange-500",
+  "from-lime-400 to-green-500",
+  "from-red-400 to-rose-500",
+];
+
+export const PROFILE_EMOJIS: string[] = [
+  "⚡", "🦊", "⚽", "🐯", "🦁", "🐼", "🐨", "🐸",
+  "🦄", "🐲", "🦖", "🐙", "🦈", "🐺", "🐵", "🐶",
+  "🐱", "🚀", "🏆", "🎮", "🎯", "🌟", "🔥", "💫",
+];
 
 export function gradeLabel(level: Level): string {
   return LEVEL_META[level].short;
@@ -55,10 +55,13 @@ export interface PlayerState {
 
 export interface GameState {
   activePlayer: PlayerId | null;
+  profiles: Record<PlayerId, PlayerProfile>;
+  profileOrder: PlayerId[];
   players: Record<PlayerId, PlayerState>;
 }
 
-const STORAGE_KEY = "mundial-2026-album-v1";
+const STORAGE_KEY = "mundial-2026-album-v2";
+const LEGACY_STORAGE_KEY = "mundial-2026-album-v1";
 
 function emptyCategoryStats(): Record<Category, CategoryStats> {
   return CATEGORIES.reduce((acc, c) => {
@@ -106,54 +109,128 @@ export function getSessionStatus(p: PlayerState, now = Date.now()): SessionStatu
   };
 }
 
+const SEED_PROFILES: PlayerProfile[] = [
+  {
+    id: "dante",
+    name: "Dante",
+    emoji: "⚡",
+    defaultLevel: "primaria-alta",
+    color: "from-sky-400 to-indigo-500",
+  },
+  {
+    id: "otto",
+    name: "Otto",
+    emoji: "🦊",
+    defaultLevel: "primaria-baja",
+    color: "from-orange-400 to-amber-500",
+  },
+];
+
 function defaultState(): GameState {
-  return {
-    activePlayer: null,
-    players: {
-      dante: emptyPlayerState(PLAYERS.dante.defaultLevel),
-      otto: emptyPlayerState(PLAYERS.otto.defaultLevel),
-    },
-  };
+  const profiles: Record<PlayerId, PlayerProfile> = {};
+  const players: Record<PlayerId, PlayerState> = {};
+  const order: PlayerId[] = [];
+  for (const p of SEED_PROFILES) {
+    profiles[p.id] = p;
+    players[p.id] = emptyPlayerState(p.defaultLevel);
+    order.push(p.id);
+  }
+  return { activePlayer: null, profiles, profileOrder: order, players };
 }
+
+const VALID_LEVELS: Level[] = [
+  "primaria-baja",
+  "primaria-media",
+  "primaria-alta",
+  "secundaria-baja",
+  "secundaria-alta",
+];
 
 function migratePlayer(
   raw: Partial<PlayerState> | undefined,
   defaults: PlayerState
 ): PlayerState {
   const merged: PlayerState = { ...defaults, ...(raw ?? {}) };
-  // Keep only known categories; ensure every category has stats
   const cleaned = emptyCategoryStats();
   const incoming = (raw?.byCategory ?? {}) as Record<string, CategoryStats>;
   for (const c of CATEGORIES) {
     if (incoming[c]) cleaned[c] = incoming[c];
   }
   merged.byCategory = cleaned;
-  // Ensure level is one of the known levels
-  const validLevels: Level[] = [
-    "primaria-baja",
-    "primaria-media",
-    "primaria-alta",
-    "secundaria-baja",
-    "secundaria-alta",
-  ];
-  if (!validLevels.includes(merged.level)) merged.level = defaults.level;
+  if (!VALID_LEVELS.includes(merged.level)) merged.level = defaults.level;
   return merged;
+}
+
+interface LegacyV1State {
+  activePlayer: string | null;
+  players: Record<string, Partial<PlayerState>>;
+}
+
+function loadLegacyV1(): GameState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as LegacyV1State;
+    const base = defaultState();
+    for (const seed of SEED_PROFILES) {
+      const oldPlayer = parsed.players?.[seed.id];
+      if (oldPlayer) {
+        base.players[seed.id] = migratePlayer(oldPlayer, base.players[seed.id]);
+      }
+    }
+    if (parsed.activePlayer && base.profiles[parsed.activePlayer]) {
+      base.activePlayer = parsed.activePlayer;
+    }
+    return base;
+  } catch {
+    return null;
+  }
 }
 
 function loadState(): GameState {
   if (typeof window === "undefined") return defaultState();
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultState();
-    const parsed = JSON.parse(raw) as GameState;
+    if (!raw) {
+      const fromLegacy = loadLegacyV1();
+      return fromLegacy ?? defaultState();
+    }
+    const parsed = JSON.parse(raw) as Partial<GameState>;
     const base = defaultState();
-    return {
-      activePlayer: parsed.activePlayer ?? null,
-      players: {
-        dante: migratePlayer(parsed.players?.dante, base.players.dante),
-        otto: migratePlayer(parsed.players?.otto, base.players.otto),
-      },
-    };
+    const profiles: Record<PlayerId, PlayerProfile> = {};
+    const players: Record<PlayerId, PlayerState> = {};
+    const order: PlayerId[] = [];
+
+    const rawProfiles = parsed.profiles ?? {};
+    const rawPlayers = parsed.players ?? {};
+    const rawOrder = Array.isArray(parsed.profileOrder)
+      ? parsed.profileOrder
+      : Object.keys(rawProfiles);
+
+    for (const id of rawOrder) {
+      const p = rawProfiles[id];
+      if (!p) continue;
+      const profile: PlayerProfile = {
+        id,
+        name: p.name || id,
+        emoji: p.emoji || "⚽",
+        defaultLevel: VALID_LEVELS.includes(p.defaultLevel) ? p.defaultLevel : "primaria-baja",
+        color: p.color || PROFILE_COLORS[order.length % PROFILE_COLORS.length],
+      };
+      profiles[id] = profile;
+      const defaults = emptyPlayerState(profile.defaultLevel);
+      players[id] = migratePlayer(rawPlayers[id], defaults);
+      order.push(id);
+    }
+
+    // Fallback: if storage is empty/corrupt and we ended up with no profiles, seed defaults.
+    if (order.length === 0) return base;
+
+    const activePlayer =
+      parsed.activePlayer && profiles[parsed.activePlayer] ? parsed.activePlayer : null;
+
+    return { activePlayer, profiles, profileOrder: order, players };
   } catch {
     return defaultState();
   }
@@ -188,21 +265,105 @@ export function useGameState(): GameState {
 export function useActivePlayer(): { id: PlayerId; profile: PlayerProfile; state: PlayerState } | null {
   const s = useGameState();
   if (!s.activePlayer) return null;
-  return {
-    id: s.activePlayer,
-    profile: PLAYERS[s.activePlayer],
-    state: s.players[s.activePlayer],
-  };
+  const profile = s.profiles[s.activePlayer];
+  const playerState = s.players[s.activePlayer];
+  if (!profile || !playerState) return null;
+  return { id: s.activePlayer, profile, state: playerState };
+}
+
+export function listProfiles(s: GameState): PlayerProfile[] {
+  return s.profileOrder
+    .map((id) => s.profiles[id])
+    .filter((p): p is PlayerProfile => Boolean(p));
 }
 
 // --- Actions ---
 
 export function selectPlayer(id: PlayerId) {
-  setState((s) => ({ ...s, activePlayer: id }));
+  setState((s) => (s.profiles[id] ? { ...s, activePlayer: id } : s));
 }
 
 export function clearPlayer() {
   setState((s) => ({ ...s, activePlayer: null }));
+}
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 32);
+}
+
+function uniqueId(base: string, taken: Record<string, unknown>): string {
+  const root = base || "jugador";
+  if (!taken[root]) return root;
+  let i = 2;
+  while (taken[`${root}-${i}`]) i++;
+  return `${root}-${i}`;
+}
+
+export interface CreateProfileInput {
+  name: string;
+  emoji?: string;
+  color?: string;
+  level?: Level;
+}
+
+export function createProfile(input: CreateProfileInput): PlayerId | null {
+  const name = input.name.trim();
+  if (!name) return null;
+  let newId: PlayerId | null = null;
+  setState((s) => {
+    const id = uniqueId(slugify(name), s.profiles);
+    const color = input.color || PROFILE_COLORS[s.profileOrder.length % PROFILE_COLORS.length];
+    const emoji = input.emoji || PROFILE_EMOJIS[s.profileOrder.length % PROFILE_EMOJIS.length];
+    const level = input.level && VALID_LEVELS.includes(input.level) ? input.level : "primaria-baja";
+    const profile: PlayerProfile = { id, name, emoji, defaultLevel: level, color };
+    newId = id;
+    return {
+      ...s,
+      profiles: { ...s.profiles, [id]: profile },
+      profileOrder: [...s.profileOrder, id],
+      players: { ...s.players, [id]: emptyPlayerState(level) },
+    };
+  });
+  return newId;
+}
+
+export interface UpdateProfileInput {
+  name?: string;
+  emoji?: string;
+  color?: string;
+}
+
+export function updateProfile(id: PlayerId, patch: UpdateProfileInput) {
+  setState((s) => {
+    const existing = s.profiles[id];
+    if (!existing) return s;
+    const updated: PlayerProfile = {
+      ...existing,
+      ...(patch.name !== undefined ? { name: patch.name.trim() || existing.name } : {}),
+      ...(patch.emoji ? { emoji: patch.emoji } : {}),
+      ...(patch.color ? { color: patch.color } : {}),
+    };
+    return { ...s, profiles: { ...s.profiles, [id]: updated } };
+  });
+}
+
+export function deleteProfile(id: PlayerId) {
+  setState((s) => {
+    if (!s.profiles[id]) return s;
+    const profiles = { ...s.profiles };
+    delete profiles[id];
+    const players = { ...s.players };
+    delete players[id];
+    const profileOrder = s.profileOrder.filter((p) => p !== id);
+    const activePlayer = s.activePlayer === id ? null : s.activePlayer;
+    return { ...s, profiles, players, profileOrder, activePlayer };
+  });
 }
 
 export function recordAnswer(category: Category, correct: boolean) {
@@ -210,6 +371,7 @@ export function recordAnswer(category: Category, correct: boolean) {
     if (!s.activePlayer) return s;
     const id = s.activePlayer;
     const p = s.players[id];
+    if (!p) return s;
     const cat = p.byCategory[category];
     const next: PlayerState = {
       ...p,
@@ -234,6 +396,7 @@ export function awardSingle(stickerId: string) {
     if (!s.activePlayer) return s;
     const id = s.activePlayer;
     const p = s.players[id];
+    if (!p) return s;
     return {
       ...s,
       players: {
@@ -252,6 +415,7 @@ export function awardPack(count = 1) {
     if (!s.activePlayer) return s;
     const id = s.activePlayer;
     const p = s.players[id];
+    if (!p) return s;
     return {
       ...s,
       players: {
@@ -272,17 +436,15 @@ export function openOnePack(): Sticker[] {
   if (!state.activePlayer) return [];
   const id = state.activePlayer;
   const p = state.players[id];
-  if (p.unopenedPacks <= 0) return [];
+  if (!p || p.unopenedPacks <= 0) return [];
 
   const missing = ALL_STICKERS.filter((s) => !p.ownedCounts[s.id]);
   const drawn: Sticker[] = [];
   for (let i = 0; i < STICKERS_PER_PACK; i++) {
-    // 70% chance to favor missing stickers if any available
     const favorMissing = missing.length > 0 && Math.random() < 0.7;
     const pool = favorMissing ? missing : ALL_STICKERS;
     const pick = pool[Math.floor(Math.random() * pool.length)];
     drawn.push(pick);
-    // remove from missing if we just drew it
     const idx = missing.findIndex((m) => m.id === pick.id);
     if (idx >= 0) missing.splice(idx, 1);
   }
@@ -290,6 +452,7 @@ export function openOnePack(): Sticker[] {
   setState((s) => {
     if (!s.activePlayer) return s;
     const cur = s.players[s.activePlayer];
+    if (!cur) return s;
     const newCounts = { ...cur.ownedCounts };
     drawn.forEach((d) => {
       newCounts[d.id] = (newCounts[d.id] ?? 0) + 1;
@@ -314,8 +477,8 @@ export function tradeDuplicatesForSticker(): Sticker | null {
   if (!state.activePlayer) return null;
   const id = state.activePlayer;
   const p = state.players[id];
+  if (!p) return null;
 
-  // collect duplicates (count > 1)
   const duplicateIds = Object.entries(p.ownedCounts)
     .filter(([, n]) => n > 1)
     .flatMap(([sid, n]) => Array(n - 1).fill(sid)) as string[];
@@ -326,11 +489,11 @@ export function tradeDuplicatesForSticker(): Sticker | null {
 
   const pick = missing[Math.floor(Math.random() * missing.length)];
 
-  // consume 5 duplicates
   const toConsume = duplicateIds.slice(0, 5);
   setState((s) => {
     if (!s.activePlayer) return s;
     const cur = s.players[s.activePlayer];
+    if (!cur) return s;
     const newCounts = { ...cur.ownedCounts };
     toConsume.forEach((sid) => {
       newCounts[sid] = (newCounts[sid] ?? 0) - 1;
@@ -352,25 +515,27 @@ export function tradeDuplicatesForSticker(): Sticker | null {
 export function resetActivePlayer() {
   setState((s) => {
     if (!s.activePlayer) return s;
-    const lvl = s.players[s.activePlayer].level;
-    return { ...s, players: { ...s.players, [s.activePlayer]: emptyPlayerState(lvl) } };
+    const cur = s.players[s.activePlayer];
+    if (!cur) return s;
+    return {
+      ...s,
+      players: { ...s.players, [s.activePlayer]: emptyPlayerState(cur.level) },
+    };
   });
 }
 
 export function setActivePlayerLevel(level: Level) {
   setState((s) => {
     if (!s.activePlayer) return s;
+    const cur = s.players[s.activePlayer];
+    if (!cur) return s;
     return {
       ...s,
-      players: {
-        ...s.players,
-        [s.activePlayer]: { ...s.players[s.activePlayer], level },
-      },
+      players: { ...s.players, [s.activePlayer]: { ...cur, level } },
     };
   });
 }
 
-// One-time hook to sync across tabs
 export function useStorageSync() {
   useEffect(() => {
     function onStorage(e: StorageEvent) {
@@ -394,8 +559,8 @@ function addSessionTime(deltaMs: number): SessionEvent {
     if (!s.activePlayer) return s;
     const id = s.activePlayer;
     const p = s.players[id];
+    if (!p) return s;
 
-    // Already resting: don't accumulate. If rest finished, clear it.
     if (p.restingUntil) {
       if (p.restingUntil <= Date.now()) {
         return {
@@ -466,11 +631,10 @@ export function useSessionTicker(handlers: SessionTickerHandlers = {}) {
     document.addEventListener("visibilitychange", onVisibility);
 
     const intervalId = window.setInterval(() => {
-      // If a player is resting and the rest expired, clear it.
       const s = state;
       if (s.activePlayer) {
         const p = s.players[s.activePlayer];
-        if (p.restingUntil && p.restingUntil <= Date.now()) {
+        if (p?.restingUntil && p.restingUntil <= Date.now()) {
           addSessionTime(0);
         }
       }
@@ -500,7 +664,6 @@ export function useSessionTicker(handlers: SessionTickerHandlers = {}) {
   }, []);
 }
 
-// Live countdown hook (re-renders every second when active)
 export function useLiveNow(active: boolean) {
   const [, setTick] = useState(0);
   useEffect(() => {
