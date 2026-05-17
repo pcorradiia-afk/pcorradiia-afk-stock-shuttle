@@ -1,4 +1,5 @@
 import { TEAMS, Team } from "./teams";
+import { getTeamRoster, PlayerPosition } from "./players";
 
 export type StickerType = "badge" | "player" | "star";
 
@@ -9,12 +10,15 @@ export interface Sticker {
   type: StickerType;
   label: string;
   shiny: boolean;
+  nickname?: string;
+  position?: PlayerPosition;
+  jerseyNumber?: number;
 }
 
-const PLAYER_LABELS = ["Arquero", "Defensor", "Mediocampista", "Delantero"];
-
 function buildTeamStickers(team: Team): Sticker[] {
+  const roster = getTeamRoster(team.code);
   const result: Sticker[] = [];
+
   result.push({
     id: `${team.code}-1`,
     teamCode: team.code,
@@ -23,24 +27,31 @@ function buildTeamStickers(team: Team): Sticker[] {
     label: "Escudo",
     shiny: true,
   });
-  PLAYER_LABELS.forEach((label, i) => {
+
+  roster.players.forEach((p, i) => {
     result.push({
       id: `${team.code}-${i + 2}`,
       teamCode: team.code,
       number: i + 2,
       type: "player",
-      label,
+      label: p.nickname,
       shiny: false,
+      nickname: p.nickname,
+      position: p.position,
+      jerseyNumber: p.number,
     });
   });
+
   result.push({
     id: `${team.code}-6`,
     teamCode: team.code,
     number: 6,
     type: "star",
-    label: "Estrella",
+    label: roster.legend,
     shiny: true,
+    nickname: roster.legend,
   });
+
   return result;
 }
 
