@@ -3,7 +3,7 @@ import { AppHeader } from "@/components/AppHeader";
 import { GoalKick } from "@/components/play/GoalKick";
 import { QuestionCard } from "@/components/play/QuestionCard";
 import { PackReveal } from "@/components/play/PackReveal";
-import { Category, pickQuestions, Question } from "@/data/trivia";
+import { Category, pickQuestions, Question, timeLimitFor } from "@/data/trivia";
 import {
   awardPack,
   awardSingle,
@@ -24,7 +24,8 @@ export function Play() {
   const active = useActivePlayer();
   const [phase, setPhase] = useState<Phase>("idle");
   const [question, setQuestion] = useState<Question | null>(null);
-  const [stickerWon, setStickerWon] = useState<Sticker | null>(null);
+  const [stickersWon, setStickersWon] = useState<Sticker[]>([]);
+  const [lastCategory, setLastCategory] = useState<Category | null>(null);
   const [roundCorrect, setRoundCorrect] = useState(0);
   const [questionsDone, setQuestionsDone] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -39,7 +40,7 @@ export function Play() {
   }, [active, phase]);
 
   if (!active) return null;
-  const level = active.profile.level;
+  const level = active.state.level;
 
   function startRound() {
     setRoundCorrect(0);
@@ -55,9 +56,13 @@ export function Play() {
     setPhase("question");
   }
 
-  function rewardSticker(): Sticker {
+  function rewardSticker(preferShiny = false): Sticker {
     const missing = ALL_STICKERS.filter((s) => !active!.state.ownedCounts[s.id]);
-    const pool = missing.length > 0 ? missing : ALL_STICKERS;
+    let pool = missing.length > 0 ? missing : ALL_STICKERS;
+    if (preferShiny) {
+      const shinyMissing = pool.filter((s) => s.shiny);
+      if (shinyMissing.length > 0) pool = shinyMissing;
+    }
     const pick = pool[Math.floor(Math.random() * pool.length)];
     awardSingle(pick.id);
     return pick;
@@ -66,10 +71,17 @@ export function Play() {
   function onQuestionDone(correct: boolean) {
     if (!question) return;
     recordAnswer(question.category, correct);
-    let won: Sticker | null = null;
+    setLastCategory(question.category);
+    let won: Sticker[] = [];
     let newStreak = streakInRound;
+    const isRiddle = question.category === "acertijos";
     if (correct) {
-      won = rewardSticker();
+      // Riddles ("figurita difícil") give 3 stickers, 1 guaranteed shiny.
+      if (isRiddle) {
+        won = [rewardSticker(true), rewardSticker(false), rewardSticker(false)];
+      } else {
+        won = [rewardSticker(false)];
+      }
       newStreak = streakInRound + 1;
       setStreakInRound(newStreak);
       setShowConfetti(true);
@@ -77,7 +89,7 @@ export function Play() {
     } else {
       setStreakInRound(0);
     }
-    setStickerWon(won);
+    setStickersWon(won);
     setRoundCorrect((c) => c + (correct ? 1 : 0));
     setQuestionsDone((c) => c + 1);
 
@@ -147,7 +159,7 @@ export function Play() {
             />
             <QuestionCard
               question={question}
-              timeLimit={level === "facil" ? 30 : 22}
+              timeLimit={timeLimitFor(question.category, level)}
               onDone={onQuestionDone}
             />
           </div>
@@ -155,11 +167,14 @@ export function Play() {
 
         {phase === "result" && (
           <ResultScreen
-            sticker={stickerWon}
+            stickers={stickersWon}
+            isRiddle={lastCategory === "acertijos"}
             onNext={nextStep}
             streak={streakInRound}
             justEarnedPack={
-              streakInRound > 0 && streakInRound % STREAK_PACK_AT === 0 && stickerWon !== null
+              streakInRound > 0 &&
+              streakInRound % STREAK_PACK_AT === 0 &&
+              stickersWon.length > 0
             }
           />
         )}
@@ -224,6 +239,8 @@ function IdleScreen({
           Pateá al arco. Donde cae la pelota, te toca esa pregunta.
           <br />
           <b>1 acierto = 1 figurita</b>. <b>3 seguidas = ¡sobre!</b>
+          <br />
+          <span className="text-amber-600">🧩 Acertijo acertado = <b>3 figuritas</b>, una brillante ✨</span>
         </p>
       </div>
 
@@ -247,23 +264,51 @@ function IdleScreen({
 }
 
 function ResultScreen({
-  sticker,
+  stickers,
+  isRiddle,
   onNext,
   streak,
   justEarnedPack,
 }: {
-  sticker: Sticker | null;
+  stickers: Sticker[];
+  isRiddle: boolean;
   onNext: () => void;
   streak: number;
   justEarnedPack: boolean;
 }) {
+  const won = stickers.length > 0;
   return (
     <div className="flex flex-col items-center gap-5 py-6 animate-pop-in">
-      {sticker ? (
+      {won ? (
         <>
-          <div className="text-2xl font-extrabold text-emerald-600">¡GOOOL! 🎉</div>
-          <div className="text-sm text-slate-500">Ganaste esta figurita:</div>
-          <StickerCard sticker={sticker} owned={true} size="lg" isNew />
+          {isRiddle ? (
+            <>
+              <div className="text-2xl font-extrabold text-amber-600">
+                🧩 ¡FIGURITA DIFÍCIL!
+              </div>
+              <div className="text-sm text-slate-500 text-center">
+                Acertaste un acertijo. Premio especial:
+                <br />
+                <b>3 figuritas</b>, ¡una brillante! ✨
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-2xl font-extrabold text-emerald-600">¡GOOOL! 🎉</div>
+              <div className="text-sm text-slate-500">Ganaste esta figurita:</div>
+            </>
+          )}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            {stickers.map((s, i) => (
+              <StickerCard
+                key={`${s.id}-${i}`}
+                sticker={s}
+                owned
+                size={stickers.length === 1 ? "lg" : "md"}
+                isNew
+              />
+            ))}
+          </div>
           {streak >= 2 && (
             <div className="text-orange-600 font-extrabold">🔥 Racha x{streak}</div>
           )}
@@ -275,9 +320,13 @@ function ResultScreen({
         </>
       ) : (
         <>
-          <div className="text-2xl font-extrabold text-rose-500">¡Atajada! 🧤</div>
+          <div className="text-2xl font-extrabold text-rose-500">
+            {isRiddle ? "¡Casi! 🧩" : "¡Atajada! 🧤"}
+          </div>
           <div className="text-slate-600 text-center">
-            La próxima la rompés. Seguí pateando.
+            {isRiddle
+              ? "Los acertijos son los más difíciles. ¡A la próxima!"
+              : "La próxima la rompés. Seguí pateando."}
           </div>
           <div className="text-6xl">⚽</div>
         </>

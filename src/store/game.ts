@@ -1,6 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { ALL_STICKERS, Sticker } from "@/data/stickers";
-import { Category } from "@/data/trivia";
+import { CATEGORIES, Category, Level, LEVEL_META } from "@/data/trivia";
 
 export type PlayerId = "dante" | "otto";
 
@@ -8,8 +8,7 @@ export interface PlayerProfile {
   id: PlayerId;
   name: string;
   emoji: string;
-  grade: string;
-  level: "facil" | "medio";
+  defaultLevel: Level;
   color: string;
 }
 
@@ -18,19 +17,21 @@ export const PLAYERS: Record<PlayerId, PlayerProfile> = {
     id: "otto",
     name: "Otto",
     emoji: "🦊",
-    grade: "2° grado",
-    level: "facil",
+    defaultLevel: "primaria-baja",
     color: "from-orange-400 to-amber-500",
   },
   dante: {
     id: "dante",
     name: "Dante",
     emoji: "⚡",
-    grade: "5° grado",
-    level: "medio",
+    defaultLevel: "primaria-alta",
     color: "from-sky-400 to-indigo-500",
   },
 };
+
+export function gradeLabel(level: Level): string {
+  return LEVEL_META[level].short;
+}
 
 export interface CategoryStats {
   asked: number;
@@ -38,6 +39,7 @@ export interface CategoryStats {
 }
 
 export interface PlayerState {
+  level: Level;
   ownedCounts: Record<string, number>;
   packsEarned: number;
   totalCorrect: number;
@@ -58,21 +60,23 @@ export interface GameState {
 
 const STORAGE_KEY = "mundial-2026-album-v1";
 
-function emptyPlayerState(): PlayerState {
+function emptyCategoryStats(): Record<Category, CategoryStats> {
+  return CATEGORIES.reduce((acc, c) => {
+    acc[c] = { asked: 0, correct: 0 };
+    return acc;
+  }, {} as Record<Category, CategoryStats>);
+}
+
+function emptyPlayerState(level: Level = "primaria-baja"): PlayerState {
   return {
+    level,
     ownedCounts: {},
     packsEarned: 0,
     totalCorrect: 0,
     totalAsked: 0,
     currentStreak: 0,
     bestStreak: 0,
-    byCategory: {
-      geografia: { asked: 0, correct: 0 },
-      historia: { asked: 0, correct: 0 },
-      matematica: { asked: 0, correct: 0 },
-      ingles: { asked: 0, correct: 0 },
-      futbol: { asked: 0, correct: 0 },
-    },
+    byCategory: emptyCategoryStats(),
     unopenedPacks: 0,
     sessionElapsedMs: 0,
     restingUntil: null,
@@ -106,10 +110,34 @@ function defaultState(): GameState {
   return {
     activePlayer: null,
     players: {
-      dante: emptyPlayerState(),
-      otto: emptyPlayerState(),
+      dante: emptyPlayerState(PLAYERS.dante.defaultLevel),
+      otto: emptyPlayerState(PLAYERS.otto.defaultLevel),
     },
   };
+}
+
+function migratePlayer(
+  raw: Partial<PlayerState> | undefined,
+  defaults: PlayerState
+): PlayerState {
+  const merged: PlayerState = { ...defaults, ...(raw ?? {}) };
+  // Keep only known categories; ensure every category has stats
+  const cleaned = emptyCategoryStats();
+  const incoming = (raw?.byCategory ?? {}) as Record<string, CategoryStats>;
+  for (const c of CATEGORIES) {
+    if (incoming[c]) cleaned[c] = incoming[c];
+  }
+  merged.byCategory = cleaned;
+  // Ensure level is one of the known levels
+  const validLevels: Level[] = [
+    "primaria-baja",
+    "primaria-media",
+    "primaria-alta",
+    "secundaria-baja",
+    "secundaria-alta",
+  ];
+  if (!validLevels.includes(merged.level)) merged.level = defaults.level;
+  return merged;
 }
 
 function loadState(): GameState {
@@ -118,13 +146,12 @@ function loadState(): GameState {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return defaultState();
     const parsed = JSON.parse(raw) as GameState;
-    // shallow merge with defaults to handle migrations
     const base = defaultState();
     return {
       activePlayer: parsed.activePlayer ?? null,
       players: {
-        dante: { ...base.players.dante, ...(parsed.players?.dante ?? {}), byCategory: { ...base.players.dante.byCategory, ...(parsed.players?.dante?.byCategory ?? {}) } },
-        otto: { ...base.players.otto, ...(parsed.players?.otto ?? {}), byCategory: { ...base.players.otto.byCategory, ...(parsed.players?.otto?.byCategory ?? {}) } },
+        dante: migratePlayer(parsed.players?.dante, base.players.dante),
+        otto: migratePlayer(parsed.players?.otto, base.players.otto),
       },
     };
   } catch {
@@ -325,7 +352,21 @@ export function tradeDuplicatesForSticker(): Sticker | null {
 export function resetActivePlayer() {
   setState((s) => {
     if (!s.activePlayer) return s;
-    return { ...s, players: { ...s.players, [s.activePlayer]: emptyPlayerState() } };
+    const lvl = s.players[s.activePlayer].level;
+    return { ...s, players: { ...s.players, [s.activePlayer]: emptyPlayerState(lvl) } };
+  });
+}
+
+export function setActivePlayerLevel(level: Level) {
+  setState((s) => {
+    if (!s.activePlayer) return s;
+    return {
+      ...s,
+      players: {
+        ...s.players,
+        [s.activePlayer]: { ...s.players[s.activePlayer], level },
+      },
+    };
   });
 }
 

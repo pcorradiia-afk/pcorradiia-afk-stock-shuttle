@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { PLAYERS, PlayerId, selectPlayer, useGameState } from "@/store/game";
+import { gradeLabel, PLAYERS, PlayerId, selectPlayer, useGameState } from "@/store/game";
 
 export function Welcome() {
   const navigate = useNavigate();
@@ -38,7 +38,7 @@ export function Welcome() {
               </div>
               <div className="flex-1">
                 <div className="text-2xl font-extrabold">{p.name}</div>
-                <div className="text-sm opacity-90">{p.grade}</div>
+                <div className="text-sm opacity-90">{gradeLabel(p.defaultLevel)}</div>
               </div>
               <div className="text-2xl">▶</div>
             </div>

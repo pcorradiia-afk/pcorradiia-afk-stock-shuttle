@@ -1,25 +1,34 @@
 import { useState } from "react";
-import { CATEGORY_META, Category } from "@/data/trivia";
+import { CATEGORIES, CATEGORY_META, Category } from "@/data/trivia";
 
-const CATEGORIES: Category[] = ["geografia", "historia", "matematica", "ingles", "futbol"];
+// Force a 3x3 grid with acertijos in the center for visual prominence.
+const GRID: Category[] = [
+  "matematica",
+  "geografia",
+  "lengua",
+  "historia",
+  "acertijos", // center = figurita difícil
+  "ciencias",
+  "deporte",
+  "cultura",
+  "ingles",
+];
 
-const COLORS: Record<Category, string> = {
-  geografia: "#10b981",
-  historia: "#f59e0b",
-  matematica: "#0ea5e9",
-  ingles: "#ec4899",
-  futbol: "#a855f7",
-};
+// Sanity: ensure we still cover all categories
+if (GRID.length !== 9 || !CATEGORIES.every((c) => GRID.includes(c))) {
+  // eslint-disable-next-line no-console
+  console.warn("GoalKick GRID is out of sync with CATEGORIES");
+}
 
 interface Props {
   onPicked: (cat: Category) => void;
 }
 
 // Goal & ball geometry (px, mobile-friendly)
-const W = 300;
-const GOAL_H = 150;
+const W = 320;
+const GOAL_H = 220;
 const BALL_HOME_X = W / 2;
-const BALL_HOME_Y = 280; // bottom area of canvas
+const BALL_HOME_Y = 320;
 
 export function GoalKick({ onPicked }: Props) {
   const [phase, setPhase] = useState<"idle" | "shooting" | "scored">("idle");
@@ -27,34 +36,40 @@ export function GoalKick({ onPicked }: Props) {
 
   function shoot() {
     if (phase !== "idle") return;
-    const idx = Math.floor(Math.random() * CATEGORIES.length);
+    const idx = Math.floor(Math.random() * GRID.length);
     setTargetIdx(idx);
     setPhase("shooting");
     window.setTimeout(() => setPhase("scored"), 1100);
-    window.setTimeout(() => onPicked(CATEGORIES[idx]), 1900);
+    window.setTimeout(() => onPicked(GRID[idx]), 1900);
   }
 
-  // sector geometry
-  const SECTOR_W = W / CATEGORIES.length;
-  const sectorCenter = (idx: number) => ({
-    x: idx * SECTOR_W + SECTOR_W / 2,
-    y: 40 + GOAL_H / 2 - 18,
-  });
+  const COLS = 3;
+  const ROWS = 3;
+  const cellW = W / COLS;
+  const cellH = GOAL_H / ROWS;
+  const sectorCenter = (idx: number) => {
+    const col = idx % COLS;
+    const row = Math.floor(idx / COLS);
+    return {
+      x: col * cellW + cellW / 2,
+      y: 40 + row * cellH + cellH / 2 - 22,
+    };
+  };
 
   const dx = targetIdx !== null ? sectorCenter(targetIdx).x - BALL_HOME_X : 0;
   const dy = targetIdx !== null ? sectorCenter(targetIdx).y - BALL_HOME_Y : 0;
 
   return (
-    <div className="flex flex-col items-center gap-5">
+    <div className="flex flex-col items-center gap-4">
       <div
         className="relative bg-gradient-to-b from-sky-300 to-emerald-400 rounded-3xl overflow-hidden shadow-inner border-4 border-white"
-        style={{ width: W, height: 340 }}
+        style={{ width: W, height: 380 }}
       >
         {/* Field stripes */}
         <div
           className="absolute inset-x-0 bottom-0"
           style={{
-            height: 180,
+            height: 200,
             background:
               "repeating-linear-gradient(0deg, #16a34a 0, #16a34a 18px, #15803d 18px, #15803d 36px)",
           }}
@@ -63,19 +78,16 @@ export function GoalKick({ onPicked }: Props) {
         <div
           className="absolute border-2 border-white/80 rounded-full"
           style={{
-            width: 200,
-            height: 80,
-            left: (W - 200) / 2,
-            top: 200,
+            width: 220,
+            height: 90,
+            left: (W - 220) / 2,
+            top: 260,
           }}
         />
-        <div className="absolute left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-white" style={{ top: 235 }} />
+        <div className="absolute left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-white" style={{ top: 295 }} />
 
         {/* Goal frame */}
-        <div
-          className="absolute"
-          style={{ top: 28, left: 0, width: W, height: GOAL_H + 12 }}
-        >
+        <div className="absolute" style={{ top: 28, left: 0, width: W, height: GOAL_H + 12 }}>
           {/* posts/crossbar */}
           <div className="absolute inset-0 rounded-md border-[6px] border-white shadow-md bg-transparent" />
           {/* net */}
@@ -87,22 +99,38 @@ export function GoalKick({ onPicked }: Props) {
             }}
           />
           {/* sectors */}
-          <div className="absolute inset-[6px] grid" style={{ gridTemplateColumns: `repeat(${CATEGORIES.length}, 1fr)` }}>
-            {CATEGORIES.map((c, idx) => {
+          <div
+            className="absolute inset-[6px] grid"
+            style={{
+              gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+              gridTemplateRows: `repeat(${ROWS}, 1fr)`,
+            }}
+          >
+            {GRID.map((c, idx) => {
+              const meta = CATEGORY_META[c];
               const isTarget = targetIdx === idx && phase !== "idle";
+              const isRiddle = c === "acertijos";
               return (
                 <div
                   key={c}
-                  className={`relative flex flex-col items-center justify-center text-white text-stroke font-extrabold text-xs transition ${
+                  className={`relative flex flex-col items-center justify-center text-white text-stroke font-extrabold text-[10px] transition-all ${
                     isTarget && phase === "scored" ? "scale-110" : ""
-                  }`}
+                  } ${isRiddle ? "ring-2 ring-yellow-300/80" : ""}`}
                   style={{
-                    background: isTarget && phase === "scored" ? `${COLORS[c]}cc` : "transparent",
+                    background:
+                      isTarget && phase === "scored"
+                        ? `${meta.solid}cc`
+                        : isRiddle
+                        ? "rgba(234,179,8,0.18)"
+                        : "transparent",
                   }}
                 >
-                  <span className="text-2xl drop-shadow">{CATEGORY_META[c].emoji}</span>
+                  {isRiddle && (
+                    <div className="absolute top-0.5 right-0.5 text-yellow-200 text-[10px]">★</div>
+                  )}
+                  <span className="text-xl drop-shadow leading-none">{meta.emoji}</span>
                   <span className="leading-tight mt-0.5 uppercase tracking-wide">
-                    {CATEGORY_META[c].label}
+                    {meta.label}
                   </span>
                 </div>
               );
@@ -124,25 +152,24 @@ export function GoalKick({ onPicked }: Props) {
           }}
         >
           <div
-            className="w-11 h-11 rounded-full shadow-lg"
+            className="w-11 h-11 rounded-full shadow-lg flex items-center justify-center text-xl"
             style={{
               background:
                 "radial-gradient(circle at 35% 30%, #fff 0 35%, #e5e7eb 36% 60%, #9ca3af 100%)",
               boxShadow: "inset -4px -6px 8px rgba(0,0,0,0.25), 0 6px 10px rgba(0,0,0,0.25)",
             }}
           >
-            <div className="w-full h-full flex items-center justify-center text-xl">⚽</div>
+            ⚽
           </div>
-          {phase === "shooting" && (
-            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-8 h-2 rounded-full bg-black/30 blur" />
-          )}
         </div>
 
         {/* GOAL banner */}
-        {phase === "scored" && (
+        {phase === "scored" && targetIdx !== null && (
           <div className="absolute inset-x-0 top-2 text-center animate-pop-in pointer-events-none">
             <div className="inline-block px-4 py-1 rounded-full bg-yellow-400 text-black font-extrabold shadow text-sm">
-              ¡GOOOL! {targetIdx !== null && CATEGORY_META[CATEGORIES[targetIdx]].emoji} {targetIdx !== null && CATEGORY_META[CATEGORIES[targetIdx]].label}
+              {GRID[targetIdx] === "acertijos" ? "🧩 ¡FIGURITA DIFÍCIL!" : "¡GOOOL!"}
+              {" "}
+              {CATEGORY_META[GRID[targetIdx]].emoji} {CATEGORY_META[GRID[targetIdx]].label}
             </div>
           </div>
         )}
@@ -156,7 +183,7 @@ export function GoalKick({ onPicked }: Props) {
         {phase === "idle" ? "¡PATEAR!" : phase === "shooting" ? "🚀" : "¡GOL!"}
       </button>
       <p className="text-xs text-slate-500 text-center max-w-[280px]">
-        Tirá al arco y donde caiga la pelota, ¡ahí va la pregunta!
+        El centro del arco 🧩 es la <b>figurita difícil</b>: si la pegás y respondés bien, ¡ganás 3 figuritas!
       </p>
     </div>
   );
