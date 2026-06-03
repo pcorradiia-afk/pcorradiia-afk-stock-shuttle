@@ -1,4 +1,4 @@
-const CACHE = "mundial-2026-v2";
+const CACHE = "prode-2026-v1";
 
 self.addEventListener("install", () => {
   self.skipWaiting();

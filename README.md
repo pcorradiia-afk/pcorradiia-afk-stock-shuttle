@@ -1,157 +1,176 @@
-# Mundial 2026 - Mi Álbum
+# ⚽️🏆 Prode Mundial 2026
 
-App de celular para Dante (10, 5° grado) y Otto (7, 2° grado).
-Arman su álbum digital del Mundial 2026 ganando figuritas al responder
-trivia de **geografía, historia, matemática, inglés y fútbol** —
-con preguntas pensadas para chicos en Argentina y contextualizadas a
-los países que juegan el Mundial.
+App web (instalable en el celu como PWA) para hacer el **prode del Mundial
+2026 entre amigos**, con tabla de posiciones en vivo, pronósticos especiales,
+puntos por asados del grupo y reparto del pozo.
 
-## Cómo se juega
+Pensada para ~14 jugadores que ponen plata: **el 1º se lleva el 70% del pozo y
+el 2º el 30%**.
 
-1. Elegís jugador (Dante o Otto). Cada uno tiene su propio progreso.
-2. Pateás al arco 🥅 — la pelota cae en una de 5 categorías.
-3. Aparece la pregunta (4 opciones, con tiempito).
-4. ✅ **1 acierto = 1 figurita**.
-5. 🔥 **3 aciertos seguidos = sobre con 4 figuritas extra**.
-6. En el álbum ves tu progreso por país y completás los equipos.
-7. ¿Repetidas? **5 repes = 1 figurita nueva** desde tu perfil.
+## 🧮 Cómo se suman los puntos
 
-Las preguntas usan los países del Mundial como contexto. Ejemplos:
-- *¿Cuál es la capital de España?*
-- *¿Uruguay es limítrofe con Argentina?*
-- *¿Cómo se dice "cena" en Estados Unidos?*
-- *El Mundial 2026 tiene 48 equipos divididos en 12 grupos. ¿Cuántos por grupo?*
+| Acierto | Puntos |
+|---|---|
+| Resultado del partido (gana / empata / pierde) | **4** |
+| Marcador exacto (los goles justos) | **6** *(reemplaza al de 4, no se suman)* |
+| Campeón del mundo | **40** |
+| Mejor jugador del Mundial | **10** |
+| Goleador del Mundial | **10** |
+| Participar de un asado del grupo (mín. 4 comensales) | **5** |
+| Poner la sede del asado | **+10** |
 
-Las preguntas se filtran por nivel:
-- **Fácil** → Otto (2° grado)
-- **Medio** → Dante (5° grado)
+> Los pronósticos de cada partido **se cierran solos cuando el partido empieza**
+> (no se pueden cargar ni cambiar después del pitazo inicial). Los pronósticos
+> Plus (campeón / jugador / goleador) se cierran en la fecha que ponga el admin.
+> Las reglas se pueden ajustar en `src/data/rules.ts`.
 
-## Tecnologías
+## 🚀 Puesta en marcha (1 sola vez)
+
+La app guarda todo en **Supabase** (base de datos gratis) para que los 14 jueguen
+desde su propio celular y vean la misma tabla.
+
+### 1) Crear el proyecto de Supabase
+
+1. Entrá a [supabase.com](https://supabase.com) → **New project** (plan Free).
+2. Elegí nombre y contraseña (la de la base, guardala).
+
+### 2) Crear las tablas
+
+1. En Supabase, abrí **SQL Editor → New query**.
+2. Copiá y pegá **todo** el contenido de [`supabase/schema.sql`](supabase/schema.sql).
+3. Apretá **Run**. Listo: quedan creadas las tablas y la seguridad (RLS).
+
+### 3) Conectar la app con tus claves
+
+1. En Supabase: **Project Settings → API** y copiá:
+   - **Project URL**
+   - **anon public** key
+2. En el proyecto, copiá `.env.example` a `.env` y completá:
+
+   ```env
+   VITE_SUPABASE_URL=https://xxxx.supabase.co
+   VITE_SUPABASE_ANON_KEY=eyJhbGciOi...
+   ```
+
+### 4) Correr en local
+
+```bash
+npm install
+npm run dev      # abre en http://localhost:8080
+```
+
+Entrá con tu email (te llega un **link mágico**, sin contraseñas), poné tu
+nombre y ya estás adentro.
+
+### 5) Hacerte admin
+
+Después de loguearte **al menos una vez**, en Supabase → **SQL Editor**, corré
+(con tu email):
+
+```sql
+update public.profiles
+set is_admin = true
+where id = (select id from auth.users where email = 'TU_EMAIL@AQUI.com');
+```
+
+Volvé a abrir la app: te aparece el **Panel de administración**.
+
+## 🛠️ Lo que hace el admin
+
+Desde el panel (icono de escudo en Inicio/Perfil):
+
+- **Partidos**: cargar los partidos (fase, grupo, equipos, día y hora) y, cuando
+  terminan, **cargar el resultado**. Apenas lo guardás, se reparten los puntos.
+- **Plus**: al final del Mundial, cargar el **campeón, mejor jugador y goleador**
+  oficiales.
+- **Pozo**: poner el **valor de la entrada** y la moneda, marcar quién pagó (el
+  pozo se calcula con los que pagaron) y la **fecha de cierre** de los pronósticos
+  Plus.
+- **Gente**: marcar pagos, hacer admin a otro, y **validar los asados** (confirmar
+  que tuvieron 4+ comensales para que sumen).
+
+> **Tip sobre los partidos:** el fixture real con los cruces se sortea poco antes
+> del Mundial. Por eso los partidos se cargan a mano desde el panel (rápido: elegís
+> los dos equipos de la lista de 48 selecciones ya cargada y la fecha/hora).
+
+## 📲 Que tus amigos la usen (sin tienda de apps)
+
+La forma más rápida es **PWA**:
+
+1. Subí la app a un hosting estático gratis (Vercel, Netlify, Cloudflare Pages…).
+   - **Importante:** cargá las 2 variables `VITE_SUPABASE_URL` y
+     `VITE_SUPABASE_ANON_KEY` en el panel del hosting y volvé a deployar.
+2. Pasale el link al grupo de WhatsApp.
+3. Cada uno abre el link en Chrome → menú ▸ **"Agregar a pantalla de inicio"**.
+   Queda como una app, a pantalla completa.
+
+### Deploy en Vercel (ejemplo)
+
+```bash
+npm i -g vercel
+vercel            # seguí los pasos
+# luego cargá las env vars en el panel de Vercel y: vercel --prod
+```
+
+## 🤖 (Opcional) Publicar en Google Play
+
+El proyecto ya trae **Capacitor** configurado.
+
+```bash
+npm run android:init   # primera vez: crea la carpeta android/
+npm run android:sync   # cada vez que cambiás código
+npm run android:open   # abre Android Studio
+```
+
+En Android Studio: **Build ▸ Generate Signed Bundle / APK**. Para uso entre
+amigos alcanza con **"Pruebas internas"** (no requiere revisión pública) o
+generar un APK y mandarlo por WhatsApp.
+
+## 🔒 Sobre la seguridad
+
+- Login por **email + link mágico** (Supabase Auth). Nadie comparte contraseñas.
+- **RLS (Row Level Security)** activado: cada uno sólo puede tocar sus propios
+  pronósticos, y **los pronósticos ajenos recién se ven cuando el partido empezó**
+  (no se pueden copiar). Sólo el admin carga resultados y valida asados.
+
+## 🧱 Tecnologías
 
 - React + TypeScript + Vite
 - Tailwind CSS + shadcn/ui
-- LocalStorage (no necesita login ni internet)
-- PWA (instalable en el celu desde el navegador)
-- Capacitor (para empaquetar como app Android y subir a Google Play)
+- Supabase (Postgres + Auth) con `@tanstack/react-query`
+- PWA instalable / Capacitor para Android
 
-## Desarrollo local
-
-```bash
-npm install
-npm run dev      # corre en http://localhost:8080
-npm run build    # genera /dist listo para publicar
-```
-
-## Instalar en el celular (modo PWA, sin Play Store)
-
-Es lo más rápido para que la usen YA:
-
-1. Subí el build (`dist/`) a cualquier hosting estático
-   (Vercel, Netlify, Cloudflare Pages, GitHub Pages, etc.).
-2. Abrí el sitio desde Chrome en el celular.
-3. Menú ▸ "Agregar a pantalla de inicio" / "Instalar app".
-4. Listo: aparece como ícono y se abre en pantalla completa, sin barras.
-
-Funciona offline desde la segunda vez gracias al service worker (`public/sw.js`).
-
-## Publicar en Google Play
-
-Para una APK/AAB descargable de Google Play, el proyecto ya tiene
-Capacitor configurado (`capacitor.config.ts`).
-
-### Requisitos en tu compu
-
-- Node.js + npm (ya lo usás)
-- **Android Studio** instalado (gratis: https://developer.android.com/studio)
-- **JDK 17** (lo trae Android Studio)
-- Cuenta de **Google Play Console** (USD 25, pago único)
-
-### Pasos
-
-```bash
-# 1) Asegurate de tener todo instalado
-npm install
-
-# 2) Generá la carpeta android/ (la primera vez)
-npm run android:init
-
-# 3) Cada vez que cambies código:
-npm run android:sync
-
-# 4) Abrí Android Studio
-npm run android:open
-```
-
-En Android Studio:
-
-1. **Build ▸ Generate Signed Bundle / APK ▸ Android App Bundle (.aab)**
-2. Creá un **keystore** la primera vez (¡guardalo bien, no se puede recuperar!).
-3. Build variant: `release`.
-4. Te genera `app-release.aab`.
-
-En Google Play Console:
-
-1. Creá una nueva app, completá ficha (título, descripción, ícono).
-2. Subí el `.aab` a "Producción" o "Pruebas internas" (más rápido para probar).
-3. Política de contenido: marca como apta para **niños** ("Programa Diseñado para la Familia").
-4. Esperá la revisión (suele ser 1-7 días).
-
-### Notas importantes
-
-- El `appId` está como `ar.mundial2026.album`. Cambialo en
-  `capacitor.config.ts` si querés tu propio paquete (tiene que ser único en Play Store).
-- Para uso personal/familiar, alcanza con **publicar en "Pruebas internas"**
-  con un grupo de testers (los emails de la familia). No requiere revisión pública.
-- Si no querés subir a Play Store, después del paso 3 podés generar un APK
-  desde Android Studio (Build ▸ Build APK) y mandar el `.apk` por WhatsApp;
-  se instala directo en el celu activando "Orígenes desconocidos".
-
-## Estructura del proyecto
+## 📁 Estructura
 
 ```
+supabase/schema.sql        # tablas + seguridad (pegar en Supabase)
 src/
   data/
-    teams.ts         # 48 selecciones con bandera, capital, idioma, dato curioso
-    stickers.ts      # 6 figuritas por equipo (escudo + 4 jugadores + estrella)
-    trivia.ts        # banco de preguntas por categoría y nivel
+    teams.ts               # 48 selecciones (bandera + nombre)
+    rules.ts               # puntajes y reparto del pozo (editable)
+  lib/
+    supabase.ts            # cliente
+    scoring.ts             # cálculo de puntos y tabla
+    format.ts              # plata y fechas
   store/
-    game.ts          # localStorage + hooks (perfil activo, estado, acciones)
+    auth.tsx               # sesión y perfil
+    queries.ts             # lecturas y mutaciones (react-query)
   components/
-    BottomNav.tsx
-    AppHeader.tsx
-    Confetti.tsx
-    album/StickerCard.tsx
-    play/GoalKick.tsx        # mini-juego de tiro al arco
-    play/QuestionCard.tsx    # pregunta con timer
-    play/PackReveal.tsx      # apertura de sobre animada
+    MatchCard.tsx          # tarjeta de partido (cargar marcador / ver puntos)
+    TeamSelect.tsx, Avatar.tsx, AppHeader.tsx, BottomNav.tsx
   pages/
-    Welcome.tsx       # elegir jugador
-    Home.tsx          # menú principal
-    Album.tsx         # listado por confederación
-    TeamDetail.tsx    # figuritas de un equipo
-    Play.tsx          # ronda de trivia (5 preguntas)
-    Profile.tsx       # estadísticas y cambios
+    Login.tsx, Onboarding.tsx, SetupGuide.tsx
+    Dashboard.tsx          # inicio
+    Matches.tsx            # partidos
+    Specials.tsx           # pronósticos Plus
+    Asados.tsx             # asados del grupo
+    Leaderboard.tsx        # tabla + pozo
+    Rules.tsx              # reglas y reparto
+    Admin.tsx              # panel de administración
+    Profile.tsx
 ```
 
-## Agregar más preguntas
+## ✏️ Cambiar las reglas
 
-Editá `src/data/trivia.ts` y agregá objetos al array `QUESTIONS`:
-
-```ts
-{
-  id: "g-f-99",
-  category: "geografia",       // geografia | historia | matematica | ingles | futbol
-  level: "facil",              // facil (2°) | medio (5°)
-  prompt: "¿Cuál es la capital de Italia?",
-  options: ["Milán", "Roma", "Nápoles", "Florencia"],
-  answer: 1,                   // índice de la respuesta correcta
-  hint: "Coliseo, Vaticano..." // opcional, aparece si queda poco tiempo
-}
-```
-
-## Para más adelante
-
-- Pestaña de logros con medallas (completar un continente, racha de 10, etc.)
-- Modo dos jugadores en simultáneo en el mismo dispositivo
-- Lector de QR/código para marcar figuritas físicas que ya pegaron
-- Sincronización entre celulares con un código corto
+Editá `src/data/rules.ts` (puntos, mínimo de comensales, reparto del pozo) y
+volvé a deployar. Toda la app y el cálculo usan esos valores.

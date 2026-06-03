@@ -1,14 +1,14 @@
 {
-  "name": "Mundial 2026 - Mi Álbum",
-  "short_name": "Mi Álbum 2026",
-  "description": "Álbum digital del Mundial 2026 con trivia para chicos.",
+  "name": "Prode Mundial 2026",
+  "short_name": "Prode 2026",
+  "description": "El prode del Mundial 2026 entre amigos: pronósticos, tabla y pozo.",
   "lang": "es-AR",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#bae6fd",
-  "theme_color": "#0284c7",
+  "background_color": "#ecfdf5",
+  "theme_color": "#059669",
   "icons": [
     {
       "src": "./icon.svg",

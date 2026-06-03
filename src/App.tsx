@@ -1,69 +1,93 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Toaster as Sonner, toast } from "sonner";
-import { useGameState, useSessionTicker, useStorageSync } from "@/store/game";
-import { Welcome } from "@/pages/Welcome";
-import { Home } from "@/pages/Home";
-import { Album } from "@/pages/Album";
-import { TeamDetail } from "@/pages/TeamDetail";
-import { Play } from "@/pages/Play";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
+import { AuthProvider, useAuth } from "@/store/auth";
+import { SUPABASE_READY } from "@/lib/supabase";
+import { BottomNav } from "@/components/BottomNav";
+import { SetupGuide } from "@/pages/SetupGuide";
+import { Login } from "@/pages/Login";
+import { Onboarding } from "@/pages/Onboarding";
+import { Dashboard } from "@/pages/Dashboard";
+import { Matches } from "@/pages/Matches";
+import { Specials } from "@/pages/Specials";
+import { Asados } from "@/pages/Asados";
+import { Leaderboard } from "@/pages/Leaderboard";
+import { Rules } from "@/pages/Rules";
+import { Admin } from "@/pages/Admin";
 import { Profile } from "@/pages/Profile";
 import { NotFound } from "@/pages/NotFound";
-import { BottomNav } from "@/components/BottomNav";
-import { SessionGate } from "@/components/SessionGate";
 
-function Protected({ children }: { children: React.ReactNode }) {
-  const game = useGameState();
-  if (!game.activePlayer) return <Navigate to="/bienvenida" replace />;
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { refetchOnWindowFocus: true, staleTime: 30_000, retry: 1 },
+  },
+});
+
+function FullScreen({ children }: { children: React.ReactNode }) {
   return (
-    <>
+    <div className="min-h-screen grid place-items-center bg-background px-6 text-center">
+      {children}
+    </div>
+  );
+}
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-background pb-24 max-w-md mx-auto">
       {children}
       <BottomNav />
-    </>
+    </div>
+  );
+}
+
+function Gate() {
+  const { loading, session, profile } = useAuth();
+
+  if (loading) {
+    return (
+      <FullScreen>
+        <div className="animate-pulse text-muted-foreground">Cargando…</div>
+      </FullScreen>
+    );
+  }
+  if (!session) return <Login />;
+  if (!profile) return <Onboarding />;
+
+  return (
+    <Shell>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/partidos" element={<Matches />} />
+        <Route path="/especiales" element={<Specials />} />
+        <Route path="/asados" element={<Asados />} />
+        <Route path="/tabla" element={<Leaderboard />} />
+        <Route path="/reglas" element={<Rules />} />
+        <Route path="/perfil" element={<Profile />} />
+        <Route
+          path="/admin"
+          element={profile.is_admin ? <Admin /> : <Navigate to="/" replace />}
+        />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Shell>
   );
 }
 
 const App = () => {
-  useStorageSync();
-  useSessionTicker({
-    onWarn5: () =>
-      toast("⏰ Quedan 5 minutos del partido", {
-        description: "Después toca un descanso de 20 minutos.",
-        duration: 5000,
-      }),
-    onWarn1: () =>
-      toast("⏰ ¡Último minuto del partido!", {
-        description: "Apurate a meter el último golazo.",
-        duration: 5000,
-      }),
-    onRestStart: () =>
-      toast("⏸️ ¡Medio tiempo!", {
-        description: "Hora de descansar 20 minutos.",
-        duration: 6000,
-      }),
-  });
   const basename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
   return (
-    <BrowserRouter basename={basename}>
-      <Sonner position="top-center" />
-      <Routes>
-        <Route path="/bienvenida" element={<Welcome />} />
-        <Route path="/" element={<Protected><Home /></Protected>} />
-        <Route path="/album" element={<Protected><Album /></Protected>} />
-        <Route path="/album/:code" element={<Protected><TeamDetail /></Protected>} />
-        <Route
-          path="/jugar"
-          element={
-            <Protected>
-              <SessionGate>
-                <Play />
-              </SessionGate>
-            </Protected>
-          }
-        />
-        <Route path="/perfil" element={<Protected><Profile /></Protected>} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <Toaster position="top-center" richColors />
+      <BrowserRouter basename={basename}>
+        {SUPABASE_READY ? (
+          <AuthProvider>
+            <Gate />
+          </AuthProvider>
+        ) : (
+          <SetupGuide />
+        )}
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 };
 
