@@ -1,4 +1,5 @@
 import { TEAMS, getTeam } from "@/data/teams";
+import { PARTICIPATING_CODES } from "@/data/groups";
 import {
   Select,
   SelectContent,
@@ -7,7 +8,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const SORTED = [...TEAMS].sort((a, b) => a.name.localeCompare(b.name, "es"));
+const PARTICIPATING = new Set(PARTICIPATING_CODES);
+const SORTED = TEAMS.filter((t) => PARTICIPATING.has(t.code)).sort((a, b) =>
+  a.name.localeCompare(b.name, "es")
+);
 
 /** Etiqueta linda de un equipo a partir de su código (bandera + nombre). */
 export function teamLabel(code: string | null | undefined): string {

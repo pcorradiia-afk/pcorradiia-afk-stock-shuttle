@@ -97,7 +97,7 @@ export function Dashboard() {
               No hay partidos abiertos por ahora.
             </Card>
           ) : (
-            <div className="space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               {upcoming.map((m) => (
                 <MatchCard key={m.id} match={m} prediction={myPreds.get(m.id)} />
               ))}
@@ -106,7 +106,7 @@ export function Dashboard() {
         </div>
 
         {/* Accesos */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <QuickLink to="/especiales" Icon={Star} label="Pronósticos Plus" />
           <QuickLink to="/asados" Icon={Flame} label="Asados" />
           <QuickLink to="/partidos" Icon={CalendarDays} label="Partidos" />

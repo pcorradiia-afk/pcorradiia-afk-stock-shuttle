@@ -74,6 +74,16 @@ export const TEAMS: Team[] = [
 
   // OFC
   { code: "NZL", name: "Nueva Zelanda", capital: "Wellington", language: "Inglés y Maorí", confederation: "OFC", flag: "🇳🇿", color: "#000000", funFact: "Los All Blacks de rugby son de allí." },
+
+  // Clasificados Mundial 2026 (faltantes)
+  { code: "CZE", name: "Rep. Checa", capital: "Praga", language: "Checo", confederation: "UEFA", flag: "🇨🇿", color: "#11457E", funFact: "Praga es famosa por su reloj astronómico." },
+  { code: "BIH", name: "Bosnia y Herzegovina", capital: "Sarajevo", language: "Bosnio", confederation: "UEFA", flag: "🇧🇦", color: "#002395", funFact: "Sarajevo fue sede de los Juegos Olímpicos de invierno 1984." },
+  { code: "SWE", name: "Suecia", capital: "Estocolmo", language: "Sueco", confederation: "UEFA", flag: "🇸🇪", color: "#006AA7", funFact: "Allí se entregan los premios Nobel." },
+  { code: "HAI", name: "Haití", capital: "Puerto Príncipe", language: "Francés y Creole", confederation: "CONCACAF", flag: "🇭🇹", color: "#00209F", funFact: "Comparte la isla La Española con Rep. Dominicana." },
+  { code: "CUW", name: "Curazao", capital: "Willemstad", language: "Neerlandés y Papiamento", confederation: "CONCACAF", flag: "🇨🇼", color: "#002B7F", funFact: "Es una isla del Caribe con casas de colores." },
+  { code: "CPV", name: "Cabo Verde", capital: "Praia", language: "Portugués", confederation: "CAF", flag: "🇨🇻", color: "#003893", funFact: "Es un archipiélago en el Atlántico, frente a África." },
+  { code: "COD", name: "RD Congo", capital: "Kinsasa", language: "Francés", confederation: "CAF", flag: "🇨🇩", color: "#007FFF", funFact: "El río Congo es el más profundo del mundo." },
+  { code: "JOR", name: "Jordania", capital: "Amán", language: "Árabe", confederation: "AFC", flag: "🇯🇴", color: "#007A3D", funFact: "Allí está Petra, una de las 7 maravillas del mundo." },
 ];
 
 export const getTeam = (code: string) => TEAMS.find((t) => t.code === code);

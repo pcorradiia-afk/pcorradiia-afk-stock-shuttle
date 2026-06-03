@@ -290,6 +290,17 @@ export function useSaveMatch() {
   });
 }
 
+export function useBulkInsertMatches() {
+  const invalidate = useInvalidate(["matches"]);
+  return useMutation({
+    mutationFn: async (rows: Partial<Match>[]) => {
+      const { error } = await supabase.from("matches").insert(rows);
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+}
+
 export function useDeleteMatch() {
   const invalidate = useInvalidate(["matches", "predictions"]);
   return useMutation({

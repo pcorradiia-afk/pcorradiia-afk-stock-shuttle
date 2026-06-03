@@ -5,7 +5,11 @@ App web (instalable en el celu como PWA) para hacer el **prode del Mundial
 puntos por asados del grupo y reparto del pozo.
 
 Pensada para ~14 jugadores que ponen plata: **el 1º se lleva el 70% del pozo y
-el 2º el 30%**.
+el 2º el 30%**. Funciona igual de bien en el **celular** (barra inferior) y en la
+**computadora** (menú lateral), con el look del Mundial 2026.
+
+> El grupo es **«Opacos desde la cuna!!!»** — aparece en el encabezado de toda la
+> app. Lo podés cambiar en `src/data/brand.ts`.
 
 ## 🧮 Cómo se suman los puntos
 
@@ -79,8 +83,11 @@ Volvé a abrir la app: te aparece el **Panel de administración**.
 
 Desde el panel (icono de escudo en Inicio/Perfil):
 
-- **Partidos**: cargar los partidos (fase, grupo, equipos, día y hora) y, cuando
-  terminan, **cargar el resultado**. Apenas lo guardás, se reparten los puntos.
+- **Partidos**: con un botón **cargás de una los 72 partidos de la fase de grupos**
+  (los 12 grupos oficiales ya vienen cargados, con horarios estimados editables).
+  También podés agregar partidos sueltos (ej.: los de eliminación cuando se definan)
+  y, cuando terminan, **cargar el resultado**. Apenas lo guardás, se reparten los
+  puntos.
 - **Plus**: al final del Mundial, cargar el **campeón, mejor jugador y goleador**
   oficiales.
 - **Pozo**: poner el **valor de la entrada** y la moneda, marcar quién pagó (el

@@ -58,7 +58,7 @@ export function Matches() {
               : "Todavía no hay partidos cargados."}
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             {list.map((m) => (
               <MatchCard key={m.id} match={m} prediction={myPreds.get(m.id)} />
             ))}

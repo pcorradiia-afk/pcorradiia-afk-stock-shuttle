@@ -22,11 +22,13 @@ import {
   useProfiles,
   useSaveMatch,
   useDeleteMatch,
+  useBulkInsertMatches,
   useSaveSettings,
   useSetAsadoApproved,
   useSetProfileFlags,
   useSettings,
 } from "@/store/queries";
+import { generateGroupMatches } from "@/data/groups";
 
 const STAGES: { value: MatchStage; label: string }[] = [
   { value: "group", label: "Grupos" },
@@ -84,6 +86,20 @@ function MatchesAdmin() {
   const matches = useMatches();
   const save = useSaveMatch();
   const del = useDeleteMatch();
+  const bulk = useBulkInsertMatches();
+
+  const groupMatchCount = (matches.data ?? []).filter(
+    (m) => m.stage === "group"
+  ).length;
+
+  async function seedGroupStage() {
+    try {
+      await bulk.mutateAsync(generateGroupMatches());
+      toast.success("¡Fase de grupos cargada! (72 partidos)");
+    } catch (e) {
+      toast.error("Error", { description: (e as Error).message });
+    }
+  }
 
   const [stage, setStage] = useState<MatchStage>("group");
   const [group, setGroup] = useState("");
@@ -119,6 +135,19 @@ function MatchesAdmin() {
 
   return (
     <div className="space-y-4">
+      {groupMatchCount === 0 && (
+        <Card className="p-4 space-y-2 bg-emerald-50 border-emerald-200">
+          <h3 className="font-bold">⚽ Cargar fase de grupos</h3>
+          <p className="text-sm text-muted-foreground">
+            Crea de una los <b>72 partidos</b> de los 12 grupos oficiales del Mundial
+            2026, con horarios estimados (los podés ajustar después).
+          </p>
+          <Button onClick={seedGroupStage} className="w-full" disabled={bulk.isPending}>
+            {bulk.isPending ? "Cargando…" : "Cargar 72 partidos de grupos"}
+          </Button>
+        </Card>
+      )}
+
       <Card className="p-4 space-y-3">
         <h3 className="font-bold">Nuevo partido</h3>
         <div className="grid grid-cols-2 gap-2">

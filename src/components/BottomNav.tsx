@@ -11,7 +11,7 @@ const items = [
 
 export function BottomNav() {
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 border-t border-border bg-white/95 backdrop-blur safe-bottom">
+    <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border bg-white/95 backdrop-blur safe-bottom">
       <ul className="grid grid-cols-5 max-w-md mx-auto">
         {items.map(({ to, label, Icon, highlight }) => (
           <li key={to}>

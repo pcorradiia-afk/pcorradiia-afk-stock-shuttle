@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import { AuthProvider, useAuth } from "@/store/auth";
 import { SUPABASE_READY } from "@/lib/supabase";
 import { BottomNav } from "@/components/BottomNav";
+import { SideNav } from "@/components/SideNav";
 import { SetupGuide } from "@/pages/SetupGuide";
 import { Login } from "@/pages/Login";
 import { Onboarding } from "@/pages/Onboarding";
@@ -33,8 +34,11 @@ function FullScreen({ children }: { children: React.ReactNode }) {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-background pb-24 max-w-md mx-auto">
-      {children}
+    <div className="min-h-screen bg-background">
+      <SideNav />
+      <main className="md:pl-64">
+        <div className="max-w-4xl mx-auto pb-24 md:pb-10">{children}</div>
+      </main>
       <BottomNav />
     </div>
   );

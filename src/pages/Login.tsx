@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { GROUP_NAME, HOST_FLAGS } from "@/data/brand";
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -30,12 +31,15 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-600 via-emerald-500 to-teal-600 text-white grid place-items-center px-6">
+    <div className="min-h-screen wc-header pitch-stripes text-white grid place-items-center px-6 py-10">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="text-6xl mb-2">⚽️🏆</div>
-          <h1 className="text-3xl font-extrabold">Prode Mundial 2026</h1>
-          <p className="text-white/80 mt-1">El prode del grupo. Que gane el mejor 😎</p>
+          <h1 className="text-3xl font-extrabold leading-tight text-shadow">
+            {GROUP_NAME}
+          </h1>
+          <p className="text-white/90 mt-1 font-semibold">Prode Mundial 2026</p>
+          <p className="text-2xl mt-2 tracking-widest">{HOST_FLAGS}</p>
         </div>
 
         <Card className="p-5 text-foreground">
