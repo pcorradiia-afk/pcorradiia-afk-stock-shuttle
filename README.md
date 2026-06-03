@@ -100,6 +100,52 @@ Desde el panel (icono de escudo en Inicio/Perfil):
 > del Mundial. Por eso los partidos se cargan a mano desde el panel (rápido: elegís
 > los dos equipos de la lista de 48 selecciones ya cargada y la fecha/hora).
 
+## 🔄 Resultados automáticos (opcional pero recomendado)
+
+En vez de cargar los resultados a mano, la app puede traerlos sola desde una API
+de fútbol gratuita ([football-data.org](https://www.football-data.org/)) y
+actualizar la tabla cada 15 minutos. **El admin igual puede corregir cualquier
+partido a mano** (red de seguridad si la API tarda o nombra raro a un equipo).
+
+### 1) Sacá la API key (gratis)
+
+1. Registrate en [football-data.org/client/register](https://www.football-data.org/client/register).
+2. Te llega por mail tu **API token** (una línea de letras y números).
+
+### 2) Subí la función a Supabase
+
+Necesitás el [CLI de Supabase](https://supabase.com/docs/guides/cli) una sola vez:
+
+```bash
+npm i -g supabase
+supabase login
+supabase link --project-ref <TU_PROJECT_REF>   # está en Project Settings → General
+
+# cargá tu API key como secreto (queda en el server, nunca en el celular)
+supabase secrets set FOOTBALL_API_KEY=tu_token_aca
+
+# subí la función
+supabase functions deploy sync-results --no-verify-jwt
+```
+
+> El Mundial 2026 en football-data.org tiene el código de competición **`WC`**
+> (ya es el default). Si usaran otro, se setea con
+> `supabase secrets set FOOTBALL_COMPETITION=XXX`.
+
+### 3) Programá el cron (cada 15 min)
+
+En Supabase → **SQL Editor**, pegá [`supabase/cron.sql`](supabase/cron.sql)
+reemplazando `<PROJECT_REF>` y `<ANON_KEY>` por los tuyos, y dale Run.
+
+### Listo
+
+- Desde el **panel de admin → Pozo → "Resultados automáticos"** podés
+  **prenderlo/apagarlo**, ver el **último sync** y forzar un **"Sincronizar ahora"**.
+- Cómo empareja los partidos: por el **par de equipos** (no por el horario), así
+  que aunque los horarios estimados no coincidan con los reales, igual carga bien
+  el resultado. Si algún equipo no matchea por el nombre, agregalo en el mapa
+  `NAME_TO_CODE` dentro de `supabase/functions/sync-results/index.ts`.
+
 ## 📲 Que tus amigos la usen (sin tienda de apps)
 
 La forma más rápida es **PWA**:

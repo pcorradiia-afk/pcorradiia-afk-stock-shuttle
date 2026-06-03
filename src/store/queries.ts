@@ -340,6 +340,24 @@ export function useSetAsadoApproved() {
   });
 }
 
+/** Dispara la Edge Function que trae los resultados oficiales. */
+export function useSyncNow() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<{ updated?: number; info?: string }> => {
+      const { data, error } = await supabase.functions.invoke("sync-results", {
+        body: { force: true },
+      });
+      if (error) throw error;
+      return data as { updated?: number; info?: string };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["matches"] });
+      qc.invalidateQueries({ queryKey: ["settings"] });
+    },
+  });
+}
+
 export function useSetProfileFlags() {
   const invalidate = useInvalidate(["profiles"]);
   return useMutation({

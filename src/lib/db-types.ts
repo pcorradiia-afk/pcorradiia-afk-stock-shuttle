@@ -57,6 +57,9 @@ export interface Settings {
   currency: string;
   predictions_locked: boolean;
   specials_deadline: string | null;
+  auto_sync_enabled: boolean;
+  last_sync_at: string | null;
+  last_sync_info: string | null;
 }
 
 export interface Asado {

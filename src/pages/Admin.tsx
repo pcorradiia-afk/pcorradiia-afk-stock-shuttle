@@ -27,6 +27,7 @@ import {
   useSetAsadoApproved,
   useSetProfileFlags,
   useSettings,
+  useSyncNow,
 } from "@/store/queries";
 import { generateGroupMatches } from "@/data/groups";
 
@@ -69,6 +70,7 @@ export function Admin() {
           </TabsContent>
           <TabsContent value="pozo">
             <PotAdmin />
+            <SyncAdmin />
           </TabsContent>
           <TabsContent value="gente">
             <PeopleAdmin />
@@ -401,6 +403,61 @@ function PotAdmin() {
           {settings.data?.predictions_locked ? "Reabrir Plus" : "Cerrar Plus ahora"}
         </Button>
       </div>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+function SyncAdmin() {
+  const settings = useSettings();
+  const save = useSaveSettings();
+  const sync = useSyncNow();
+  const enabled = settings.data?.auto_sync_enabled ?? true;
+
+  async function runSync() {
+    try {
+      const res = await sync.mutateAsync();
+      toast.success("Sincronizado", { description: res?.info ?? `${res?.updated ?? 0} partidos` });
+    } catch (e) {
+      toast.error("No se pudo sincronizar", {
+        description:
+          (e as Error).message ??
+          "¿Está deployada la función y cargada la API key?",
+      });
+    }
+  }
+
+  return (
+    <Card className="p-4 space-y-3 mt-4">
+      <h3 className="font-bold">🔄 Resultados automáticos</h3>
+      <p className="text-xs text-muted-foreground">
+        Trae los resultados oficiales del Mundial desde football-data.org. Requiere
+        configurar la función <code>sync-results</code> (ver README). Igual podés
+        corregir cualquier partido a mano.
+      </p>
+
+      <div className="flex items-center justify-between">
+        <span className="text-sm">Actualización automática</span>
+        <Button
+          variant={enabled ? "default" : "outline"}
+          size="sm"
+          onClick={() => save.mutate({ auto_sync_enabled: !enabled })}
+        >
+          {enabled ? "Activada ✓" : "Desactivada"}
+        </Button>
+      </div>
+
+      {settings.data?.last_sync_at && (
+        <p className="text-xs text-muted-foreground">
+          Último sync: {formatKickoff(settings.data.last_sync_at)}
+          {settings.data.last_sync_info ? ` · ${settings.data.last_sync_info}` : ""}
+        </p>
+      )}
+
+      <Button onClick={runSync} className="w-full" disabled={sync.isPending}>
+        {sync.isPending ? "Sincronizando…" : "Sincronizar ahora"}
+      </Button>
     </Card>
   );
 }

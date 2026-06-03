@@ -77,6 +77,14 @@ create table if not exists public.asado_attendees (
 -- Fila única de configuración / resultados oficiales.
 insert into public.settings (id) values (1) on conflict (id) do nothing;
 
+-- Columnas para la actualización automática de resultados (idempotente).
+alter table public.settings
+  add column if not exists auto_sync_enabled boolean not null default true;
+alter table public.settings
+  add column if not exists last_sync_at timestamptz;
+alter table public.settings
+  add column if not exists last_sync_info text;
+
 -- ---------- Helpers ---------------------------------------------------------
 
 -- Lee el flag is_admin SIN pasar por RLS (security definer), para usar en las
