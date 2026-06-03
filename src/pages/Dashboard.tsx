@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Star, Flame, CalendarDays, BookOpen, Shield, ChevronRight } from "lucide-react";
+import { Star, Flame, Users, BookOpen, Shield, ChevronRight } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { MatchCard } from "@/components/MatchCard";
 import { Card } from "@/components/ui/card";
@@ -109,7 +109,7 @@ export function Dashboard() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <QuickLink to="/especiales" Icon={Star} label="Pronósticos Plus" />
           <QuickLink to="/asados" Icon={Flame} label="Asados" />
-          <QuickLink to="/partidos" Icon={CalendarDays} label="Partidos" />
+          <QuickLink to="/grupos" Icon={Users} label="Grupos" />
           <QuickLink to="/reglas" Icon={BookOpen} label="Reglas y pozo" />
         </div>
 

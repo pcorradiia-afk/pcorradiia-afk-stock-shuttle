@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,24 +6,24 @@
 
 @layer base {
   :root {
-    /* Paleta Mundial 2026: verde cancha + dorado copa, sobre fondo claro */
-    --background: 150 40% 98%;
-    --foreground: 160 35% 10%;
+    /* Paleta estilo FIFA.com: blanco, azul marino y un azul vibrante */
+    --background: 220 33% 98%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 160 35% 10%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 160 35% 10%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 158 70% 34%;
+    --primary: 222 89% 45%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 276 70% 55%;
+    --secondary: 222 47% 16%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 150 25% 94%;
-    --muted-foreground: 160 12% 38%;
+    --muted: 220 16% 95%;
+    --muted-foreground: 222 12% 42%;
 
     --accent: 43 96% 52%;
     --accent-foreground: 30 40% 12%;
@@ -31,11 +31,11 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 150 20% 88%;
-    --input: 150 20% 88%;
-    --ring: 158 70% 34%;
+    --border: 220 16% 90%;
+    --input: 220 16% 90%;
+    --ring: 222 89% 45%;
 
-    --radius: 1rem;
+    --radius: 0.85rem;
   }
 }
 
@@ -48,10 +48,14 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-family: 'Fredoka', system-ui, -apple-system, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
     -webkit-tap-highlight-color: transparent;
     -webkit-font-smoothing: antialiased;
     overscroll-behavior-y: none;
+  }
+  .font-display {
+    font-family: 'Archivo', 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.01em;
   }
   button {
     font-family: inherit;
@@ -72,21 +76,10 @@
 
   /* Encabezado con onda Mundial 2026: verde cancha + dorado */
   .wc-header {
+    background-color: #0a1230; /* respaldo */
     background-image:
-      radial-gradient(120% 140% at 0% 0%, rgba(250, 204, 21, 0.35) 0%, transparent 45%),
-      radial-gradient(120% 140% at 100% 0%, rgba(56, 189, 248, 0.30) 0%, transparent 45%),
-      linear-gradient(135deg, #047857 0%, #059669 45%, #0d9488 100%);
-  }
-
-  /* Rayas sutiles de cancha de fútbol */
-  .pitch-stripes {
-    background-image: repeating-linear-gradient(
-      90deg,
-      rgba(255, 255, 255, 0.06) 0,
-      rgba(255, 255, 255, 0.06) 38px,
-      transparent 38px,
-      transparent 76px
-    );
+      radial-gradient(80% 140% at 100% 0%, rgba(37, 99, 235, 0.55) 0%, transparent 60%),
+      linear-gradient(120deg, #0a1230 0%, #122a6b 55%, #1d4ed8 100%);
   }
 
   .text-shadow {

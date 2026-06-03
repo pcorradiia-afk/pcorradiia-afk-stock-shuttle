@@ -13,15 +13,15 @@ export function AppHeader({
   const { profile } = useAuth();
   const navigate = useNavigate();
   return (
-    <header className="sticky top-0 z-30 text-white safe-top wc-header pitch-stripes">
+    <header className="sticky top-0 z-30 text-white safe-top wc-header">
       <div className="h-1 w-full wc-rainbow" />
       <div className="max-w-4xl mx-auto px-4 pt-2 pb-4">
-        {/* Marca del grupo + perfil */}
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
+          {/* Marca del grupo (móvil) */}
+          <div className="flex items-center gap-2 min-w-0 md:hidden">
             <span className="text-2xl drop-shadow">🏆</span>
             <div className="min-w-0">
-              <p className="font-extrabold leading-tight tracking-tight truncate text-shadow">
+              <p className="font-display font-extrabold uppercase leading-tight tracking-tight truncate text-shadow">
                 {GROUP_NAME}
               </p>
               <p className="text-[10px] text-white/80 leading-none">
@@ -29,6 +29,12 @@ export function AppHeader({
               </p>
             </div>
           </div>
+
+          {/* Título de la pantalla (desktop) */}
+          <h1 className="hidden md:block font-display text-2xl font-extrabold uppercase tracking-tight leading-tight">
+            {title}
+          </h1>
+
           {profile && (
             <button
               onClick={() => navigate("/perfil")}
@@ -40,11 +46,16 @@ export function AppHeader({
           )}
         </div>
 
-        {/* Título de la pantalla */}
-        <div className="mt-3">
-          <h1 className="text-xl font-extrabold leading-tight">{title}</h1>
+        {/* Título de la pantalla (móvil) */}
+        <div className="mt-3 md:hidden">
+          <h1 className="font-display text-xl font-extrabold uppercase tracking-tight leading-tight">
+            {title}
+          </h1>
           {subtitle && <p className="text-xs text-white/85">{subtitle}</p>}
         </div>
+        {subtitle && (
+          <p className="hidden md:block text-xs text-white/85 mt-1">{subtitle}</p>
+        )}
       </div>
     </header>
   );

@@ -9,6 +9,7 @@ import {
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { Profile } from "@/lib/db-types";
+import { DEMO_USER } from "@/lib/demo";
 
 interface AuthState {
   loading: boolean;
@@ -76,6 +77,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [loading, session, profile, refreshProfile, signOut]
   );
 
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+/** Proveedor de auth para el modo demo (sin Supabase). */
+export function DemoAuthProvider({ children }: { children: React.ReactNode }) {
+  const value: AuthState = {
+    loading: false,
+    session: { user: { id: "me", email: "vos@demo.com" } } as unknown as Session,
+    profile: DEMO_USER,
+    refreshProfile: async () => {},
+    signOut: async () => {},
+  };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 

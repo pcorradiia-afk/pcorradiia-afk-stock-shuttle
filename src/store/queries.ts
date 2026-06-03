@@ -14,6 +14,16 @@ import type {
   SpecialPrediction,
 } from "@/lib/db-types";
 import { computeLeaderboard, computePot } from "@/lib/scoring";
+import {
+  DEMO,
+  demoAsados,
+  demoAttendees,
+  demoMatches,
+  demoPredictions,
+  demoProfiles,
+  demoSettings,
+  demoSpecials,
+} from "@/lib/demo";
 
 // ---------------------------------------------------------------------------
 // Lecturas
@@ -23,6 +33,7 @@ export function useProfiles() {
   return useQuery({
     queryKey: ["profiles"],
     queryFn: async (): Promise<Profile[]> => {
+      if (DEMO) return demoProfiles;
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
@@ -37,6 +48,7 @@ export function useMatches() {
   return useQuery({
     queryKey: ["matches"],
     queryFn: async (): Promise<Match[]> => {
+      if (DEMO) return demoMatches;
       const { data, error } = await supabase
         .from("matches")
         .select("*")
@@ -52,6 +64,7 @@ export function usePredictions() {
   return useQuery({
     queryKey: ["predictions"],
     queryFn: async (): Promise<Prediction[]> => {
+      if (DEMO) return demoPredictions;
       const { data, error } = await supabase.from("predictions").select("*");
       if (error) throw error;
       return (data as Prediction[]) ?? [];
@@ -63,6 +76,7 @@ export function useSpecials() {
   return useQuery({
     queryKey: ["specials"],
     queryFn: async (): Promise<SpecialPrediction[]> => {
+      if (DEMO) return demoSpecials;
       const { data, error } = await supabase
         .from("special_predictions")
         .select("*");
@@ -76,6 +90,7 @@ export function useSettings() {
   return useQuery({
     queryKey: ["settings"],
     queryFn: async (): Promise<Settings | null> => {
+      if (DEMO) return demoSettings;
       const { data, error } = await supabase
         .from("settings")
         .select("*")
@@ -91,6 +106,7 @@ export function useAsados() {
   return useQuery({
     queryKey: ["asados"],
     queryFn: async (): Promise<Asado[]> => {
+      if (DEMO) return demoAsados;
       const { data, error } = await supabase
         .from("asados")
         .select("*")
@@ -105,6 +121,7 @@ export function useAttendees() {
   return useQuery({
     queryKey: ["attendees"],
     queryFn: async (): Promise<AsadoAttendee[]> => {
+      if (DEMO) return demoAttendees;
       const { data, error } = await supabase
         .from("asado_attendees")
         .select("*");
@@ -170,6 +187,7 @@ export function useUpsertPrediction() {
       home_score: number;
       away_score: number;
     }) => {
+      if (DEMO) return;
       const { error } = await supabase
         .from("predictions")
         .upsert(
@@ -191,6 +209,7 @@ export function useUpsertSpecial() {
       best_player: string | null;
       top_scorer: string | null;
     }) => {
+      if (DEMO) return;
       const { error } = await supabase
         .from("special_predictions")
         .upsert(
@@ -212,6 +231,7 @@ export function useCreateAsado() {
       host_id: string;
       created_by: string;
     }) => {
+      if (DEMO) return;
       const { data, error } = await supabase
         .from("asados")
         .insert(input)
@@ -237,6 +257,7 @@ export function useToggleAttendance() {
       user_id: string;
       attending: boolean;
     }) => {
+      if (DEMO) return;
       if (input.attending) {
         const { error } = await supabase
           .from("asado_attendees")
@@ -262,6 +283,7 @@ export function useDeleteAsado() {
   const invalidate = useInvalidate(["asados", "attendees"]);
   return useMutation({
     mutationFn: async (id: string) => {
+      if (DEMO) return;
       const { error } = await supabase.from("asados").delete().eq("id", id);
       if (error) throw error;
     },
@@ -275,6 +297,7 @@ export function useSaveMatch() {
   const invalidate = useInvalidate(["matches"]);
   return useMutation({
     mutationFn: async (input: Partial<Match> & { id?: string }) => {
+      if (DEMO) return;
       if (input.id) {
         const { error } = await supabase
           .from("matches")
@@ -294,6 +317,7 @@ export function useBulkInsertMatches() {
   const invalidate = useInvalidate(["matches"]);
   return useMutation({
     mutationFn: async (rows: Partial<Match>[]) => {
+      if (DEMO) return;
       const { error } = await supabase.from("matches").insert(rows);
       if (error) throw error;
     },
@@ -305,6 +329,7 @@ export function useDeleteMatch() {
   const invalidate = useInvalidate(["matches", "predictions"]);
   return useMutation({
     mutationFn: async (id: string) => {
+      if (DEMO) return;
       const { error } = await supabase.from("matches").delete().eq("id", id);
       if (error) throw error;
     },
@@ -316,6 +341,7 @@ export function useSaveSettings() {
   const invalidate = useInvalidate(["settings"]);
   return useMutation({
     mutationFn: async (input: Partial<Settings>) => {
+      if (DEMO) return;
       const { error } = await supabase
         .from("settings")
         .update(input)
@@ -330,6 +356,7 @@ export function useSetAsadoApproved() {
   const invalidate = useInvalidate(["asados"]);
   return useMutation({
     mutationFn: async (input: { id: string; approved: boolean }) => {
+      if (DEMO) return;
       const { error } = await supabase
         .from("asados")
         .update({ approved: input.approved })
@@ -345,6 +372,8 @@ export function useSyncNow() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (): Promise<{ updated?: number; info?: string }> => {
+      if (DEMO)
+        return { updated: 6, info: "Demo · 6 partidos actualizados" };
       const { data, error } = await supabase.functions.invoke("sync-results", {
         body: { force: true },
       });
@@ -366,6 +395,7 @@ export function useSetProfileFlags() {
       paid?: boolean;
       is_admin?: boolean;
     }) => {
+      if (DEMO) return;
       const { id, ...rest } = input;
       const { error } = await supabase
         .from("profiles")

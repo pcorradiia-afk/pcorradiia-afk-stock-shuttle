@@ -8,6 +8,7 @@ import {
   BookOpen,
   Shield,
   User,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/store/auth";
 import { GROUP_NAME, HOST_FLAGS } from "@/data/brand";
@@ -15,6 +16,7 @@ import { GROUP_NAME, HOST_FLAGS } from "@/data/brand";
 const items = [
   { to: "/", label: "Inicio", Icon: Home },
   { to: "/partidos", label: "Partidos", Icon: CalendarDays },
+  { to: "/grupos", label: "Grupos", Icon: Users },
   { to: "/tabla", label: "Tabla", Icon: Trophy },
   { to: "/especiales", label: "Pronósticos Plus", Icon: Star },
   { to: "/asados", label: "Asados", Icon: Flame },
@@ -27,12 +29,12 @@ export function SideNav() {
   const { profile } = useAuth();
   return (
     <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:left-0 md:w-64 border-r border-border bg-card">
-      <div className="wc-header pitch-stripes text-white px-5 py-5">
+      <div className="wc-header text-white px-5 py-5">
         <div className="h-1 w-full wc-rainbow rounded-full mb-3" />
         <div className="flex items-center gap-2">
           <span className="text-2xl">🏆</span>
           <div>
-            <p className="font-extrabold leading-tight text-shadow">{GROUP_NAME}</p>
+            <p className="font-display font-extrabold uppercase leading-tight text-shadow">{GROUP_NAME}</p>
             <p className="text-[11px] text-white/80">Prode Mundial 2026</p>
           </div>
         </div>

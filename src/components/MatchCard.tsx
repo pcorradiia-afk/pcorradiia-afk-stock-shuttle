@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Lock, Check } from "lucide-react";
 import type { Match, MatchStage, Prediction } from "@/lib/db-types";
-import { teamLabel } from "@/components/TeamSelect";
+import { getTeam } from "@/data/teams";
+import { FlagBadge } from "@/components/FlagBadge";
 import { formatKickoff, isLocked } from "@/lib/format";
 import { matchPoints } from "@/lib/scoring";
 import { useUpsertPrediction } from "@/store/queries";
@@ -107,8 +108,11 @@ export function MatchCard({
       </div>
 
       <div className="flex items-center justify-between gap-2">
-        <span className="flex-1 text-right font-bold text-sm leading-tight">
-          {teamLabel(match.home_team)}
+        <span className="flex-1 flex items-center justify-end gap-2 min-w-0">
+          <span className="font-bold text-xs sm:text-sm leading-tight uppercase tracking-tight truncate text-right">
+            {getTeam(match.home_team)?.name ?? match.home_team}
+          </span>
+          <FlagBadge code={match.home_team} size={24} />
         </span>
 
         {finished ? (
@@ -125,8 +129,11 @@ export function MatchCard({
           </div>
         )}
 
-        <span className="flex-1 font-bold text-sm leading-tight">
-          {teamLabel(match.away_team)}
+        <span className="flex-1 flex items-center gap-2 min-w-0">
+          <FlagBadge code={match.away_team} size={24} />
+          <span className="font-bold text-xs sm:text-sm leading-tight uppercase tracking-tight truncate">
+            {getTeam(match.away_team)?.name ?? match.away_team}
+          </span>
         </span>
       </div>
 

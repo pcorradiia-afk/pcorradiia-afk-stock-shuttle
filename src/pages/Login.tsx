@@ -31,7 +31,7 @@ export function Login() {
   }
 
   return (
-    <div className="min-h-screen wc-header pitch-stripes text-white grid place-items-center px-6 py-10">
+    <div className="min-h-screen wc-header text-white grid place-items-center px-6 py-10">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <div className="text-6xl mb-2">⚽️🏆</div>

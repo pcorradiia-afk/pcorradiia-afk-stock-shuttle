@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
-import { AuthProvider, useAuth } from "@/store/auth";
+import { AuthProvider, DemoAuthProvider, useAuth } from "@/store/auth";
 import { SUPABASE_READY } from "@/lib/supabase";
+import { DEMO } from "@/lib/demo";
 import { BottomNav } from "@/components/BottomNav";
 import { SideNav } from "@/components/SideNav";
 import { SetupGuide } from "@/pages/SetupGuide";
@@ -10,6 +11,7 @@ import { Login } from "@/pages/Login";
 import { Onboarding } from "@/pages/Onboarding";
 import { Dashboard } from "@/pages/Dashboard";
 import { Matches } from "@/pages/Matches";
+import { Groups } from "@/pages/Groups";
 import { Specials } from "@/pages/Specials";
 import { Asados } from "@/pages/Asados";
 import { Leaderboard } from "@/pages/Leaderboard";
@@ -62,6 +64,7 @@ function Gate() {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/partidos" element={<Matches />} />
+        <Route path="/grupos" element={<Groups />} />
         <Route path="/especiales" element={<Specials />} />
         <Route path="/asados" element={<Asados />} />
         <Route path="/tabla" element={<Leaderboard />} />
@@ -83,7 +86,11 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <Toaster position="top-center" richColors />
       <BrowserRouter basename={basename}>
-        {SUPABASE_READY ? (
+        {DEMO ? (
+          <DemoAuthProvider>
+            <Gate />
+          </DemoAuthProvider>
+        ) : SUPABASE_READY ? (
           <AuthProvider>
             <Gate />
           </AuthProvider>
