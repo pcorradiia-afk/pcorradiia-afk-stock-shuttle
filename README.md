@@ -157,13 +157,36 @@ La forma más rápida es **PWA**:
 3. Cada uno abre el link en Chrome → menú ▸ **"Agregar a pantalla de inicio"**.
    Queda como una app, a pantalla completa.
 
-### Deploy en Vercel (ejemplo)
+### Deploy en Vercel (paso a paso)
+
+**Opción A — desde la web (la más fácil):**
+
+1. Entrá a [vercel.com](https://vercel.com) y registrate con tu cuenta de GitHub.
+2. **Add New… → Project** → importá el repo `pcorradiia-afk-stock-shuttle`.
+3. En **Production Branch** elegí `claude/world-cup-prode-app-eJAeY` (o mergeá esa
+   rama a `main` antes). Framework: Vite (lo detecta solo).
+4. Abrí **Environment Variables** y cargá las 2:
+   - `VITE_SUPABASE_URL` = tu Project URL de Supabase
+   - `VITE_SUPABASE_ANON_KEY` = tu anon public key
+5. **Deploy**. En ~1 min tenés el link (algo como `https://prode-xxxx.vercel.app`).
+6. Pasale ese link al grupo de WhatsApp. 🎉
+
+**Opción B — desde la terminal:**
 
 ```bash
 npm i -g vercel
-vercel            # seguí los pasos
-# luego cargá las env vars en el panel de Vercel y: vercel --prod
+vercel link
+vercel env add VITE_SUPABASE_URL production
+vercel env add VITE_SUPABASE_ANON_KEY production
+vercel --prod
 ```
+
+> 🔎 **Ver la app sin configurar nada:** agregá **`?demo`** al final del link
+> (ej. `https://tu-app.vercel.app/?demo`) y entra con datos de ejemplo, sin login.
+> Útil para mostrarle la app al grupo antes de tener todo listo.
+>
+> ⚠️ No cargues `VITE_DEMO` en Vercel: en producción querés los datos reales de
+> Supabase (el `?demo` alcanza para mostrar el ejemplo cuando lo necesites).
 
 ## 🤖 (Opcional) Publicar en Google Play
 
