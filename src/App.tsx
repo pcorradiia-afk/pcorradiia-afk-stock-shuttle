@@ -12,6 +12,7 @@ import { Onboarding } from "@/pages/Onboarding";
 import { Dashboard } from "@/pages/Dashboard";
 import { Matches } from "@/pages/Matches";
 import { Groups } from "@/pages/Groups";
+import { Bracket } from "@/pages/Bracket";
 import { Specials } from "@/pages/Specials";
 import { Asados } from "@/pages/Asados";
 import { Leaderboard } from "@/pages/Leaderboard";
@@ -65,6 +66,7 @@ function Gate() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/partidos" element={<Matches />} />
         <Route path="/grupos" element={<Groups />} />
+        <Route path="/llaves" element={<Bracket />} />
         <Route path="/especiales" element={<Specials />} />
         <Route path="/asados" element={<Asados />} />
         <Route path="/tabla" element={<Leaderboard />} />

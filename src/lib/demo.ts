@@ -35,39 +35,58 @@ export const demoProfiles: Profile[] = NAMES.map((name, i) => ({
 
 export const DEMO_USER = demoProfiles[0];
 
-// --- Partidos: algunos jugados (con resultado) y otros por venir -----------
+// --- Partidos: fase de grupos + eliminatorias (con resultados) -------------
 interface Seed {
-  id: string; g: string; h: string; a: string;
+  id: string; stage: Match["stage"]; g?: string; h: string; a: string;
   hs?: number; as?: number; inDays: number;
 }
 const SEEDS: Seed[] = [
-  // jugados (kickoff en el pasado)
-  { id: "m1", g: "J", h: "ARG", a: "JOR", hs: 3, as: 1, inDays: -5 },
-  { id: "m2", g: "C", h: "BRA", a: "HAI", hs: 2, as: 0, inDays: -5 },
-  { id: "m3", g: "H", h: "ESP", a: "CPV", hs: 1, as: 1, inDays: -4 },
-  { id: "m4", g: "I", h: "FRA", a: "IRQ", hs: 2, as: 1, inDays: -4 },
-  { id: "m5", g: "L", h: "ENG", a: "PAN", hs: 0, as: 0, inDays: -3 },
-  { id: "m6", g: "E", h: "GER", a: "CUW", hs: 4, as: 2, inDays: -3 },
-  // por venir (kickoff a futuro)
-  { id: "m7", g: "J", h: "ARG", a: "ALG", inDays: 1 },
-  { id: "m8", g: "C", h: "BRA", a: "SCO", inDays: 1 },
-  { id: "m9", g: "H", h: "ESP", a: "URU", inDays: 2 },
-  { id: "m10", g: "A", h: "MEX", a: "KOR", inDays: 2 },
-  { id: "m11", g: "K", h: "POR", a: "COL", inDays: 3 },
-  { id: "m12", g: "G", h: "BEL", a: "EGY", inDays: 3 },
+  // Grupos jugados
+  { id: "m1", stage: "group", g: "J", h: "ARG", a: "JOR", hs: 3, as: 1, inDays: -20 },
+  { id: "m2", stage: "group", g: "C", h: "BRA", a: "HAI", hs: 2, as: 0, inDays: -20 },
+  { id: "m3", stage: "group", g: "H", h: "ESP", a: "CPV", hs: 1, as: 1, inDays: -19 },
+  { id: "m4", stage: "group", g: "I", h: "FRA", a: "IRQ", hs: 2, as: 1, inDays: -19 },
+  { id: "m5", stage: "group", g: "L", h: "ENG", a: "PAN", hs: 0, as: 0, inDays: -18 },
+  { id: "m6", stage: "group", g: "E", h: "GER", a: "CUW", hs: 4, as: 2, inDays: -18 },
+  // Grupos por venir (para que se vean los inputs de pronóstico)
+  { id: "m7", stage: "group", g: "J", h: "ARG", a: "ALG", inDays: 1 },
+  { id: "m8", stage: "group", g: "C", h: "BRA", a: "SCO", inDays: 1 },
+  { id: "m9", stage: "group", g: "H", h: "ESP", a: "URU", inDays: 2 },
+  { id: "m10", stage: "group", g: "A", h: "MEX", a: "KOR", inDays: 2 },
+
+  // Octavos (jugados)
+  { id: "o1", stage: "r16", h: "ARG", a: "NED", hs: 2, as: 0, inDays: -12 },
+  { id: "o2", stage: "r16", h: "ECU", a: "SEN", hs: 1, as: 0, inDays: -12 },
+  { id: "o3", stage: "r16", h: "ENG", a: "SUI", hs: 3, as: 0, inDays: -11 },
+  { id: "o4", stage: "r16", h: "FRA", a: "MAR", hs: 2, as: 1, inDays: -11 },
+  { id: "o5", stage: "r16", h: "BRA", a: "KOR", hs: 4, as: 1, inDays: -10 },
+  { id: "o6", stage: "r16", h: "POR", a: "CRO", hs: 2, as: 1, inDays: -10 },
+  { id: "o7", stage: "r16", h: "ESP", a: "JPN", hs: 2, as: 0, inDays: -9 },
+  { id: "o8", stage: "r16", h: "GER", a: "BEL", hs: 1, as: 0, inDays: -9 },
+  // Cuartos (jugados)
+  { id: "c1", stage: "qf", h: "ARG", a: "ECU", hs: 2, as: 1, inDays: -6 },
+  { id: "c2", stage: "qf", h: "ENG", a: "FRA", hs: 2, as: 1, inDays: -6 },
+  { id: "c3", stage: "qf", h: "BRA", a: "POR", hs: 3, as: 1, inDays: -5 },
+  { id: "c4", stage: "qf", h: "ESP", a: "GER", hs: 1, as: 0, inDays: -5 },
+  // Semis (jugadas)
+  { id: "s1", stage: "sf", h: "ARG", a: "ENG", hs: 1, as: 0, inDays: -2 },
+  { id: "s2", stage: "sf", h: "BRA", a: "ESP", hs: 2, as: 1, inDays: -2 },
+  // Final y 3er puesto (por venir)
+  { id: "t1", stage: "third", h: "ENG", a: "ESP", inDays: 2 },
+  { id: "f1", stage: "final", h: "ARG", a: "BRA", inDays: 3 },
 ];
 
 export const demoMatches: Match[] = SEEDS.map((s) => ({
   id: s.id,
-  stage: "group",
-  group_name: s.g,
+  stage: s.stage,
+  group_name: s.g ?? null,
   home_team: s.h,
   away_team: s.a,
   kickoff_at: iso(now + s.inDays * DAY),
   home_score: s.hs ?? null,
   away_score: s.as ?? null,
   status: s.hs != null ? "finished" : "scheduled",
-  created_at: iso(now - 20 * DAY),
+  created_at: iso(now - 25 * DAY),
 }));
 
 // Pronóstico de un usuario para un partido jugado (genera variedad de puntos).

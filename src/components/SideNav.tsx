@@ -9,6 +9,7 @@ import {
   Shield,
   User,
   Users,
+  Swords,
 } from "lucide-react";
 import { useAuth } from "@/store/auth";
 import { GROUP_NAME, HOST_FLAGS } from "@/data/brand";
@@ -17,6 +18,7 @@ const items = [
   { to: "/", label: "Inicio", Icon: Home },
   { to: "/partidos", label: "Partidos", Icon: CalendarDays },
   { to: "/grupos", label: "Grupos", Icon: Users },
+  { to: "/llaves", label: "Llaves", Icon: Swords },
   { to: "/tabla", label: "Tabla", Icon: Trophy },
   { to: "/especiales", label: "Pronósticos Plus", Icon: Star },
   { to: "/asados", label: "Asados", Icon: Flame },
