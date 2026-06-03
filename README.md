@@ -157,6 +157,19 @@ La forma más rápida es **PWA**:
 3. Cada uno abre el link en Chrome → menú ▸ **"Agregar a pantalla de inicio"**.
    Queda como una app, a pantalla completa.
 
+### Deploy en GitHub Pages (sin cuentas nuevas — recomendado)
+
+Ya hay un workflow que publica la app sola en cada push
+([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)). Una sola vez:
+
+1. **Settings → Pages → Source: "GitHub Actions"**.
+2. **Settings → Secrets and variables → Actions → New repository secret**, cargá:
+   - `VITE_SUPABASE_URL` = tu Project URL de Supabase
+   - `VITE_SUPABASE_ANON_KEY` = tu anon public key
+3. Listo: cada vez que se pushea, se publica en
+   `https://pcorradiia-afk.github.io/pcorradiia-afk-stock-shuttle/`.
+   (Para forzar un deploy ahora: pestaña **Actions → Deploy a GitHub Pages → Run workflow**.)
+
 ### Deploy en Vercel (paso a paso)
 
 **Opción A — desde la web (la más fácil):**
