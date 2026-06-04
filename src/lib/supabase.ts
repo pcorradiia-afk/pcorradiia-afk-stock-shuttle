@@ -21,6 +21,11 @@ export const supabase = createClient<Database>(
       persistSession: true,
       autoRefreshToken: true,
       detectSessionInUrl: true,
+      // Lock "pass-through": evita que getSession() se cuelgue esperando un
+      // navigator.lock que quedó tomado por otra pestaña (eso dejaba la app en
+      // "Cargando…" para siempre). Para una PWA de uso personal alcanza con no
+      // serializar entre pestañas.
+      lock: async (_name, _acquireTimeout, fn) => fn(),
     },
   }
 );

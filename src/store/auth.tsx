@@ -43,6 +43,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true;
 
+    // Red de seguridad: pase lo que pase, no nos quedamos en "Cargando…" para
+    // siempre. Si en 5s no resolvió la sesión, salimos del estado de carga.
+    const failsafe = setTimeout(() => {
+      if (active) setLoading(false);
+    }, 5000);
+
     supabase.auth
       .getSession()
       .then(async ({ data }) => {
@@ -76,6 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       active = false;
+      clearTimeout(failsafe);
       sub.subscription.unsubscribe();
     };
   }, [loadProfile]);
