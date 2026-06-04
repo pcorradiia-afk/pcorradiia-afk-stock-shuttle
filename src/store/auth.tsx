@@ -43,23 +43,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!active) return;
-      setSession(data.session);
-      if (data.session?.user) await loadProfile(data.session.user.id);
-      setLoading(false);
-    });
+    supabase.auth
+      .getSession()
+      .then(async ({ data }) => {
+        if (!active) return;
+        setSession(data.session);
+        if (data.session?.user) await loadProfile(data.session.user.id);
+      })
+      .catch(() => {
+        /* si falla la lectura de sesión, igual salimos de "Cargando…" */
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
 
-    const { data: sub } = supabase.auth.onAuthStateChange(
-      async (_event, newSession) => {
-        setSession(newSession);
-        if (newSession?.user) {
-          await loadProfile(newSession.user.id);
-        } else {
-          setProfile(null);
-        }
+    // OJO: no usar `await` de consultas a Supabase DENTRO de este callback.
+    // El cliente de auth mantiene un lock mientras corre el callback, y una
+    // consulta (que necesita la sesión) se queda esperando ese mismo lock →
+    // deadlock y la app queda en "Cargando…" para siempre. Por eso diferimos
+    // la carga del perfil con setTimeout(0), que libera el lock primero.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      if (newSession?.user) {
+        const uid = newSession.user.id;
+        setTimeout(() => {
+          if (active) loadProfile(uid);
+        }, 0);
+      } else {
+        setProfile(null);
       }
-    );
+    });
 
     return () => {
       active = false;
