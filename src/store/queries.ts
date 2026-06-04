@@ -226,9 +226,10 @@ export function useCreateAsado() {
   const invalidate = useInvalidate(["asados", "attendees"]);
   return useMutation({
     mutationFn: async (input: {
+      kind: "asado" | "birra";
       title: string;
       date: string;
-      host_id: string;
+      host_id: string | null;
       created_by: string;
     }) => {
       if (DEMO) return;

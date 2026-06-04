@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Flame, Check, Trash2, MapPin } from "lucide-react";
+import { Flame, Beer, Check, Trash2, MapPin } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ASADO_MIN_GUESTS, POINTS } from "@/data/rules";
+import {
+  ASADO_MIN_GUESTS,
+  BIRRA_MIN_GUESTS,
+  BIRRA_MIN_NOTICE_HOURS,
+  POINTS,
+} from "@/data/rules";
+import type { AsadoKind } from "@/lib/db-types";
 import { formatDay } from "@/lib/format";
 import {
   useAsados,
@@ -24,6 +30,14 @@ import {
 } from "@/store/queries";
 import { useAuth } from "@/store/auth";
 
+/** Mínimo de gente y puntos por participar, según el tipo de encuentro. */
+function rulesFor(kind: AsadoKind) {
+  if (kind === "birra") {
+    return { min: BIRRA_MIN_GUESTS, attendee: POINTS.birraAttendee };
+  }
+  return { min: ASADO_MIN_GUESTS, attendee: POINTS.asadoAttendee };
+}
+
 export function Asados() {
   const { profile } = useAuth();
   const profiles = useProfiles();
@@ -33,10 +47,13 @@ export function Asados() {
   const toggle = useToggleAttendance();
   const del = useDeleteAsado();
 
+  const [kind, setKind] = useState<AsadoKind>("asado");
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
   const [hostId, setHostId] = useState<string | undefined>(profile?.id);
   const [showForm, setShowForm] = useState(false);
+
+  const isBirra = kind === "birra";
 
   const nameOf = useMemo(() => {
     const m = new Map((profiles.data ?? []).map((p) => [p.id, p.display_name]));
@@ -57,17 +74,21 @@ export function Asados() {
     e.preventDefault();
     if (!profile) return;
     if (!date) {
-      toast.error("Elegí la fecha del asado");
+      toast.error(`Elegí la fecha de la ${isBirra ? "birra" : "asado"}`);
       return;
     }
     try {
       await createAsado.mutateAsync({
-        title: title.trim() || "Asado del grupo",
+        kind,
+        title:
+          title.trim() ||
+          (isBirra ? "Birra al paso del grupo" : "Asado del grupo"),
         date,
-        host_id: hostId ?? profile.id,
+        // La birra al paso no tiene "sede" (no suma bonus de anfitrión).
+        host_id: isBirra ? null : hostId ?? profile.id,
         created_by: profile.id,
       });
-      toast.success("¡Asado cargado! 🔥");
+      toast.success(isBirra ? "¡Birra cargada! 🍺" : "¡Asado cargado! 🔥");
       setTitle("");
       setDate("");
       setShowForm(false);
@@ -78,22 +99,54 @@ export function Asados() {
 
   return (
     <>
-      <AppHeader title="Asados" subtitle={`Mín. ${ASADO_MIN_GUESTS} del grupo = +${POINTS.asadoAttendee} · sede +${POINTS.asadoHost}`} />
+      <AppHeader
+        title="Asados y birras"
+        subtitle={`Asado: +${POINTS.asadoAttendee} (sede +${POINTS.asadoHost}) · Birra: +${POINTS.birraAttendee}`}
+      />
       <div className="px-4 py-4 space-y-4">
         <Card className="p-4 bg-orange-50 border-orange-200">
           <p className="text-sm text-orange-900">
-            🔥 Cada asado del grupo durante el Mundial con <b>{ASADO_MIN_GUESTS} o más
-            comensales</b> suma <b>{POINTS.asadoAttendee} pts</b> a cada uno. El que
-            pone la sede se lleva <b>+{POINTS.asadoHost} pts</b> extra. El admin
-            confirma que fue válido.
+            🔥 Cada <b>asado</b> del grupo con <b>{ASADO_MIN_GUESTS} o más
+            comensales</b> suma <b>{POINTS.asadoAttendee} pts</b> a cada uno, y
+            el que pone la sede se lleva <b>+{POINTS.asadoHost} pts</b> extra.
+          </p>
+          <p className="text-sm text-orange-900 mt-2">
+            🍺 Cada <b>birra al paso</b> con <b>{BIRRA_MIN_GUESTS} o más</b> suma{" "}
+            <b>{POINTS.birraAttendee} pts</b> a cada uno. Para que valga, hay que
+            <b> avisarla al grupo de WhatsApp con {BIRRA_MIN_NOTICE_HOURS} hs de
+            anticipación</b>.
+          </p>
+          <p className="text-xs text-orange-700 mt-2">
+            El admin confirma que el encuentro fue válido.
           </p>
         </Card>
 
         {showForm ? (
           <Card className="p-4">
             <form onSubmit={create} className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Tipo
+                </label>
+                <Select
+                  value={kind}
+                  onValueChange={(v) => setKind(v as AsadoKind)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="asado">🔥 Asado</SelectItem>
+                    <SelectItem value="birra">🍺 Birra al paso</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <Input
-                placeholder="Nombre del asado (opcional)"
+                placeholder={
+                  isBirra
+                    ? "Nombre de la birra (opcional)"
+                    : "Nombre del asado (opcional)"
+                }
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
@@ -107,28 +160,45 @@ export function Asados() {
                   onChange={(e) => setDate(e.target.value)}
                 />
               </div>
-              <div>
-                <label className="text-xs font-semibold text-muted-foreground">
-                  ¿Quién pone la sede? (+{POINTS.asadoHost} pts)
-                </label>
-                <Select value={hostId} onValueChange={setHostId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Elegí anfitrión" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(profiles.data ?? []).map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.display_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!isBirra && (
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    ¿Quién pone la sede? (+{POINTS.asadoHost} pts)
+                  </label>
+                  <Select value={hostId} onValueChange={setHostId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Elegí anfitrión" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(profiles.data ?? []).map((p) => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.display_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+              {isBirra && (
+                <p className="text-xs text-muted-foreground">
+                  🍺 Recordá: tiene que estar avisada al grupo de WhatsApp con{" "}
+                  {BIRRA_MIN_NOTICE_HOURS} hs de anticipación para que el admin la
+                  apruebe.
+                </p>
+              )}
               <div className="flex gap-2">
-                <Button type="submit" className="flex-1" disabled={createAsado.isPending}>
-                  Cargar asado
+                <Button
+                  type="submit"
+                  className="flex-1"
+                  disabled={createAsado.isPending}
+                >
+                  {isBirra ? "Cargar birra" : "Cargar asado"}
                 </Button>
-                <Button type="button" variant="ghost" onClick={() => setShowForm(false)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setShowForm(false)}
+                >
                   Cancelar
                 </Button>
               </div>
@@ -136,30 +206,44 @@ export function Asados() {
           </Card>
         ) : (
           <Button onClick={() => setShowForm(true)} className="w-full">
-            <Flame className="w-4 h-4 mr-1" /> Cargar un asado
+            <Flame className="w-4 h-4 mr-1" /> Cargar asado / birra
           </Button>
         )}
 
         <div className="space-y-3">
           {(asados.data ?? []).length === 0 && (
             <p className="text-center text-muted-foreground py-8">
-              Todavía no hay asados. ¡Organicen uno! 🥩
+              Todavía no hay asados ni birras. ¡Organicen uno! 🥩🍺
             </p>
           )}
           {(asados.data ?? []).map((a) => {
             const att = attByAsado.get(a.id) ?? [];
             const iAmIn = !!profile && att.includes(profile.id);
-            const enough = att.length >= ASADO_MIN_GUESTS;
+            const { min } = rulesFor(a.kind);
+            const enough = att.length >= min;
             const canDelete = a.created_by === profile?.id || profile?.is_admin;
+            const birra = a.kind === "birra";
             return (
               <Card key={a.id} className="p-4 space-y-2">
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h3 className="font-bold">{a.title}</h3>
-                    <p className="text-xs text-muted-foreground">{formatDay(a.date)}</p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-                      <MapPin className="w-3 h-3" /> Sede: <b>{nameOf(a.host_id)}</b>
+                    <h3 className="font-bold flex items-center gap-1.5">
+                      {birra ? (
+                        <Beer className="w-4 h-4 text-amber-600" />
+                      ) : (
+                        <Flame className="w-4 h-4 text-orange-600" />
+                      )}
+                      {a.title}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {formatDay(a.date)}
                     </p>
+                    {!birra && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <MapPin className="w-3 h-3" /> Sede:{" "}
+                        <b>{nameOf(a.host_id)}</b>
+                      </p>
+                    )}
                   </div>
                   <div className="text-right">
                     {a.approved ? (
@@ -191,15 +275,22 @@ export function Asados() {
                       enough ? "text-emerald-600" : "text-amber-600"
                     }`}
                   >
-                    {att.length} comensal{att.length !== 1 ? "es" : ""}
-                    {!enough && ` (faltan ${ASADO_MIN_GUESTS - att.length})`}
+                    {att.length}{" "}
+                    {birra
+                      ? att.length !== 1
+                        ? "personas"
+                        : "persona"
+                      : att.length !== 1
+                      ? "comensales"
+                      : "comensal"}
+                    {!enough && ` (faltan ${min - att.length})`}
                   </span>
                   <div className="flex gap-2">
                     {canDelete && (
                       <button
                         onClick={() => del.mutate(a.id)}
                         className="text-muted-foreground hover:text-destructive"
-                        aria-label="Borrar asado"
+                        aria-label="Borrar"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

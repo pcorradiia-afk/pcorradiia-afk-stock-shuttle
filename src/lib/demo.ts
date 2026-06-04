@@ -142,12 +142,16 @@ export const demoSpecials: SpecialPrediction[] = demoProfiles.map((p, i) => ({
 // --- Asados -----------------------------------------------------------------
 export const demoAsados: Asado[] = [
   {
-    id: "a1", title: "Asado pre-Mundial 🥩", date: iso(now - 7 * DAY).slice(0, 10),
+    id: "a1", kind: "asado", title: "Asado pre-Mundial 🥩", date: iso(now - 7 * DAY).slice(0, 10),
     host_id: "u2", approved: true, created_by: "u2", created_at: iso(now - 8 * DAY),
   },
   {
-    id: "a2", title: "Asado del debut de Argentina", date: iso(now + 1 * DAY).slice(0, 10),
+    id: "a2", kind: "asado", title: "Asado del debut de Argentina", date: iso(now + 1 * DAY).slice(0, 10),
     host_id: "me", approved: false, created_by: "me", created_at: iso(now - 1 * DAY),
+  },
+  {
+    id: "a3", kind: "birra", title: "Birra al paso post-partido 🍺", date: iso(now - 2 * DAY).slice(0, 10),
+    host_id: null, approved: true, created_by: "u1", created_at: iso(now - 2 * DAY),
   },
 ];
 export const demoAttendees: AsadoAttendee[] = [

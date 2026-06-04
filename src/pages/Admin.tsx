@@ -503,16 +503,22 @@ function AsadosAdmin() {
 
   return (
     <Card className="p-4 space-y-2">
-      <h3 className="font-bold">Validar asados</h3>
+      <h3 className="font-bold">Validar asados y birras</h3>
       <p className="text-xs text-muted-foreground">
-        Aprobá los asados que cumplieron el mínimo de comensales para que sumen puntos.
+        Aprobá los que cumplieron el mínimo de gente para que sumen puntos.
+        Las <b>birras al paso</b> 🍺 además tienen que haber sido avisadas al
+        grupo de WhatsApp con <b>3 hs de anticipación</b>.
       </p>
       {(asados.data ?? []).length === 0 && (
-        <p className="text-sm text-muted-foreground py-2">No hay asados cargados.</p>
+        <p className="text-sm text-muted-foreground py-2">
+          No hay asados ni birras cargados.
+        </p>
       )}
       {(asados.data ?? []).map((a) => (
         <div key={a.id} className="flex items-center justify-between gap-2 py-1 border-b last:border-0">
-          <span className="text-sm flex-1 truncate">{a.title}</span>
+          <span className="text-sm flex-1 truncate">
+            {a.kind === "birra" ? "🍺" : "🔥"} {a.title}
+          </span>
           <button
             onClick={() => approve.mutate({ id: a.id, approved: !a.approved })}
             className={`text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1 ${

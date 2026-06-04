@@ -17,10 +17,22 @@ export const POINTS = {
   asadoAttendee: 10,
   /** Extra para quien pone la sede del asado. */
   asadoHost: 10,
+  /** Por participar de una birra al paso válida del grupo (mín. 4). */
+  birraAttendee: 5,
 } as const;
 
 /** Mínimo de comensales del grupo para que un asado sume puntos. */
 export const ASADO_MIN_GUESTS = 4;
+
+/** Mínimo de personas para que una birra al paso sume puntos. */
+export const BIRRA_MIN_GUESTS = 4;
+
+/**
+ * Horas mínimas de anticipación con que hay que avisar la birra al grupo de
+ * WhatsApp para que sea válida. La app no puede verificar WhatsApp: lo confirma
+ * el admin al aprobarla.
+ */
+export const BIRRA_MIN_NOTICE_HOURS = 3;
 
 /** Reparto del pozo. */
 export const PRIZE_SPLIT = {

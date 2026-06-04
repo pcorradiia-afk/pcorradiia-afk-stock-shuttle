@@ -1,6 +1,12 @@
 import { AppHeader } from "@/components/AppHeader";
 import { Card } from "@/components/ui/card";
-import { POINTS, ASADO_MIN_GUESTS, PRIZE_SPLIT } from "@/data/rules";
+import {
+  POINTS,
+  ASADO_MIN_GUESTS,
+  BIRRA_MIN_GUESTS,
+  BIRRA_MIN_NOTICE_HOURS,
+  PRIZE_SPLIT,
+} from "@/data/rules";
 import { useLeaderboard, useProfiles } from "@/store/queries";
 import { formatMoney } from "@/lib/format";
 
@@ -52,6 +58,17 @@ export function Rules() {
           <p className="text-xs text-muted-foreground mt-2">
             Vale durante toda la Copa del Mundo. El admin confirma que el asado fue
             válido.
+          </p>
+        </Card>
+
+        <Card className="p-4">
+          <h2 className="font-bold mb-1">🍺 Birra al paso</h2>
+          <Rule pts={`${POINTS.birraAttendee} pts`}>
+            Por participar (mín. {BIRRA_MIN_GUESTS} del grupo)
+          </Rule>
+          <p className="text-xs text-muted-foreground mt-2">
+            Para que valga, tiene que estar avisada al grupo de WhatsApp con{" "}
+            {BIRRA_MIN_NOTICE_HOURS} hs de anticipación. El admin la confirma.
           </p>
         </Card>
 

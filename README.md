@@ -22,6 +22,7 @@ el 2º el 30%**. Funciona igual de bien en el **celular** (barra inferior) y en 
 | Goleador del Mundial | **10** |
 | Participar de un asado del grupo (mín. 4 comensales) | **10** |
 | Poner la sede del asado | **+10** |
+| Participar de una birra al paso (mín. 4, avisada al grupo con 3 hs) | **5** |
 
 > Los pronósticos de cada partido **se cierran solos cuando el partido empieza**
 > (no se pueden cargar ni cambiar después del pitazo inicial). Los pronósticos

@@ -74,6 +74,14 @@ create table if not exists public.asado_attendees (
   primary key (asado_id, user_id)
 );
 
+-- Tipo de encuentro del grupo: 'asado' o 'birra' (birra al paso). Idempotente.
+alter table public.asados
+  add column if not exists kind text not null default 'asado';
+alter table public.asados
+  drop constraint if exists asados_kind_check;
+alter table public.asados
+  add constraint asados_kind_check check (kind in ('asado', 'birra'));
+
 -- Fila única de configuración / resultados oficiales.
 insert into public.settings (id) values (1) on conflict (id) do nothing;
 

@@ -2,6 +2,7 @@ import { POINTS } from "@/data/rules";
 import type {
   Asado,
   AsadoAttendee,
+  AsadoKind,
   Match,
   Prediction,
   Profile,
@@ -80,20 +81,26 @@ export function computeLeaderboard(input: ScoreInput): LeaderboardRow[] {
   const matchById = new Map(matches.map((m) => [m.id, m]));
   const specialByUser = new Map(specials.map((s) => [s.user_id, s]));
 
-  // Asados aprobados: +5 a cada comensal, +10 al anfitrión (la sede).
+  // Encuentros del grupo aprobados:
+  //  - Asado: +asadoAttendee a cada comensal, +asadoHost a la sede.
+  //  - Birra al paso: +birraAttendee a cada uno (sin bonus de sede).
   const asadoPointsByUser = new Map<string, number>();
-  const approvedAsadoIds = new Set(
-    asados.filter((a) => a.approved).map((a) => a.id)
-  );
+  const approvedKindById = new Map<string, AsadoKind>();
+  for (const a of asados) {
+    if (a.approved) approvedKindById.set(a.id, a.kind);
+  }
   for (const att of attendees) {
-    if (!approvedAsadoIds.has(att.asado_id)) continue;
+    const kind = approvedKindById.get(att.asado_id);
+    if (!kind) continue;
+    const pts =
+      kind === "birra" ? POINTS.birraAttendee : POINTS.asadoAttendee;
     asadoPointsByUser.set(
       att.user_id,
-      (asadoPointsByUser.get(att.user_id) ?? 0) + POINTS.asadoAttendee
+      (asadoPointsByUser.get(att.user_id) ?? 0) + pts
     );
   }
   for (const a of asados) {
-    if (!a.approved || !a.host_id) continue;
+    if (!a.approved || a.kind !== "asado" || !a.host_id) continue;
     asadoPointsByUser.set(
       a.host_id,
       (asadoPointsByUser.get(a.host_id) ?? 0) + POINTS.asadoHost

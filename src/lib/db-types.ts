@@ -10,6 +10,9 @@ export type MatchStage =
   | "third"
   | "final";
 
+/** Tipo de encuentro del grupo: asado o birra al paso. */
+export type AsadoKind = "asado" | "birra";
+
 export interface Profile {
   id: string;
   display_name: string;
@@ -64,6 +67,7 @@ export interface Settings {
 
 export interface Asado {
   id: string;
+  kind: AsadoKind;
   title: string;
   date: string;
   host_id: string | null;
