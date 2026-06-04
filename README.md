@@ -20,7 +20,7 @@ el 2º el 30%**. Funciona igual de bien en el **celular** (barra inferior) y en 
 | Campeón del mundo | **40** |
 | Mejor jugador del Mundial | **10** |
 | Goleador del Mundial | **10** |
-| Participar de un asado del grupo (mín. 4 comensales) | **5** |
+| Participar de un asado del grupo (mín. 4 comensales) | **10** |
 | Poner la sede del asado | **+10** |
 
 > Los pronósticos de cada partido **se cierran solos cuando el partido empieza**

@@ -14,7 +14,7 @@ export const POINTS = {
   /** Acertar el goleador del Mundial. */
   topScorer: 10,
   /** Por participar de un asado válido del grupo (mín. 4 comensales). */
-  asadoAttendee: 5,
+  asadoAttendee: 10,
   /** Extra para quien pone la sede del asado. */
   asadoHost: 10,
 } as const;
