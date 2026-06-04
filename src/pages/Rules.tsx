@@ -104,6 +104,10 @@ export function Rules() {
               </p>
             </div>
           </div>
+          <p className="mt-3 text-xs text-center text-muted-foreground">
+            💼 Fondo custodiado por <b>Lukitas Atucha</b>, nuestro Gurú
+            Financiero.
+          </p>
         </Card>
       </div>
     </>
