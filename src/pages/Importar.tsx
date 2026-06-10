@@ -2,6 +2,8 @@ import { useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { Database, FileSpreadsheet, UploadCloud, X } from "lucide-react";
 import { EMPRESAS } from "@/data/demo";
+import { pareceBalanceParcial } from "@/lib/oliauto";
+import { AnalisisBalanceParcial } from "@/components/AnalisisBalanceParcial";
 import { PageHeader } from "@/components/ui-kit";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -120,8 +122,13 @@ export function Importar() {
       setFileName(file.name);
       setAoa(rows);
       setHeaderRow(1);
-      const hs = (rows[0] ?? []).map((c, i) => String(c ?? "").trim() || `Columna ${i + 1}`);
-      setMapping(autoMapear(hs, tipo));
+      // Autodetectar el balance parcial de Oliauto (columnas mensuales).
+      if (pareceBalanceParcial(rows[0] ?? [])) {
+        setTipo("balance_parcial");
+      } else {
+        const hs = (rows[0] ?? []).map((c, i) => String(c ?? "").trim() || `Columna ${i + 1}`);
+        setMapping(autoMapear(hs, tipo === "balance_parcial" ? "mayor" : tipo));
+      }
     } catch {
       setError("No pude leer el archivo. Verificá que sea un Excel (.xlsx) o CSV válido.");
     }
@@ -136,7 +143,7 @@ export function Importar() {
 
   function cambiarTipo(t: string) {
     setTipo(t);
-    setMapping(autoMapear(headers, t));
+    if (t !== "balance_parcial") setMapping(autoMapear(headers, t));
   }
 
   function limpiar() {
@@ -147,7 +154,8 @@ export function Importar() {
     if (fileInput.current) fileInput.current.value = "";
   }
 
-  const campos = REPORTES[tipo].campos;
+  const esBP = tipo === "balance_parcial";
+  const campos = esBP ? [] : REPORTES[tipo].campos;
   const faltanReq = campos.filter((c) => c.req && (!mapping[c.key] || mapping[c.key] === SIN_MAPEAR));
   const hayArchivo = aoa.length > 0;
 
@@ -202,6 +210,7 @@ export function Importar() {
                 <Select value={tipo} onValueChange={cambiarTipo}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="balance_parcial">Balance parcial / Rentabilidad por depto. (Oliauto)</SelectItem>
                     {Object.entries(REPORTES).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v.label}</SelectItem>
                     ))}
@@ -222,6 +231,10 @@ export function Importar() {
             </CardContent>
           </Card>
 
+          {esBP ? (
+            <AnalisisBalanceParcial aoa={aoa} headerRow={headerRow} />
+          ) : (
+          <>
           {/* Mapeo de columnas */}
           <Card>
             <CardHeader>
@@ -301,6 +314,8 @@ export function Importar() {
               </div>
             </CardContent>
           </Card>
+          </>
+          )}
         </div>
       )}
 
