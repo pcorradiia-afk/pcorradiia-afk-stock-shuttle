@@ -133,7 +133,7 @@ export function Dashboard() {
               <BarChart data={chartDepto} layout="vertical" margin={{ left: 8, right: 8 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-border" />
                 <XAxis type="number" tickFormatter={moneyShort} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis type="category" dataKey="nombre" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={70} />
+                <YAxis type="category" dataKey="nombre" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={96} interval={0} />
                 <Tooltip
                   formatter={(v: number) => [money(v), "Resultado"]}
                   contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 13 }}
