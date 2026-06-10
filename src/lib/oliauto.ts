@@ -150,3 +150,111 @@ export function parseBalanceParcial(aoa: unknown[][], headerRow: number): Balanc
 export function pareceBalanceParcial(header: unknown[]): boolean {
   return header.filter((h) => parsePeriodo(String(h))).length >= 2;
 }
+
+// ============ Composición de saldos / Cuentas corrientes (antigüedad) ============
+
+export interface AgingBuckets {
+  alDia: number;
+  d30: number;
+  d60: number;
+  d90: number;
+  mas90: number;
+}
+
+export interface DeudorTop {
+  codigo: string;
+  nombre: string;
+  saldo: number;
+}
+
+export interface Composicion {
+  corte: string; // ISO 'YYYY-MM-DD'
+  buckets: AgingBuckets;
+  totalDeudor: number;
+  totalAcreedor: number;
+  clientesDeudores: number;
+  topDeudores: DeudorTop[];
+}
+
+function serialAISO(serial: number): string {
+  return new Date(Date.UTC(1899, 11, 30 + Math.round(serial))).toISOString().slice(0, 10);
+}
+
+function findCol(header: unknown[], ...nombres: string[]): number {
+  return header.findIndex((h) => nombres.some((n) => String(h).trim().toLowerCase() === n.toLowerCase()));
+}
+
+export function pareceComposicion(header: unknown[]): boolean {
+  return findCol(header, "CodigoFicha") >= 0 && findCol(header, "FechaCont") >= 0 && findCol(header, "Debe") >= 0;
+}
+
+interface Mov { f: number; debe: number; haber: number }
+
+/**
+ * Procesa la composición de saldos de cuentas corrientes (historial de movimientos).
+ * Imputa los pagos (Haber) contra las facturas (Debe) más antiguas (FIFO) por cliente,
+ * y clasifica el saldo deudor pendiente por antigüedad del comprobante.
+ */
+export function parseComposicionSaldos(aoa: unknown[][], headerRow: number): Composicion {
+  const header = (aoa[headerRow - 1] ?? []) as unknown[];
+  const cF = findCol(header, "FechaCont");
+  const cD = findCol(header, "Debe");
+  const cH = findCol(header, "Haber");
+  const cFicha = findCol(header, "CodigoFicha");
+  const cNom = findCol(header, "DescripFicha", "RazonSocial");
+
+  let ref = 0;
+  const cli = new Map<string, { nombre: string; mov: Mov[] }>();
+  for (let r = headerRow; r < aoa.length; r++) {
+    const row = aoa[r] as unknown[];
+    const f = num(row?.[cF]);
+    if (f > ref && f < 80000) ref = f;
+    const k = String(row?.[cFicha] ?? "").trim() || "(sin ficha)";
+    if (!cli.has(k)) cli.set(k, { nombre: String(row?.[cNom] ?? "").trim() || k, mov: [] });
+    cli.get(k)!.mov.push({ f, debe: num(row?.[cD]), haber: num(row?.[cH]) });
+  }
+
+  const buckets: AgingBuckets = { alDia: 0, d30: 0, d60: 0, d90: 0, mas90: 0 };
+  let totalDeudor = 0;
+  let totalAcreedor = 0;
+  let clientesDeudores = 0;
+  const top: DeudorTop[] = [];
+
+  for (const [codigo, c] of cli) {
+    const cargos = c.mov.filter((m) => m.debe > 0).map((m) => ({ f: m.f, amt: m.debe })).sort((a, b) => a.f - b.f);
+    let pagos = c.mov.reduce((a, m) => a + m.haber, 0);
+    for (const cg of cargos) {
+      if (pagos <= 0) break;
+      const p = Math.min(pagos, cg.amt);
+      cg.amt -= p;
+      pagos -= p;
+    }
+    let saldoCli = 0;
+    for (const cg of cargos) {
+      if (cg.amt <= 0.005) continue;
+      saldoCli += cg.amt;
+      const age = ref - cg.f;
+      if (age <= 0) buckets.alDia += cg.amt;
+      else if (age <= 30) buckets.d30 += cg.amt;
+      else if (age <= 60) buckets.d60 += cg.amt;
+      else if (age <= 90) buckets.d90 += cg.amt;
+      else buckets.mas90 += cg.amt;
+    }
+    if (pagos > 0.005) totalAcreedor += pagos;
+    if (saldoCli > 0.005) {
+      totalDeudor += saldoCli;
+      clientesDeudores++;
+      top.push({ codigo, nombre: c.nombre, saldo: saldoCli });
+    }
+  }
+
+  top.sort((a, b) => b.saldo - a.saldo);
+  return {
+    corte: ref ? serialAISO(ref) : "",
+    buckets,
+    totalDeudor,
+    totalAcreedor,
+    clientesDeudores,
+    topDeudores: top.slice(0, 10),
+  };
+}

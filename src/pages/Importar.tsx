@@ -2,8 +2,9 @@ import { useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import { Database, FileSpreadsheet, UploadCloud, X } from "lucide-react";
 import { EMPRESAS } from "@/data/demo";
-import { pareceBalanceParcial } from "@/lib/oliauto";
+import { pareceBalanceParcial, pareceComposicion } from "@/lib/oliauto";
 import { AnalisisBalanceParcial } from "@/components/AnalisisBalanceParcial";
+import { AnalisisComposicion } from "@/components/AnalisisComposicion";
 import { PageHeader } from "@/components/ui-kit";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -122,12 +123,15 @@ export function Importar() {
       setFileName(file.name);
       setAoa(rows);
       setHeaderRow(1);
-      // Autodetectar el balance parcial de Oliauto (columnas mensuales).
+      // Autodetectar el tipo de reporte de Oliauto.
       if (pareceBalanceParcial(rows[0] ?? [])) {
         setTipo("balance_parcial");
+      } else if (pareceComposicion(rows[0] ?? [])) {
+        setTipo("composicion");
       } else {
         const hs = (rows[0] ?? []).map((c, i) => String(c ?? "").trim() || `Columna ${i + 1}`);
-        setMapping(autoMapear(hs, tipo === "balance_parcial" ? "mayor" : tipo));
+        const t = tipo === "balance_parcial" || tipo === "composicion" ? "mayor" : tipo;
+        setMapping(autoMapear(hs, t));
       }
     } catch {
       setError("No pude leer el archivo. Verificá que sea un Excel (.xlsx) o CSV válido.");
@@ -143,7 +147,7 @@ export function Importar() {
 
   function cambiarTipo(t: string) {
     setTipo(t);
-    if (t !== "balance_parcial") setMapping(autoMapear(headers, t));
+    if (t !== "balance_parcial" && t !== "composicion") setMapping(autoMapear(headers, t));
   }
 
   function limpiar() {
@@ -155,7 +159,8 @@ export function Importar() {
   }
 
   const esBP = tipo === "balance_parcial";
-  const campos = esBP ? [] : REPORTES[tipo].campos;
+  const esComp = tipo === "composicion";
+  const campos = esBP || esComp ? [] : REPORTES[tipo].campos;
   const faltanReq = campos.filter((c) => c.req && (!mapping[c.key] || mapping[c.key] === SIN_MAPEAR));
   const hayArchivo = aoa.length > 0;
 
@@ -211,6 +216,7 @@ export function Importar() {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="balance_parcial">Balance parcial / Rentabilidad por depto. (Oliauto)</SelectItem>
+                    <SelectItem value="composicion">Composición de saldos / Cuentas corrientes (Oliauto)</SelectItem>
                     {Object.entries(REPORTES).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v.label}</SelectItem>
                     ))}
@@ -233,6 +239,8 @@ export function Importar() {
 
           {esBP ? (
             <AnalisisBalanceParcial aoa={aoa} headerRow={headerRow} />
+          ) : esComp ? (
+            <AnalisisComposicion aoa={aoa} headerRow={headerRow} />
           ) : (
           <>
           {/* Mapeo de columnas */}
