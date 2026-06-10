@@ -13,6 +13,9 @@ export interface Departamento {
   color: string; // para gráficos
 }
 
+/** Sistema de gestión (Dealer Management System) del que se importan los datos. */
+export type DMS = "Oliauto" | "Autologica";
+
 export interface Empresa {
   id: string;
   nombre: string;
@@ -21,6 +24,9 @@ export interface Empresa {
   localidad: string;
   provincia: string;
   marcas: string[];
+  /** DMS desde el que se exportan los reportes de esta empresa. */
+  dms: DMS;
+  sitio: string;
   /** Si participa en el consolidado del grupo. */
   consolida: boolean;
   activa: boolean;

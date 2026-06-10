@@ -22,22 +22,22 @@ export const DEPARTAMENTOS: Departamento[] = [
   { tipo: "admin", nombre: "Administración", color: "#64748b" },
 ];
 
+// Empresas reales del Grupo Fiorasi (CUIT, marcas y DMS según planilla del grupo).
+// Localidad/provincia quedan por completar desde la administración.
 export const EMPRESAS: Empresa[] = [
-  { id: "e1", nombre: "Fiorasi Automotores", razonSocial: "Fiorasi Automotores S.A.", cuit: "30-71234567-8", localidad: "Rosario", provincia: "Santa Fe", marcas: ["Volkswagen"], consolida: true, activa: true },
-  { id: "e2", nombre: "Fiorasi Norte", razonSocial: "Fiorasi Norte S.R.L.", cuit: "30-71234568-5", localidad: "Córdoba", provincia: "Córdoba", marcas: ["Toyota"], consolida: true, activa: true },
-  { id: "e3", nombre: "Fiorasi Premium", razonSocial: "Fiorasi Premium S.A.", cuit: "30-71234569-2", localidad: "CABA", provincia: "Buenos Aires", marcas: ["Audi", "Volkswagen"], consolida: true, activa: true },
-  { id: "e4", nombre: "Fiorasi Camiones", razonSocial: "Fiorasi Camiones S.A.", cuit: "30-71234570-6", localidad: "Santa Fe", provincia: "Santa Fe", marcas: ["Iveco"], consolida: true, activa: true },
-  { id: "e5", nombre: "Fiorasi Usados Plus", razonSocial: "Fiorasi Usados S.R.L.", cuit: "30-71234571-3", localidad: "Rosario", provincia: "Santa Fe", marcas: ["Multimarca"], consolida: false, activa: true },
+  { id: "e1", nombre: "Pedro Corradi", razonSocial: "Pedro Corradi", cuit: "33-52033241-9", localidad: "", provincia: "Santa Fe", marcas: ["Ford"], dms: "Oliauto", sitio: "https://www.pedrocorradi.com.ar/", consolida: true, activa: true },
+  { id: "e2", nombre: "Automotores Fiorasi y Corradi", razonSocial: "Automotores Fiorasi y Corradi", cuit: "30-67052859-2", localidad: "", provincia: "Santa Fe", marcas: ["Volkswagen"], dms: "Oliauto", sitio: "https://www.fiorasiycorradi.com.ar/", consolida: true, activa: true },
+  { id: "e3", nombre: "Fiorasi", razonSocial: "Fiorasi S.A.", cuit: "30-53563811-6", localidad: "", provincia: "Santa Fe", marcas: ["Iveco", "Fiat"], dms: "Oliauto", sitio: "https://fiat.fiorasisa.com.ar/", consolida: true, activa: true },
+  { id: "e4", nombre: "Fiorasi Motors", razonSocial: "Fiorasi Motors", cuit: "30-69104466-8", localidad: "", provincia: "Santa Fe", marcas: ["Jeep", "Ram"], dms: "Oliauto", sitio: "https://www.fiorasimotors.com.ar/", consolida: true, activa: true },
+  { id: "e5", nombre: "Sapac", razonSocial: "Sapac", cuit: "30-59970938-6", localidad: "", provincia: "Santa Fe", marcas: ["Ford"], dms: "Autologica", sitio: "https://www.fiorasiford.com.ar/", consolida: true, activa: true },
 ];
 
 export const SUCURSALES: Sucursal[] = [
-  { id: "s1", empresaId: "e1", nombre: "Casa Central", localidad: "Rosario" },
-  { id: "s2", empresaId: "e1", nombre: "Sucursal Funes", localidad: "Funes" },
-  { id: "s3", empresaId: "e2", nombre: "Casa Central", localidad: "Córdoba" },
-  { id: "s4", empresaId: "e2", nombre: "Sucursal Villa María", localidad: "Villa María" },
-  { id: "s5", empresaId: "e3", nombre: "Showroom Palermo", localidad: "CABA" },
-  { id: "s6", empresaId: "e4", nombre: "Planta Santa Fe", localidad: "Santa Fe" },
-  { id: "s7", empresaId: "e5", nombre: "Predio Usados", localidad: "Rosario" },
+  { id: "s1", empresaId: "e1", nombre: "Casa Central", localidad: "" },
+  { id: "s2", empresaId: "e2", nombre: "Casa Central", localidad: "" },
+  { id: "s3", empresaId: "e3", nombre: "Casa Central", localidad: "" },
+  { id: "s4", empresaId: "e4", nombre: "Casa Central", localidad: "" },
+  { id: "s5", empresaId: "e5", nombre: "Casa Central", localidad: "" },
 ];
 
 export const USUARIOS: Usuario[] = [
@@ -45,7 +45,7 @@ export const USUARIOS: Usuario[] = [
   { id: "u1", nombre: "Fernando Bogliacino", email: "fernando@fiorasi.com", rolId: "direccion", scope: "grupo", empresaIds: [], cargo: "Dirección", activo: true },
   { id: "u2", nombre: "Laura Méndez", email: "laura@fiorasi.com", rolId: "controller", scope: "empresas", empresaIds: ["e1", "e2", "e5"], cargo: "Controller", activo: true },
   { id: "u3", nombre: "Diego Sosa", email: "diego@fiorasi.com", rolId: "auditor", scope: "grupo", empresaIds: [], cargo: "Auditor interno", activo: true },
-  { id: "u4", nombre: "Marina Ruiz", email: "marina@fiorasi.com", rolId: "responsable", scope: "empresas", empresaIds: ["e3"], cargo: "Gerente Fiorasi Premium", activo: true },
+  { id: "u4", nombre: "Marina Ruiz", email: "marina@fiorasi.com", rolId: "responsable", scope: "empresas", empresaIds: ["e3"], cargo: "Gerente Fiorasi", activo: true },
 ];
 
 // ---- Generación determinística de datos de gestión ----
@@ -153,6 +153,6 @@ export const CUENTAS_CORRIENTES: CuentaCorriente[] = (() => {
 export const HALLAZGOS: Hallazgo[] = [
   { id: "h1", empresaId: "e1", titulo: "Desvío en gastos de Posventa", descripcion: "Los gastos de Posventa superan el 30% del ingreso por 2 meses consecutivos.", severidad: "media", estado: "abierto", responsable: "Laura Méndez", detectadoEl: "2026-05-12" },
   { id: "h2", empresaId: "e4", titulo: "Mora +90 días en aumento", descripcion: "La cartera vencida +90 creció 38% intermensual.", severidad: "alta", estado: "en_proceso", responsable: "Diego Sosa", detectadoEl: "2026-05-20" },
-  { id: "h3", empresaId: "e3", titulo: "Margen 0km por debajo del objetivo", descripcion: "Margen de 0km al 6,5% vs objetivo 9%.", severidad: "media", estado: "abierto", responsable: "Marina Ruiz", detectadoEl: "2026-05-28" },
+  { id: "h3", empresaId: "e3", titulo: "Margen 0km por debajo del objetivo", descripcion: "Margen de 0km al 6,5% vs objetivo 9% en Fiorasi.", severidad: "media", estado: "abierto", responsable: "Marina Ruiz", detectadoEl: "2026-05-28" },
   { id: "h4", empresaId: "e2", titulo: "Conciliación de caja pendiente", descripcion: "Falta conciliar caja de Sucursal Villa María del período abr-2026.", severidad: "baja", estado: "resuelto", responsable: "Laura Méndez", detectadoEl: "2026-04-30" },
 ];

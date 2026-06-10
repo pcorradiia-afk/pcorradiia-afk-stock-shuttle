@@ -35,9 +35,10 @@ export function Empresas() {
                 <TableRow>
                   <TableHead>Empresa</TableHead>
                   <TableHead>CUIT</TableHead>
-                  <TableHead>Localidad</TableHead>
                   <TableHead>Marcas</TableHead>
-                  <TableHead className="text-center">Sucursales</TableHead>
+                  <TableHead>DMS</TableHead>
+                  <TableHead>Provincia</TableHead>
+                  <TableHead className="text-center">Suc.</TableHead>
                   <TableHead className="text-center">Consolida</TableHead>
                 </TableRow>
               </TableHeader>
@@ -48,16 +49,30 @@ export function Empresas() {
                     <TableRow key={e.id}>
                       <TableCell>
                         <div className="font-medium">{e.nombre}</div>
-                        <div className="text-xs text-muted-foreground">{e.razonSocial}</div>
+                        {e.sitio && (
+                          <a
+                            href={e.sitio}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs text-primary hover:underline"
+                          >
+                            {e.sitio.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                          </a>
+                        )}
                       </TableCell>
                       <TableCell className="tabular-nums text-sm">{e.cuit}</TableCell>
-                      <TableCell className="text-sm">{e.localidad}, {e.provincia}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {e.marcas.map((m) => (
                             <Badge key={m} variant="secondary">{m}</Badge>
                           ))}
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{e.dms}</Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {[e.localidad, e.provincia].filter(Boolean).join(", ") || "—"}
                       </TableCell>
                       <TableCell className="text-center tabular-nums">{sucs}</TableCell>
                       <TableCell className="text-center">

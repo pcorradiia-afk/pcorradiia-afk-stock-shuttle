@@ -4,6 +4,8 @@
 - **Rubro:** grupo de concesionarias de vehículos (4-6 empresas).
 - **Departamentos:** 0km, usados, posventa/taller, repuestos, administración.
 - **Datos:** exportaciones Excel del **DMS** → importación con mapeo de columnas.
+  El grupo usa **dos DMS**: **Oliauto** (Pedro Corradi, Automotores Fiorasi y Corradi, Fiorasi, Fiorasi Motors)
+  y **Autologica** (Sapac). Cada uno necesita su propio mapeo de columnas.
 - **Detalle:** saldos/mayores mensuales por cuenta (no transaccional).
 - **Moneda:** pesos, sin ajustes (dólar/inflación más adelante).
 - **Foco inicial:** rentabilidad por departamento · ventas/unidades y márgenes · cuentas corrientes/mora.
