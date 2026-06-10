@@ -33,6 +33,9 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
+// Departamentos no operativos: el margen "% s/ ingresos" no es representativo.
+const NO_OPERATIVO = new Set(["admin", "financiero", "varios"]);
+
 const COLORS: Record<string, string> = {
   "0km": "#2563eb",
   usados: "#7c3aed",
@@ -151,7 +154,9 @@ export function AnalisisBalanceParcial({ aoa, headerRow }: { aoa: unknown[][]; h
                       {money(f.pl.resultado)}
                     </TableCell>
                     <TableCell className={cn("text-right tabular-nums", f.pl.resultado < 0 && "text-destructive")}>
-                      {f.pl.ingresos ? pct((f.pl.resultado / f.pl.ingresos) * 100) : "—"}
+                      {NO_OPERATIVO.has(f.key) || f.pl.ingresos < 1_000_000
+                        ? "—"
+                        : pct((f.pl.resultado / f.pl.ingresos) * 100)}
                     </TableCell>
                   </TableRow>
                 ))}

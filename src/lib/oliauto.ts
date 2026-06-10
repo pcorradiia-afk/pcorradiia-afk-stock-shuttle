@@ -40,30 +40,23 @@ function num(v: unknown): number {
   return isNaN(n) ? 0 : n;
 }
 
-export type Naturaleza = "venta" | "costo" | "gasto";
+export type Naturaleza = "venta" | "costo" | "gasto" | "mixto";
 
 /**
- * Naturaleza de la cuenta según el código de Oliauto (más confiable que la
- * descripción): dentro de cada departamento, el 3.º dígito indica ventas/costos/gastos.
+ * Naturaleza de la cuenta según el código de Oliauto. Las cuentas operativas
+ * (ventas/costos/gastos) quedan fijas; las de "otros ingresos y egresos",
+ * financieras y varias se marcan "mixto" y se resuelven por el signo del saldo.
  */
 export function naturalezaDeCuenta(codigo: string): Naturaleza {
   const c = codigo.trim();
-  // Unidades (51)
-  if (/^51[128]/.test(c)) return "venta"; // 511 0km, 512 usados, 518 corporativas
-  if (/^51[34]/.test(c)) return "costo"; // 513/514 costos
-  if (/^51[567]/.test(c)) return "gasto"; // 515 gastos, 516/517 otros/financieros
-  // Repuestos (52)
-  if (/^521/.test(c)) return "venta";
-  if (/^522/.test(c)) return "costo";
-  if (/^52/.test(c)) return "gasto";
-  // Servicios (53), con sub-depto Esquel (535) por 4.º dígito
-  if (/^531/.test(c)) return "venta";
-  if (/^532/.test(c)) return "costo";
-  if (/^535/.test(c)) return c[3] === "1" ? "venta" : c[3] === "2" ? "costo" : "gasto";
-  if (/^53/.test(c)) return "gasto";
-  // Financieros y varios
-  if (/^561/.test(c) || /^571/.test(c)) return "venta"; // ingresos
-  return "gasto"; // 55 indirectos, 562/572 egresos, 58 otros
+  // Ventas: 0km/usados/corporativas, repuestos, servicios (incl. Esquel 5351)
+  if (/^51[128]/.test(c) || /^521/.test(c) || /^531/.test(c) || /^5351/.test(c)) return "venta";
+  // Costos
+  if (/^51[34]/.test(c) || /^522/.test(c) || /^532/.test(c) || /^5352/.test(c)) return "costo";
+  // Gastos operativos puros (gastos de depto + indirectos)
+  if (/^515/.test(c) || /^523/.test(c) || /^533/.test(c) || /^535/.test(c) || /^55/.test(c)) return "gasto";
+  // 516/517/524/534/56/57/58: otros ing/egr, financieros y varios → por signo
+  return "mixto";
 }
 
 /** 'm/aaaa' o 'm/a.aaa' -> 'YYYY-MM'. Devuelve null si no es un período. */
@@ -135,8 +128,10 @@ export function parseBalanceParcial(aoa: unknown[][], headerRow: number): Balanc
       if (val === 0) continue;
       const cd = porDepto[depto][periodo];
       const tot = totales[periodo];
-      if (nat === "venta") { cd.ingresos += -val; tot.ingresos += -val; }
-      else if (nat === "costo") { cd.costos += val; tot.costos += val; }
+      // En "mixto", un saldo acreedor (negativo) es ingreso; deudor (positivo) es gasto.
+      const efectiva = nat === "mixto" ? (val < 0 ? "venta" : "gasto") : nat;
+      if (efectiva === "venta") { cd.ingresos += -val; tot.ingresos += -val; }
+      else if (efectiva === "costo") { cd.costos += val; tot.costos += val; }
       else { cd.gastos += val; tot.gastos += val; }
       cd.resultado += -val;
       tot.resultado += -val;
