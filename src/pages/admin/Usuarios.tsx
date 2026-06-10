@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { getRol } from "@/auth/permissions";
+import { getRol } from "@/auth/rolesStore";
 import { EMPRESAS, USUARIOS } from "@/data/demo";
 import { PageHeader } from "@/components/ui-kit";
 import { Button } from "@/components/ui/button";

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { ChevronDown, LogOut, Menu, TrendingUp } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
-import { getRol } from "@/auth/permissions";
+import { getRol } from "@/auth/rolesStore";
 import { NAV, NAV_GRUPOS } from "@/auth/nav";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";

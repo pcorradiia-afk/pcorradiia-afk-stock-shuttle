@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, ChevronRight, TrendingUp } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
-import { getRol } from "@/auth/permissions";
+import { getRol } from "@/auth/rolesStore";
 import { USUARIOS } from "@/data/demo";
 import { Card, CardContent } from "@/components/ui/card";
 

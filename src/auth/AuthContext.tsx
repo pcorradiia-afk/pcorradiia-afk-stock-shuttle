@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import type { Empresa, Permiso, Usuario } from "@/types";
 import { EMPRESAS, USUARIOS } from "@/data/demo";
-import { puedeVerEmpresa, tienePermiso } from "./permissions";
+import { puedeVerEmpresa } from "./permissions";
+import { tienePermiso } from "./rolesStore";
 
 const STORAGE_KEY = "fiorasi.session.v1";
 
@@ -40,18 +41,16 @@ function load(): Persisted | null {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [usuario, setUsuario] = useState<Usuario | null>(null);
-  const [seleccion, setSeleccionState] = useState<SeleccionEmpresa>("grupo");
+  // Restauramos la sesión de forma síncrona para que recargar la página
+  // (o entrar por URL directa) no rebote al usuario.
+  const persisted = load();
+  const usuarioInicial =
+    (persisted && USUARIOS.find((x) => x.id === persisted.usuarioId && x.activo)) || null;
 
-  // Restaurar sesión demo.
-  useEffect(() => {
-    const p = load();
-    if (p) {
-      const u = USUARIOS.find((x) => x.id === p.usuarioId && x.activo) ?? null;
-      setUsuario(u);
-      if (u) setSeleccionState(p.seleccion);
-    }
-  }, []);
+  const [usuario, setUsuario] = useState<Usuario | null>(usuarioInicial);
+  const [seleccion, setSeleccionState] = useState<SeleccionEmpresa>(
+    usuarioInicial ? persisted!.seleccion : "grupo",
+  );
 
   const empresasVisibles = useMemo(
     () => EMPRESAS.filter((e) => e.activa && puedeVerEmpresa(usuario, e.id)),
