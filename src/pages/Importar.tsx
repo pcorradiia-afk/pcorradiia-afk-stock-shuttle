@@ -1,15 +1,27 @@
-import { CheckCircle2, Database, FileSpreadsheet, UploadCloud } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
+import { Database, FileSpreadsheet, UploadCloud, X } from "lucide-react";
 import { EMPRESAS } from "@/data/demo";
 import { PageHeader } from "@/components/ui-kit";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-
-const PLANTILLAS = [
-  { nombre: "Mayor / Balance de sumas y saldos", desc: "Saldos mensuales por cuenta y departamento.", listo: true },
-  { nombre: "Reporte de ventas de unidades", desc: "0km y usados: unidades, facturación y margen.", listo: true },
-  { nombre: "Cuentas corrientes (antigüedad)", desc: "Deudores por tramo de mora.", listo: true },
-];
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // DMS en uso en el grupo (cada uno exporta con su propio formato).
 const DMS_EN_USO = Array.from(new Set(EMPRESAS.map((e) => e.dms))).map((dms) => ({
@@ -17,31 +29,282 @@ const DMS_EN_USO = Array.from(new Set(EMPRESAS.map((e) => e.dms))).map((dms) => 
   empresas: EMPRESAS.filter((e) => e.dms === dms),
 }));
 
+interface CampoDestino {
+  key: string;
+  label: string;
+  req: boolean;
+  hints: string[];
+}
+
+const REPORTES: Record<string, { label: string; campos: CampoDestino[] }> = {
+  mayor: {
+    label: "Mayor / Balance de sumas y saldos",
+    campos: [
+      { key: "cuenta", label: "Cuenta (código)", req: true, hints: ["cuenta", "codigo", "cod"] },
+      { key: "descripcion", label: "Descripción", req: false, hints: ["descrip", "detalle", "nombre", "concepto"] },
+      { key: "departamento", label: "Departamento / sector", req: false, hints: ["depart", "sector", "centro", "rubro"] },
+      { key: "debe", label: "Debe", req: false, hints: ["debe"] },
+      { key: "haber", label: "Haber", req: false, hints: ["haber"] },
+      { key: "saldo", label: "Saldo", req: true, hints: ["saldo", "resultado", "importe", "monto", "total"] },
+    ],
+  },
+  ventas: {
+    label: "Ventas de unidades",
+    campos: [
+      { key: "fecha", label: "Fecha / período", req: true, hints: ["fecha", "periodo", "mes"] },
+      { key: "tipo", label: "Tipo (0km / usado)", req: false, hints: ["tipo", "condicion", "0km", "usado"] },
+      { key: "marca", label: "Marca", req: false, hints: ["marca"] },
+      { key: "modelo", label: "Modelo", req: false, hints: ["modelo", "vehiculo", "unidad"] },
+      { key: "facturacion", label: "Facturación", req: true, hints: ["factur", "venta", "precio", "importe", "total"] },
+      { key: "costo", label: "Costo", req: false, hints: ["costo", "compra"] },
+      { key: "vendedor", label: "Vendedor", req: false, hints: ["vendedor", "asesor"] },
+    ],
+  },
+  cuentas_corrientes: {
+    label: "Cuentas corrientes (antigüedad)",
+    campos: [
+      { key: "cliente", label: "Cliente", req: true, hints: ["cliente", "razon", "nombre", "cuenta"] },
+      { key: "saldo", label: "Saldo total", req: true, hints: ["saldo", "total", "deuda"] },
+      { key: "alDia", label: "Al día", req: false, hints: ["al dia", "corriente", "vigente"] },
+      { key: "d30", label: "1-30 días", req: false, hints: ["30"] },
+      { key: "d60", label: "31-60 días", req: false, hints: ["60"] },
+      { key: "d90", label: "61-90 días", req: false, hints: ["90"] },
+      { key: "mas90", label: "+90 días", req: false, hints: ["+90", "mas 90", "mayor"] },
+    ],
+  },
+};
+
+const SIN_MAPEAR = "—";
+
+function normalizar(s: unknown): string {
+  return String(s ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim();
+}
+
 export function Importar() {
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState<string>("");
+  const [aoa, setAoa] = useState<unknown[][]>([]);
+  const [headerRow, setHeaderRow] = useState(1); // 1-indexado
+  const [tipo, setTipo] = useState<string>("mayor");
+  const [mapping, setMapping] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string>("");
+
+  const headers = useMemo<string[]>(() => {
+    const row = aoa[headerRow - 1] ?? [];
+    return row.map((c, i) => (String(c ?? "").trim() || `Columna ${i + 1}`));
+  }, [aoa, headerRow]);
+
+  const dataRows = useMemo(() => aoa.slice(headerRow), [aoa, headerRow]);
+
+  function autoMapear(hs: string[], tipoSel: string): Record<string, string> {
+    const campos = REPORTES[tipoSel].campos;
+    const next: Record<string, string> = {};
+    for (const campo of campos) {
+      const found = hs.find((h) => campo.hints.some((hint) => normalizar(h).includes(normalizar(hint))));
+      next[campo.key] = found ?? SIN_MAPEAR;
+    }
+    return next;
+  }
+
+  async function onFile(file: File) {
+    setError("");
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, blankrows: false, defval: "" });
+      setFileName(file.name);
+      setAoa(rows);
+      setHeaderRow(1);
+      const hs = (rows[0] ?? []).map((c, i) => String(c ?? "").trim() || `Columna ${i + 1}`);
+      setMapping(autoMapear(hs, tipo));
+    } catch {
+      setError("No pude leer el archivo. Verificá que sea un Excel (.xlsx) o CSV válido.");
+    }
+  }
+
+  function cambiarHeaderRow(n: number) {
+    setHeaderRow(n);
+    const row = aoa[n - 1] ?? [];
+    const hs = row.map((c, i) => String(c ?? "").trim() || `Columna ${i + 1}`);
+    setMapping(autoMapear(hs, tipo));
+  }
+
+  function cambiarTipo(t: string) {
+    setTipo(t);
+    setMapping(autoMapear(headers, t));
+  }
+
+  function limpiar() {
+    setFileName("");
+    setAoa([]);
+    setMapping({});
+    setError("");
+    if (fileInput.current) fileInput.current.value = "";
+  }
+
+  const campos = REPORTES[tipo].campos;
+  const faltanReq = campos.filter((c) => c.req && (!mapping[c.key] || mapping[c.key] === SIN_MAPEAR));
+  const hayArchivo = aoa.length > 0;
+
   return (
     <div>
       <PageHeader
         title="Importar del DMS"
-        description="Cargá los reportes Excel exportados del DMS. El sistema mapea columnas, valida y consolida."
+        description="Cargá un reporte Excel/CSV del DMS. Detecto las columnas y las mapeo a los campos del sistema."
       />
 
-      <Card className="border-dashed">
-        <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary">
-            <UploadCloud className="h-7 w-7" />
-          </div>
-          <div>
-            <div className="font-semibold">Arrastrá un Excel del DMS o seleccionalo</div>
-            <div className="text-sm text-muted-foreground">Formatos .xlsx y .csv</div>
-          </div>
-          <Button disabled>
-            <FileSpreadsheet className="mr-1.5 h-4 w-4" />
-            Seleccionar archivo
-          </Button>
-          <Badge variant="secondary" className="mt-1">Disponible en la Fase 2</Badge>
-        </CardContent>
-      </Card>
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".xlsx,.xls,.csv"
+        className="hidden"
+        onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
+      />
 
+      {!hayArchivo ? (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+            <div className="grid h-14 w-14 place-items-center rounded-2xl bg-primary/10 text-primary">
+              <UploadCloud className="h-7 w-7" />
+            </div>
+            <div>
+              <div className="font-semibold">Seleccioná un Excel del DMS</div>
+              <div className="text-sm text-muted-foreground">Formatos .xlsx, .xls y .csv</div>
+            </div>
+            <Button onClick={() => fileInput.current?.click()}>
+              <FileSpreadsheet className="mr-1.5 h-4 w-4" />
+              Seleccionar archivo
+            </Button>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {/* Configuración */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">
+                <FileSpreadsheet className="mr-1.5 inline h-4 w-4 text-primary" />
+                {fileName}
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={limpiar}>
+                <X className="mr-1 h-4 w-4" /> Quitar
+              </Button>
+            </CardHeader>
+            <CardContent className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label>Tipo de reporte</Label>
+                <Select value={tipo} onValueChange={cambiarTipo}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(REPORTES).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>{v.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Fila de encabezados</Label>
+                <Select value={String(headerRow)} onValueChange={(v) => cambiarHeaderRow(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: Math.min(aoa.length, 12) }, (_, i) => i + 1).map((n) => (
+                      <SelectItem key={n} value={String(n)}>Fila {n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Mapeo de columnas */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Mapeo de columnas</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              {campos.map((c) => (
+                <div key={c.key} className="space-y-1.5">
+                  <Label className="flex items-center gap-1">
+                    {c.label}
+                    {c.req && <span className="text-destructive">*</span>}
+                  </Label>
+                  <Select
+                    value={mapping[c.key] ?? SIN_MAPEAR}
+                    onValueChange={(v) => setMapping((m) => ({ ...m, [c.key]: v }))}
+                  >
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={SIN_MAPEAR}>— sin mapear —</SelectItem>
+                      {headers.map((h, i) => (
+                        <SelectItem key={`${h}-${i}`} value={h}>{h}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Vista previa */}
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-base">Vista previa</CardTitle>
+              <Badge variant="secondary">{dataRows.length} fila(s)</Badge>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      {headers.map((h, i) => (
+                        <TableHead key={i} className="whitespace-nowrap">{h}</TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {dataRows.slice(0, 8).map((row, ri) => (
+                      <TableRow key={ri}>
+                        {headers.map((_, ci) => (
+                          <TableCell key={ci} className="whitespace-nowrap text-sm">
+                            {String((row as unknown[])[ci] ?? "")}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Acción */}
+          <Card>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
+              <div className="text-sm">
+                {faltanReq.length > 0 ? (
+                  <span className="text-destructive">
+                    Falta mapear: {faltanReq.map((c) => c.label).join(", ")}
+                  </span>
+                ) : (
+                  <span className="text-emerald-600">Mapeo completo ✓ listo para importar.</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">La carga a la base llega en la Fase 2</Badge>
+                <Button disabled={faltanReq.length > 0 || true}>Confirmar e importar</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* DMS del grupo */}
       <Card className="mt-4">
         <CardHeader>
           <CardTitle className="text-base">DMS del grupo</CardTitle>
@@ -60,30 +323,8 @@ export function Importar() {
             </div>
           ))}
           <p className="text-sm text-muted-foreground sm:col-span-2">
-            Cada DMS exporta con un formato distinto, así que vamos a armar un{" "}
-            <strong>mapeo de columnas por DMS</strong> (uno para Oliauto y otro para Autologica)
-            y se aplica automáticamente según la empresa.
-          </p>
-        </CardContent>
-      </Card>
-
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle className="text-base">Plantillas previstas</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {PLANTILLAS.map((p) => (
-            <div key={p.nombre} className="flex items-center gap-3 rounded-lg border p-3">
-              <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-medium">{p.nombre}</div>
-                <div className="text-xs text-muted-foreground">{p.desc}</div>
-              </div>
-              <Badge variant="outline">Mapeo configurable</Badge>
-            </div>
-          ))}
-          <p className="pt-2 text-sm text-muted-foreground">
-            En cuanto me pases un Excel de muestra del DMS, ajusto el mapeo de columnas exacto a tus reportes.
+            Una vez definido el mapeo de cada DMS (Oliauto y Autologica), se guarda como{" "}
+            <strong>plantilla</strong> y se aplica automáticamente según la empresa.
           </p>
         </CardContent>
       </Card>
