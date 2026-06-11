@@ -146,6 +146,52 @@ export function pareceBalanceParcial(header: unknown[]): boolean {
   return header.filter((h) => parsePeriodo(String(h))).length >= 2;
 }
 
+// ============ Detección de empresa por contenido ============
+
+export interface EmpresaHint {
+  id: string;
+  nombre: string;
+  marcas: string[];
+}
+
+export interface DeteccionEmpresa {
+  empresaId: string | null;
+  confianza: "alta" | "media" | "baja";
+}
+
+/**
+ * Intenta identificar a qué empresa pertenece un reporte, buscando en el texto
+ * del archivo las marcas (Ford, Volkswagen, …) y tokens del nombre (Fiorasi,
+ * Corradi, Sapac). Es orientativo: el usuario siempre puede corregirlo.
+ */
+export function detectarEmpresa(aoa: unknown[][], empresas: EmpresaHint[]): DeteccionEmpresa {
+  const texto = aoa
+    .slice(0, 500)
+    .map((r) => (Array.isArray(r) ? r.join(" ") : ""))
+    .join(" ")
+    .toUpperCase();
+
+  const score: Record<string, number> = {};
+  for (const e of empresas) {
+    let s = 0;
+    for (const m of e.marcas) {
+      if (m && texto.includes(m.toUpperCase())) s += 1;
+    }
+    for (const tok of e.nombre.toUpperCase().split(/\s+/)) {
+      if (tok.length >= 5 && texto.includes(tok)) s += 2; // FIORASI, CORRADI, MOTORS…
+    }
+    score[e.id] = s;
+  }
+
+  const orden = Object.entries(score).sort((a, b) => b[1] - a[1]);
+  if (orden.length === 0 || orden[0][1] === 0) return { empresaId: null, confianza: "baja" };
+
+  const [mejorId, mejor] = orden[0];
+  const segundo = orden[1]?.[1] ?? 0;
+  const confianza = mejor >= segundo + 2 ? "alta" : "media";
+  return { empresaId: mejorId, confianza };
+}
+
 // ============ Composición de saldos / Cuentas corrientes (antigüedad) ============
 
 export interface AgingBuckets {

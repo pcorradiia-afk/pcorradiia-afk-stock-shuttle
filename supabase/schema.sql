@@ -21,14 +21,21 @@ create table if not exists public.empresas (
   activa       boolean not null default true
 );
 
--- Semilla con las empresas reales del grupo (upsert: no pisa si ya existen).
+-- Semilla con las empresas reales del grupo. Al re-ejecutar, actualiza los datos
+-- editables (nombre, provincia, marcas, dms) sin perder las importaciones.
 insert into public.empresas (id, nombre, razon_social, cuit, provincia, marcas, dms, consolida, activa) values
-  ('e1', 'Pedro Corradi',                  'Pedro Corradi',                  '33-52033241-9', 'Santa Fe', array['Ford'],            'Oliauto',    true, true),
-  ('e2', 'Automotores Fiorasi y Corradi',  'Automotores Fiorasi y Corradi',  '30-67052859-2', 'Santa Fe', array['Volkswagen'],      'Oliauto',    true, true),
-  ('e3', 'Fiorasi',                        'Fiorasi S.A.',                   '30-53563811-6', 'Santa Fe', array['Iveco','Fiat'],    'Oliauto',    true, true),
-  ('e4', 'Fiorasi Motors',                 'Fiorasi Motors',                 '30-69104466-8', 'Santa Fe', array['Jeep','Ram'],      'Oliauto',    true, true),
-  ('e5', 'Sapac',                          'Sapac',                          '30-59970938-6', 'Santa Fe', array['Ford'],            'Autologica', true, true)
-on conflict (id) do nothing;
+  ('e1', 'Pedro Corradi',                  'Pedro Corradi',                  '33-52033241-9', 'Chubut',  array['Ford'],            'Oliauto',    true, true),
+  ('e2', 'Automotores Fiorasi y Corradi',  'Automotores Fiorasi y Corradi',  '30-67052859-2', 'Chubut',  array['Volkswagen'],      'Oliauto',    true, true),
+  ('e3', 'Fiorasi',                        'Fiorasi S.A.',                   '30-53563811-6', 'Chubut',  array['Iveco','Fiat'],    'Oliauto',    true, true),
+  ('e4', 'Fiorasi Motors',                 'Fiorasi Motors',                 '30-69104466-8', 'Chubut',  array['Jeep','Ram'],      'Oliauto',    true, true),
+  ('e5', 'Sapac',                          'Sapac',                          '30-59970938-6', 'Neuquén', array['Ford'],            'Autologica', true, true)
+on conflict (id) do update set
+  nombre       = excluded.nombre,
+  razon_social = excluded.razon_social,
+  cuit         = excluded.cuit,
+  provincia    = excluded.provincia,
+  marcas       = excluded.marcas,
+  dms          = excluded.dms;
 
 -- ---------------------------------------------------------------------------
 -- Importaciones: cada carga de un reporte del DMS, con su análisis ya calculado.

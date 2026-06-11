@@ -25,11 +25,11 @@ export const DEPARTAMENTOS: Departamento[] = [
 // Empresas reales del Grupo Fiorasi (CUIT, marcas y DMS según planilla del grupo).
 // Localidad/provincia quedan por completar desde la administración.
 export const EMPRESAS: Empresa[] = [
-  { id: "e1", nombre: "Pedro Corradi", razonSocial: "Pedro Corradi", cuit: "33-52033241-9", localidad: "", provincia: "Santa Fe", marcas: ["Ford"], dms: "Oliauto", sitio: "https://www.pedrocorradi.com.ar/", consolida: true, activa: true },
-  { id: "e2", nombre: "Automotores Fiorasi y Corradi", razonSocial: "Automotores Fiorasi y Corradi", cuit: "30-67052859-2", localidad: "", provincia: "Santa Fe", marcas: ["Volkswagen"], dms: "Oliauto", sitio: "https://www.fiorasiycorradi.com.ar/", consolida: true, activa: true },
-  { id: "e3", nombre: "Fiorasi", razonSocial: "Fiorasi S.A.", cuit: "30-53563811-6", localidad: "", provincia: "Santa Fe", marcas: ["Iveco", "Fiat"], dms: "Oliauto", sitio: "https://fiat.fiorasisa.com.ar/", consolida: true, activa: true },
-  { id: "e4", nombre: "Fiorasi Motors", razonSocial: "Fiorasi Motors", cuit: "30-69104466-8", localidad: "", provincia: "Santa Fe", marcas: ["Jeep", "Ram"], dms: "Oliauto", sitio: "https://www.fiorasimotors.com.ar/", consolida: true, activa: true },
-  { id: "e5", nombre: "Sapac", razonSocial: "Sapac", cuit: "30-59970938-6", localidad: "", provincia: "Santa Fe", marcas: ["Ford"], dms: "Autologica", sitio: "https://www.fiorasiford.com.ar/", consolida: true, activa: true },
+  { id: "e1", nombre: "Pedro Corradi", razonSocial: "Pedro Corradi", cuit: "33-52033241-9", localidad: "", provincia: "Chubut", marcas: ["Ford"], dms: "Oliauto", sitio: "https://www.pedrocorradi.com.ar/", consolida: true, activa: true },
+  { id: "e2", nombre: "Automotores Fiorasi y Corradi", razonSocial: "Automotores Fiorasi y Corradi", cuit: "30-67052859-2", localidad: "", provincia: "Chubut", marcas: ["Volkswagen"], dms: "Oliauto", sitio: "https://www.fiorasiycorradi.com.ar/", consolida: true, activa: true },
+  { id: "e3", nombre: "Fiorasi", razonSocial: "Fiorasi S.A.", cuit: "30-53563811-6", localidad: "", provincia: "Chubut", marcas: ["Iveco", "Fiat"], dms: "Oliauto", sitio: "https://fiat.fiorasisa.com.ar/", consolida: true, activa: true },
+  { id: "e4", nombre: "Fiorasi Motors", razonSocial: "Fiorasi Motors", cuit: "30-69104466-8", localidad: "", provincia: "Chubut", marcas: ["Jeep", "Ram"], dms: "Oliauto", sitio: "https://www.fiorasimotors.com.ar/", consolida: true, activa: true },
+  { id: "e5", nombre: "Sapac", razonSocial: "Sapac", cuit: "30-59970938-6", localidad: "", provincia: "Neuquén", marcas: ["Ford"], dms: "Autologica", sitio: "https://www.fiorasiford.com.ar/", consolida: true, activa: true },
 ];
 
 export const SUCURSALES: Sucursal[] = [
