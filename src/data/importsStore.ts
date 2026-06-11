@@ -111,5 +111,27 @@ export async function borrarImportacion(id: string): Promise<void> {
   if (sb) await sb.from("importaciones").delete().eq("id", id);
 }
 
+/**
+ * Trae las importaciones de la nube y las fusiona en el cache local (la nube
+ * gana ante un mismo id). Así aparecen las cargas del robot o de otros equipos.
+ * No hace nada si Supabase no está configurado.
+ */
+export async function sincronizarDesdeNube(empresaIds?: string[]): Promise<void> {
+  const sb = getSupabase();
+  if (!sb) return;
+
+  let query = sb.from("importaciones").select("*").order("creado_el", { ascending: false });
+  if (empresaIds && empresaIds.length > 0) query = query.in("empresa_id", empresaIds);
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+
+  const nube = (data ?? []) as Importacion[];
+  const porId = new Map<string, Importacion>();
+  for (const i of leerLocal()) porId.set(i.id, i);
+  for (const i of nube) porId.set(i.id, i); // la nube pisa
+  escribirLocal([...porId.values()]);
+}
+
 export { isSupabaseConfigured };
 

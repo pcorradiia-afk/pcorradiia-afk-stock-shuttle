@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { useSyncExternalStore } from "react";
 import {
   listarImportacionesLocal,
+  sincronizarDesdeNube,
   suscribirImportaciones,
   type Importacion,
 } from "./importsStore";
@@ -16,11 +18,22 @@ function snapshot(empresaIds?: string[]): Importacion[] {
   return lista;
 }
 
-/** Lista reactiva de importaciones guardadas (filtrada por empresas visibles). */
+/** Lista reactiva de importaciones guardadas (local + nube si está configurada). */
 export function useImportaciones(empresaIds?: string[]): Importacion[] {
-  return useSyncExternalStore(
+  const lista = useSyncExternalStore(
     suscribirImportaciones,
     () => snapshot(empresaIds),
     () => [],
   );
+
+  // Al montar (o cambiar el filtro), traemos lo que haya en la nube.
+  const dep = empresaIds?.join(",") ?? "";
+  useEffect(() => {
+    sincronizarDesdeNube(empresaIds).catch(() => {
+      // Silencioso: si falla la nube, seguimos con lo local.
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dep]);
+
+  return lista;
 }

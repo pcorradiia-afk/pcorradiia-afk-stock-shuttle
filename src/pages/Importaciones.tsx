@@ -82,13 +82,17 @@ export function Importaciones() {
         }
       />
 
-      {!isSupabaseConfigured() && importaciones.length > 0 && (
-        <p className="mb-3 text-sm text-muted-foreground">
-          <Database className="mr-1 inline h-3.5 w-3.5" />
-          Guardadas en este dispositivo. Configurá Supabase (ver <code>SUPABASE_SETUP.md</code>) para
-          compartirlas entre usuarios.
-        </p>
-      )}
+      <p className="mb-3 text-sm text-muted-foreground">
+        <Database className="mr-1 inline h-3.5 w-3.5" />
+        {isSupabaseConfigured() ? (
+          <>Sincronizado con la nube: visible para todos los usuarios y para las cargas del robot.</>
+        ) : (
+          <>
+            Guardadas en este dispositivo. Configurá Supabase (ver <code>SUPABASE_SETUP.md</code>) para
+            compartirlas entre usuarios.
+          </>
+        )}
+      </p>
 
       {importaciones.length === 0 ? (
         <Card className="border-dashed">
