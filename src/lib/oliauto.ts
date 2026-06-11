@@ -253,3 +253,108 @@ export function parseComposicionSaldos(aoa: unknown[][], headerRow: number): Com
     topDeudores: top.slice(0, 10),
   };
 }
+
+// ============ Balance general / Sumas y saldos ============
+
+export interface RubroBG {
+  codigo: string;
+  nombre: string;
+  saldo: number; // en signo de presentación (siempre positivo)
+}
+
+export interface BalanceGeneral {
+  activo: number;
+  activoCorriente: number;
+  activoNoCorriente: number;
+  pasivo: number;
+  pasivoCorriente: number;
+  pasivoNoCorriente: number;
+  patrimonioNeto: number;
+  resultadoEjercicio: number; // ganancia en positivo (clase 5 invertida)
+  rubrosActivo: RubroBG[];
+  rubrosPasivo: RubroBG[];
+  rubrosPN: RubroBG[];
+  // Indicadores
+  liquidezCorriente: number;
+  capitalTrabajo: number;
+  endeudamiento: number; // pasivo / patrimonio neto
+  solvencia: number; // activo / pasivo
+  // Diferencia de cuadre (Activo − (Pasivo + PN + Resultado)); idealmente ~0.
+  descuadre: number;
+  cuentasProcesadas: number;
+}
+
+/** ¿Parece un balance de sumas y saldos? (Código + Descripción + Saldo, sin columnas mensuales) */
+export function pareceBalanceGeneral(header: unknown[]): boolean {
+  const h = header.map((x) => String(x).trim().toLowerCase());
+  const tieneSaldo = h.some((x) => x === "saldo" || x === "importe");
+  const tieneCodigo = h.some((x) => x.startsWith("codigo") || x.startsWith("código") || x === "cuenta");
+  const tieneDescrip = h.some((x) => x.startsWith("descrip") || x === "detalle");
+  return tieneSaldo && tieneCodigo && tieneDescrip && !pareceBalanceParcial(header);
+}
+
+/**
+ * Procesa un balance de sumas y saldos de Oliauto (plan de cuentas jerárquico:
+ * 1 Activo · 2 Pasivo · 3 Patrimonio neto · 5 Resultados). El saldo deudor es
+ * positivo y el acreedor negativo, por eso pasivo, PN y resultado se invierten.
+ */
+export function parseBalanceGeneral(aoa: unknown[][], headerRow: number): BalanceGeneral {
+  const header = (aoa[headerRow - 1] ?? []) as unknown[];
+  const iCod = header.findIndex((h) => /cod|cuenta/i.test(String(h)));
+  const iNom = header.findIndex((h) => /descrip|nombre|detalle/i.test(String(h)));
+  const iSal = header.findIndex((h) => /saldo|importe/i.test(String(h)));
+  const cCod = iCod >= 0 ? iCod : 0;
+  const cNom = iNom >= 0 ? iNom : 1;
+  const cSal = iSal >= 0 ? iSal : 2;
+
+  const saldoDe: Record<string, number> = {};
+  const rubrosActivo: RubroBG[] = [];
+  const rubrosPasivo: RubroBG[] = [];
+  const rubrosPN: RubroBG[] = [];
+  let cuentasProcesadas = 0;
+
+  for (let r = headerRow; r < aoa.length; r++) {
+    const row = aoa[r] as unknown[];
+    const codigo = String(row?.[cCod] ?? "").trim();
+    if (!/^[0-9]+$/.test(codigo)) continue;
+    const saldo = num(row?.[cSal]);
+    saldoDe[codigo] = saldo;
+    cuentasProcesadas++;
+    if (codigo.length === 2) {
+      const nombre = String(row?.[cNom] ?? "").trim();
+      if (codigo[0] === "1") rubrosActivo.push({ codigo, nombre, saldo });
+      else if (codigo[0] === "2") rubrosPasivo.push({ codigo, nombre, saldo: -saldo });
+      else if (codigo[0] === "3") rubrosPN.push({ codigo, nombre, saldo: -saldo });
+    }
+  }
+
+  const S = (c: string) => saldoDe[c] ?? 0;
+  const activo = S("1");
+  const activoCorriente = S("11");
+  const activoNoCorriente = S("12") + S("13");
+  const pasivo = -S("2");
+  const pasivoCorriente = -S("21");
+  const pasivoNoCorriente = -S("22");
+  const patrimonioNeto = -S("3");
+  const resultadoEjercicio = -S("5");
+
+  return {
+    activo,
+    activoCorriente,
+    activoNoCorriente,
+    pasivo,
+    pasivoCorriente,
+    pasivoNoCorriente,
+    patrimonioNeto,
+    resultadoEjercicio,
+    rubrosActivo,
+    rubrosPasivo,
+    rubrosPN,
+    liquidezCorriente: pasivoCorriente ? activoCorriente / pasivoCorriente : 0,
+    capitalTrabajo: activoCorriente - pasivoCorriente,
+    endeudamiento: patrimonioNeto ? pasivo / patrimonioNeto : 0,
+    solvencia: pasivo ? activo / pasivo : 0,
+    descuadre: activo - (pasivo + patrimonioNeto + resultadoEjercicio),
+    cuentasProcesadas,
+  };
+}

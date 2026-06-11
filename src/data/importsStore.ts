@@ -1,12 +1,14 @@
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import {
+  parseBalanceGeneral,
   parseBalanceParcial,
   parseComposicionSaldos,
+  type BalanceGeneral,
   type BalanceParcial,
   type Composicion,
 } from "@/lib/oliauto";
 
-export type TipoImportacion = "balance_parcial" | "composicion";
+export type TipoImportacion = "balance_parcial" | "composicion" | "balance_general";
 
 export interface Importacion {
   id: string;
@@ -16,7 +18,7 @@ export interface Importacion {
   corte: string | null;
   archivo: string;
   resumen: Record<string, unknown>;
-  payload: BalanceParcial | Composicion;
+  payload: BalanceParcial | Composicion | BalanceGeneral;
   creado_por: string | null;
   creado_el: string;
 }
@@ -65,6 +67,23 @@ function desdeComposicion(aoa: unknown[][], headerRow: number) {
   };
 }
 
+/** Calcula el payload + resumen de un balance general para persistir. */
+function desdeBalanceGeneral(aoa: unknown[][], headerRow: number) {
+  const payload = parseBalanceGeneral(aoa, headerRow);
+  return {
+    periodo: null as string | null,
+    corte: null as string | null,
+    payload,
+    resumen: {
+      activo: payload.activo,
+      pasivo: payload.pasivo,
+      patrimonioNeto: payload.patrimonioNeto,
+      resultado: payload.resultadoEjercicio,
+      liquidez: payload.liquidezCorriente,
+    },
+  };
+}
+
 /** Persiste una importación en Supabase. Devuelve la fila creada. */
 export async function guardarImportacion(args: GuardarArgs): Promise<Importacion> {
   const sb = getSupabase();
@@ -73,7 +92,9 @@ export async function guardarImportacion(args: GuardarArgs): Promise<Importacion
   const calc =
     args.tipo === "balance_parcial"
       ? desdeBalance(args.aoa, args.headerRow)
-      : desdeComposicion(args.aoa, args.headerRow);
+      : args.tipo === "composicion"
+        ? desdeComposicion(args.aoa, args.headerRow)
+        : desdeBalanceGeneral(args.aoa, args.headerRow);
 
   const fila = {
     empresa_id: args.empresaId,
