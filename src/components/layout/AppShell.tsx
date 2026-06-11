@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { ChevronDown, LogOut, Menu, TrendingUp } from "lucide-react";
+import { ChevronDown, LogOut, Menu } from "lucide-react";
+import { Logo, FIORASI_NAVY } from "@/components/Logo";
 import { useAuth } from "@/auth/AuthContext";
 import { getRol } from "@/auth/rolesStore";
 import { NAV, NAV_GRUPOS } from "@/auth/nav";
@@ -19,14 +20,9 @@ import { CompanySelector } from "./CompanySelector";
 
 function Brand() {
   return (
-    <div className="flex items-center gap-2 px-2">
-      <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary text-primary-foreground">
-        <TrendingUp className="h-5 w-5" />
-      </div>
-      <div className="leading-tight">
-        <div className="text-sm font-bold tracking-tight">Grupo Fiorasi</div>
-        <div className="text-[11px] text-muted-foreground">Control &amp; Gestión</div>
-      </div>
+    <div className="px-2 leading-tight">
+      <Logo className="text-xl" style={{ color: FIORASI_NAVY }} />
+      <div className="mt-0.5 text-[11px] tracking-wide text-muted-foreground">Control &amp; Gestión</div>
     </div>
   );
 }

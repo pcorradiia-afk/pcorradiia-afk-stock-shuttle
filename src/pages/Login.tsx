@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, ChevronRight, TrendingUp } from "lucide-react";
+import { Building2, ChevronRight } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { getRol } from "@/auth/rolesStore";
 import { USUARIOS } from "@/data/demo";
+import { Logo, FIORASI_NAVY } from "@/components/Logo";
 import { Card, CardContent } from "@/components/ui/card";
 
 export function Login() {
@@ -18,14 +19,9 @@ export function Login() {
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Panel izquierdo (branding) */}
       <div className="relative hidden flex-col justify-between bg-primary p-10 text-primary-foreground lg:flex">
-        <div className="flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-xl bg-white/15">
-            <TrendingUp className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="text-lg font-bold">Grupo Fiorasi</div>
-            <div className="text-sm text-primary-foreground/80">Control · Auditoría · Gestión</div>
-          </div>
+        <div>
+          <Logo className="text-3xl text-white" />
+          <div className="mt-1 text-sm text-primary-foreground/80">Control · Auditoría · Gestión</div>
         </div>
         <div className="space-y-4">
           <h2 className="text-3xl font-bold leading-tight">
@@ -44,11 +40,8 @@ export function Login() {
       {/* Panel derecho (selección de perfil) */}
       <div className="flex items-center justify-center bg-muted/30 p-6">
         <div className="w-full max-w-md">
-          <div className="mb-6 flex items-center gap-3 lg:hidden">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-primary text-primary-foreground">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-            <div className="font-bold">Grupo Fiorasi</div>
+          <div className="mb-6 lg:hidden">
+            <Logo className="text-2xl" style={{ color: FIORASI_NAVY }} />
           </div>
 
           <h1 className="text-xl font-bold">Ingresar al sistema</h1>
