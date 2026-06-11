@@ -103,11 +103,52 @@ function desdeMayor(aoa: unknown[][], headerRow: number) {
   };
 }
 
-/** Persiste una importación en Supabase. Devuelve la fila creada. */
-export async function guardarImportacion(args: GuardarArgs): Promise<Importacion> {
-  const sb = getSupabase();
-  if (!sb) throw new Error("Supabase no está configurado.");
+// ---------------------------------------------------------------------------
+// Almacenamiento local-first: guardamos siempre en el navegador y, si Supabase
+// está configurado, sincronizamos a la nube. Así la persistencia funciona ya,
+// sin esperar las credenciales.
+// ---------------------------------------------------------------------------
+const LOCAL_KEY = "fiorasi.importaciones.v1";
+const EVENTO = "fiorasi:importaciones";
 
+function leerLocal(): Importacion[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_KEY);
+    return raw ? (JSON.parse(raw) as Importacion[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function escribirLocal(lista: Importacion[]) {
+  localStorage.setItem(LOCAL_KEY, JSON.stringify(lista));
+  window.dispatchEvent(new Event(EVENTO));
+}
+
+/** Suscribe a cambios en la lista local (alta/baja). Devuelve la función para desuscribir. */
+export function suscribirImportaciones(cb: () => void): () => void {
+  window.addEventListener(EVENTO, cb);
+  window.addEventListener("storage", cb);
+  return () => {
+    window.removeEventListener(EVENTO, cb);
+    window.removeEventListener("storage", cb);
+  };
+}
+
+/** Lee la lista local, opcionalmente filtrada por empresas, ordenada por fecha desc. */
+export function listarImportacionesLocal(empresaIds?: string[]): Importacion[] {
+  const lista = leerLocal();
+  const filtrada = empresaIds && empresaIds.length > 0
+    ? lista.filter((i) => empresaIds.includes(i.empresa_id))
+    : lista;
+  return [...filtrada].sort((a, b) => (a.creado_el < b.creado_el ? 1 : -1));
+}
+
+/**
+ * Persiste una importación: siempre en el navegador y, si hay Supabase, también
+ * en la nube. Devuelve la fila creada.
+ */
+export async function guardarImportacion(args: GuardarArgs): Promise<Importacion> {
   const calc =
     args.tipo === "balance_parcial"
       ? desdeBalance(args.aoa, args.headerRow)
@@ -117,7 +158,8 @@ export async function guardarImportacion(args: GuardarArgs): Promise<Importacion
           ? desdeBalanceGeneral(args.aoa, args.headerRow)
           : desdeMayor(args.aoa, args.headerRow);
 
-  const fila = {
+  const fila: Importacion = {
+    id: crypto.randomUUID(),
     empresa_id: args.empresaId,
     tipo: args.tipo,
     periodo: calc.periodo,
@@ -126,32 +168,29 @@ export async function guardarImportacion(args: GuardarArgs): Promise<Importacion
     resumen: calc.resumen,
     payload: calc.payload,
     creado_por: args.creadoPor ?? null,
+    creado_el: new Date().toISOString(),
   };
 
-  const { data, error } = await sb.from("importaciones").insert(fila).select().single();
-  if (error) throw new Error(error.message);
-  return data as Importacion;
-}
+  // Local-first: guardamos primero en el navegador.
+  escribirLocal([fila, ...leerLocal()]);
 
-/** Lista importaciones, opcionalmente filtradas por empresas visibles. */
-export async function listarImportaciones(empresaIds?: string[]): Promise<Importacion[]> {
+  // Sincronización con la nube (best-effort).
   const sb = getSupabase();
-  if (!sb) return [];
-
-  let query = sb.from("importaciones").select("*").order("creado_el", { ascending: false });
-  if (empresaIds && empresaIds.length > 0) query = query.in("empresa_id", empresaIds);
-
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-  return (data ?? []) as Importacion[];
+  if (sb) {
+    const { error } = await sb.from("importaciones").insert(fila);
+    if (error) {
+      throw new Error(`Guardado en este dispositivo, pero falló la sincronización con la nube: ${error.message}`);
+    }
+  }
+  return fila;
 }
 
-/** Elimina una importación por id. */
+/** Elimina una importación por id (local y, si corresponde, en la nube). */
 export async function borrarImportacion(id: string): Promise<void> {
+  escribirLocal(leerLocal().filter((i) => i.id !== id));
   const sb = getSupabase();
-  if (!sb) throw new Error("Supabase no está configurado.");
-  const { error } = await sb.from("importaciones").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  if (sb) await sb.from("importaciones").delete().eq("id", id);
 }
 
 export { isSupabaseConfigured };
+

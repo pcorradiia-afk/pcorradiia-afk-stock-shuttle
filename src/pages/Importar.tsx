@@ -134,12 +134,12 @@ function BarraGuardar({
           </Select>
         </div>
         <div className="flex items-center gap-2">
-          {!configurado && (
-            <Badge variant="secondary">Configurá Supabase para guardar (ver SUPABASE_SETUP.md)</Badge>
-          )}
-          <Button onClick={guardar} disabled={!configurado || !empresaId || guardando}>
+          <Badge variant="secondary">
+            {configurado ? "Se sincroniza con la nube" : "Se guarda en este dispositivo"}
+          </Badge>
+          <Button onClick={guardar} disabled={!empresaId || guardando}>
             {guardando ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
-            Guardar en la base
+            Guardar
           </Button>
         </div>
       </CardContent>

@@ -1,5 +1,6 @@
 import {
   Building2,
+  Database,
   LayoutDashboard,
   LineChart,
   ListChecks,
@@ -27,6 +28,7 @@ export const NAV: NavItem[] = [
   { to: "/cuentas-corrientes", label: "Cuentas corrientes", icon: Wallet, permiso: PERMISOS.CC_VER, grupo: "Gestión" },
   { to: "/auditoria", label: "Auditoría y hallazgos", icon: ShieldCheck, permiso: PERMISOS.AUDITORIA_VER, grupo: "Auditoría" },
   { to: "/importar", label: "Importar del DMS", icon: Upload, permiso: PERMISOS.IMPORTAR_EJECUTAR, grupo: "Datos" },
+  { to: "/importaciones", label: "Importaciones guardadas", icon: Database, permiso: PERMISOS.IMPORTAR_EJECUTAR, grupo: "Datos" },
   { to: "/admin/empresas", label: "Empresas", icon: Building2, permiso: PERMISOS.ADMIN_EMPRESAS, grupo: "Administración" },
   { to: "/admin/usuarios", label: "Usuarios", icon: Users, permiso: PERMISOS.ADMIN_USUARIOS, grupo: "Administración" },
   { to: "/admin/roles", label: "Roles y permisos", icon: ShieldCheck, permiso: PERMISOS.ADMIN_ROLES, grupo: "Administración" },

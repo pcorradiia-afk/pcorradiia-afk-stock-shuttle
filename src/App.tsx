@@ -12,6 +12,7 @@ import { Comercial } from "@/pages/Comercial";
 import { CuentasCorrientes } from "@/pages/CuentasCorrientes";
 import { Auditoria } from "@/pages/Auditoria";
 import { Importar } from "@/pages/Importar";
+import { Importaciones } from "@/pages/Importaciones";
 import { Empresas } from "@/pages/admin/Empresas";
 import { Usuarios } from "@/pages/admin/Usuarios";
 import { Roles } from "@/pages/admin/Roles";
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/cuentas-corrientes" element={<Page permiso={PERMISOS.CC_VER}><CuentasCorrientes /></Page>} />
           <Route path="/auditoria" element={<Page permiso={PERMISOS.AUDITORIA_VER}><Auditoria /></Page>} />
           <Route path="/importar" element={<Page permiso={PERMISOS.IMPORTAR_EJECUTAR}><Importar /></Page>} />
+          <Route path="/importaciones" element={<Page permiso={PERMISOS.IMPORTAR_EJECUTAR}><Importaciones /></Page>} />
           <Route path="/admin/empresas" element={<Page permiso={PERMISOS.ADMIN_EMPRESAS}><Empresas /></Page>} />
           <Route path="/admin/usuarios" element={<Page permiso={PERMISOS.ADMIN_USUARIOS}><Usuarios /></Page>} />
           <Route path="/admin/roles" element={<Page permiso={PERMISOS.ADMIN_ROLES}><Roles /></Page>} />
