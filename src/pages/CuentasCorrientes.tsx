@@ -13,8 +13,11 @@ import { AlertTriangle, Wallet } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { CUENTAS_CORRIENTES, EMPRESAS } from "@/data/demo";
 import { moraResumen, ultimoPeriodo } from "@/data/selectors";
-import { money, moneyShort, pct, periodoLabel } from "@/lib/format";
+import { useImportaciones } from "@/data/useImportaciones";
+import { moraImportada } from "@/data/importedSelectors";
+import { fecha, money, moneyShort, pct, periodoLabel } from "@/lib/format";
 import { KpiCard, PageHeader } from "@/components/ui-kit";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -37,35 +40,67 @@ const TRAMOS = [
 export function CuentasCorrientes() {
   const { empresaIdsActivos } = useAuth();
   const ids = empresaIdsActivos;
-  const r = useMemo(() => moraResumen(ids, ultimoPeriodo), [ids]);
+  const importaciones = useImportaciones(ids);
 
-  const chart = TRAMOS.map((t) => ({ label: t.label, monto: r[t.key], color: t.color }));
+  const imp = useMemo(() => moraImportada(importaciones, ids), [importaciones, ids]);
+  const demo = useMemo(() => moraResumen(ids, ultimoPeriodo), [ids]);
+  const usaImport = imp.hayDatos;
 
-  const porEmpresa = ids.map((id) => {
-    const cc = CUENTAS_CORRIENTES.find((x) => x.empresaId === id && x.periodo === ultimoPeriodo);
-    const total = cc ? cc.alDia + cc.d30 + cc.d60 + cc.d90 + cc.mas90 : 0;
-    const vencido = cc ? cc.d30 + cc.d60 + cc.d90 + cc.mas90 : 0;
-    return {
-      empresa: EMPRESAS.find((e) => e.id === id)?.nombre ?? id,
-      total,
-      vencido,
-      mas90: cc?.mas90 ?? 0,
-      pctMora: total ? (vencido / total) * 100 : 0,
-    };
-  }).sort((a, b) => b.pctMora - a.pctMora);
+  const tramos = usaImport
+    ? imp.buckets
+    : { alDia: demo.alDia, d30: demo.d30, d60: demo.d60, d90: demo.d90, mas90: demo.mas90 };
+  const total = usaImport ? imp.total : demo.total;
+  const vencido = usaImport ? imp.vencido : demo.vencido;
+  const mas90 = usaImport ? imp.mas90 : demo.mas90;
+  const alDia = usaImport ? imp.alDia : demo.alDia;
+  const pctMora = usaImport ? imp.pctMora : demo.pctMora;
+
+  const chart = TRAMOS.map((t) => ({ label: t.label, monto: tramos[t.key], color: t.color }));
+
+  const porEmpresa = usaImport
+    ? imp.porEmpresa.map((e) => ({
+        empresa: EMPRESAS.find((x) => x.id === e.empresaId)?.nombre ?? e.empresaId,
+        total: e.total,
+        vencido: e.vencido,
+        mas90: e.mas90,
+        pctMora: e.pctMora,
+      }))
+    : ids
+        .map((id) => {
+          const cc = CUENTAS_CORRIENTES.find((x) => x.empresaId === id && x.periodo === ultimoPeriodo);
+          const tot = cc ? cc.alDia + cc.d30 + cc.d60 + cc.d90 + cc.mas90 : 0;
+          const venc = cc ? cc.d30 + cc.d60 + cc.d90 + cc.mas90 : 0;
+          return {
+            empresa: EMPRESAS.find((e) => e.id === id)?.nombre ?? id,
+            total: tot,
+            vencido: venc,
+            mas90: cc?.mas90 ?? 0,
+            pctMora: tot ? (venc / tot) * 100 : 0,
+          };
+        })
+        .sort((a, b) => b.pctMora - a.pctMora);
+
+  const descripcion = usaImport
+    ? `Antigüedad de saldos deudores · datos importados${imp.corte ? ` al ${fecha(imp.corte)}` : ""}`
+    : `Antigüedad de saldos deudores · período ${periodoLabel(ultimoPeriodo)}`;
 
   return (
     <div>
       <PageHeader
         title="Cuentas corrientes y mora"
-        description={`Antigüedad de saldos deudores · período ${periodoLabel(ultimoPeriodo)}`}
+        description={descripcion}
+        action={
+          <Badge variant={usaImport ? "default" : "secondary"}>
+            {usaImport ? "Datos importados" : "Datos demo"}
+          </Badge>
+        }
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard label="Cartera total" value={moneyShort(r.total)} icon={Wallet} />
-        <KpiCard label="Cartera vencida" value={moneyShort(r.vencido)} icon={AlertTriangle} tone="warning" hint={pct(r.pctMora)} />
-        <KpiCard label="Vencido +90 días" value={moneyShort(r.mas90)} icon={AlertTriangle} tone="negative" />
-        <KpiCard label="Al día" value={moneyShort(r.alDia)} tone="positive" />
+        <KpiCard label="Cartera total" value={moneyShort(total)} icon={Wallet} />
+        <KpiCard label="Cartera vencida" value={moneyShort(vencido)} icon={AlertTriangle} tone="warning" hint={pct(pctMora)} />
+        <KpiCard label="Vencido +90 días" value={moneyShort(mas90)} icon={AlertTriangle} tone="negative" />
+        <KpiCard label="Al día" value={moneyShort(alDia)} tone="positive" />
       </div>
 
       <Card className="mt-4">
@@ -115,6 +150,13 @@ export function CuentasCorrientes() {
                     </TableCell>
                   </TableRow>
                 ))}
+                {porEmpresa.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="py-8 text-center text-sm text-muted-foreground">
+                      Sin datos para esta vista.
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </div>
