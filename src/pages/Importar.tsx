@@ -1,7 +1,10 @@
 import { useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
-import { Database, FileSpreadsheet, UploadCloud, X } from "lucide-react";
+import { toast } from "sonner";
+import { Database, FileSpreadsheet, Loader2, Save, UploadCloud, X } from "lucide-react";
 import { EMPRESAS } from "@/data/demo";
+import { useAuth } from "@/auth/AuthContext";
+import { guardarImportacion, isSupabaseConfigured, type TipoImportacion } from "@/data/importsStore";
 import { pareceBalanceParcial, pareceComposicion } from "@/lib/oliauto";
 import { AnalisisBalanceParcial } from "@/components/AnalisisBalanceParcial";
 import { AnalisisComposicion } from "@/components/AnalisisComposicion";
@@ -78,6 +81,77 @@ const REPORTES: Record<string, { label: string; campos: CampoDestino[] }> = {
 };
 
 const SIN_MAPEAR = "—";
+
+/** Barra para persistir un análisis (balance parcial / composición) en Supabase. */
+function BarraGuardar({
+  tipo,
+  aoa,
+  headerRow,
+  fileName,
+}: {
+  tipo: TipoImportacion;
+  aoa: unknown[][];
+  headerRow: number;
+  fileName: string;
+}) {
+  const { usuario, empresasVisibles, seleccion } = useAuth();
+  const configurado = isSupabaseConfigured();
+  const opciones = empresasVisibles.length > 0 ? empresasVisibles : EMPRESAS;
+  const [empresaId, setEmpresaId] = useState<string>(
+    seleccion !== "grupo" ? seleccion : opciones.length === 1 ? opciones[0].id : "",
+  );
+  const [guardando, setGuardando] = useState(false);
+
+  async function guardar() {
+    if (!empresaId) return;
+    setGuardando(true);
+    try {
+      const fila = await guardarImportacion({
+        empresaId,
+        tipo,
+        archivo: fileName,
+        aoa,
+        headerRow,
+        creadoPor: usuario?.email,
+      });
+      const ref = fila.periodo ?? fila.corte ?? "";
+      toast.success("Importación guardada", {
+        description: `${opciones.find((e) => e.id === empresaId)?.nombre ?? empresaId}${ref ? ` · ${ref}` : ""}`,
+      });
+    } catch (e) {
+      toast.error("No se pudo guardar", { description: (e as Error).message });
+    } finally {
+      setGuardando(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardContent className="flex flex-wrap items-end justify-between gap-3 py-4">
+        <div className="space-y-1.5">
+          <Label>Empresa</Label>
+          <Select value={empresaId} onValueChange={setEmpresaId}>
+            <SelectTrigger className="w-60"><SelectValue placeholder="Elegí la empresa…" /></SelectTrigger>
+            <SelectContent>
+              {opciones.map((e) => (
+                <SelectItem key={e.id} value={e.id}>{e.nombre}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex items-center gap-2">
+          {!configurado && (
+            <Badge variant="secondary">Configurá Supabase para guardar (ver SUPABASE_SETUP.md)</Badge>
+          )}
+          <Button onClick={guardar} disabled={!configurado || !empresaId || guardando}>
+            {guardando ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
+            Guardar en la base
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function normalizar(s: unknown): string {
   return String(s ?? "")
@@ -238,9 +312,15 @@ export function Importar() {
           </Card>
 
           {esBP ? (
-            <AnalisisBalanceParcial aoa={aoa} headerRow={headerRow} />
+            <>
+              <AnalisisBalanceParcial aoa={aoa} headerRow={headerRow} />
+              <BarraGuardar tipo="balance_parcial" aoa={aoa} headerRow={headerRow} fileName={fileName} />
+            </>
           ) : esComp ? (
-            <AnalisisComposicion aoa={aoa} headerRow={headerRow} />
+            <>
+              <AnalisisComposicion aoa={aoa} headerRow={headerRow} />
+              <BarraGuardar tipo="composicion" aoa={aoa} headerRow={headerRow} fileName={fileName} />
+            </>
           ) : (
           <>
           {/* Mapeo de columnas */}
@@ -317,7 +397,7 @@ export function Importar() {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="secondary">La carga a la base llega en la Fase 2</Badge>
+                <Badge variant="secondary">El guardado de reportes mapeados a medida llega pronto</Badge>
                 <Button disabled={faltanReq.length > 0 || true}>Confirmar e importar</Button>
               </div>
             </CardContent>
