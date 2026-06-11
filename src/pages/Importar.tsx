@@ -5,10 +5,11 @@ import { Database, FileSpreadsheet, Loader2, Save, UploadCloud, X } from "lucide
 import { EMPRESAS } from "@/data/demo";
 import { useAuth } from "@/auth/AuthContext";
 import { guardarImportacion, isSupabaseConfigured, type TipoImportacion } from "@/data/importsStore";
-import { pareceBalanceGeneral, pareceBalanceParcial, pareceComposicion } from "@/lib/oliauto";
+import { pareceBalanceGeneral, pareceBalanceParcial, pareceComposicion, pareceMayor } from "@/lib/oliauto";
 import { AnalisisBalanceParcial } from "@/components/AnalisisBalanceParcial";
 import { AnalisisBalanceGeneral } from "@/components/AnalisisBalanceGeneral";
 import { AnalisisComposicion } from "@/components/AnalisisComposicion";
+import { AnalisisMayor } from "@/components/AnalisisMayor";
 import { PageHeader } from "@/components/ui-kit";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -44,17 +45,6 @@ interface CampoDestino {
 }
 
 const REPORTES: Record<string, { label: string; campos: CampoDestino[] }> = {
-  mayor: {
-    label: "Mayor / Balance de sumas y saldos",
-    campos: [
-      { key: "cuenta", label: "Cuenta (código)", req: true, hints: ["cuenta", "codigo", "cod"] },
-      { key: "descripcion", label: "Descripción", req: false, hints: ["descrip", "detalle", "nombre", "concepto"] },
-      { key: "departamento", label: "Departamento / sector", req: false, hints: ["depart", "sector", "centro", "rubro"] },
-      { key: "debe", label: "Debe", req: false, hints: ["debe"] },
-      { key: "haber", label: "Haber", req: false, hints: ["haber"] },
-      { key: "saldo", label: "Saldo", req: true, hints: ["saldo", "resultado", "importe", "monto", "total"] },
-    ],
-  },
   ventas: {
     label: "Ventas de unidades",
     campos: [
@@ -84,7 +74,7 @@ const REPORTES: Record<string, { label: string; campos: CampoDestino[] }> = {
 const SIN_MAPEAR = "—";
 
 // Tipos con análisis automático propio (no usan el mapeo manual de columnas).
-const ANALISIS = new Set(["balance_parcial", "composicion", "balance_general"]);
+const ANALISIS = new Set(["balance_parcial", "composicion", "balance_general", "mayor"]);
 
 /** Barra para persistir un análisis (balance parcial / composición / general) en Supabase. */
 function BarraGuardar({
@@ -170,7 +160,7 @@ export function Importar() {
   const [fileName, setFileName] = useState<string>("");
   const [aoa, setAoa] = useState<unknown[][]>([]);
   const [headerRow, setHeaderRow] = useState(1); // 1-indexado
-  const [tipo, setTipo] = useState<string>("mayor");
+  const [tipo, setTipo] = useState<string>("ventas");
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [error, setError] = useState<string>("");
 
@@ -182,7 +172,7 @@ export function Importar() {
   const dataRows = useMemo(() => aoa.slice(headerRow), [aoa, headerRow]);
 
   function autoMapear(hs: string[], tipoSel: string): Record<string, string> {
-    const campos = REPORTES[tipoSel].campos;
+    const campos = REPORTES[tipoSel]?.campos ?? [];
     const next: Record<string, string> = {};
     for (const campo of campos) {
       const found = hs.find((h) => campo.hints.some((hint) => normalizar(h).includes(normalizar(hint))));
@@ -208,9 +198,11 @@ export function Importar() {
         setTipo("composicion");
       } else if (pareceBalanceGeneral(rows[0] ?? [])) {
         setTipo("balance_general");
+      } else if (pareceMayor(rows[0] ?? [])) {
+        setTipo("mayor");
       } else {
         const hs = (rows[0] ?? []).map((c, i) => String(c ?? "").trim() || `Columna ${i + 1}`);
-        const t = ANALISIS.has(tipo) ? "mayor" : tipo;
+        const t = ANALISIS.has(tipo) ? "ventas" : tipo;
         setMapping(autoMapear(hs, t));
       }
     } catch {
@@ -220,6 +212,7 @@ export function Importar() {
 
   function cambiarHeaderRow(n: number) {
     setHeaderRow(n);
+    if (ANALISIS.has(tipo)) return;
     const row = aoa[n - 1] ?? [];
     const hs = row.map((c, i) => String(c ?? "").trim() || `Columna ${i + 1}`);
     setMapping(autoMapear(hs, tipo));
@@ -241,7 +234,8 @@ export function Importar() {
   const esBP = tipo === "balance_parcial";
   const esComp = tipo === "composicion";
   const esBG = tipo === "balance_general";
-  const campos = ANALISIS.has(tipo) ? [] : REPORTES[tipo].campos;
+  const esMayor = tipo === "mayor";
+  const campos = ANALISIS.has(tipo) ? [] : REPORTES[tipo]?.campos ?? [];
   const faltanReq = campos.filter((c) => c.req && (!mapping[c.key] || mapping[c.key] === SIN_MAPEAR));
   const hayArchivo = aoa.length > 0;
 
@@ -299,6 +293,7 @@ export function Importar() {
                     <SelectItem value="balance_parcial">Balance parcial / Rentabilidad por depto. (Oliauto)</SelectItem>
                     <SelectItem value="balance_general">Balance de sumas y saldos / Situación patrimonial (Oliauto)</SelectItem>
                     <SelectItem value="composicion">Composición de saldos / Cuentas corrientes (Oliauto)</SelectItem>
+                    <SelectItem value="mayor">Libro mayor detallado (Oliauto)</SelectItem>
                     {Object.entries(REPORTES).map(([k, v]) => (
                       <SelectItem key={k} value={k}>{v.label}</SelectItem>
                     ))}
@@ -333,6 +328,11 @@ export function Importar() {
             <>
               <AnalisisBalanceGeneral aoa={aoa} headerRow={headerRow} />
               <BarraGuardar tipo="balance_general" aoa={aoa} headerRow={headerRow} fileName={fileName} />
+            </>
+          ) : esMayor ? (
+            <>
+              <AnalisisMayor aoa={aoa} headerRow={headerRow} />
+              <BarraGuardar tipo="mayor" aoa={aoa} headerRow={headerRow} fileName={fileName} />
             </>
           ) : (
           <>

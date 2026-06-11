@@ -38,7 +38,7 @@ on conflict (id) do nothing;
 create table if not exists public.importaciones (
   id          uuid primary key default gen_random_uuid(),
   empresa_id  text not null references public.empresas (id),
-  tipo        text not null check (tipo in ('balance_parcial', 'composicion', 'balance_general')),
+  tipo        text not null check (tipo in ('balance_parcial', 'composicion', 'balance_general', 'mayor')),
   -- Para balance parcial: 'YYYY-MM' del último período. Para composición: fecha de corte.
   periodo     text,
   corte       date,

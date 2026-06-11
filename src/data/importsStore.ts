@@ -3,12 +3,14 @@ import {
   parseBalanceGeneral,
   parseBalanceParcial,
   parseComposicionSaldos,
+  parseMayor,
   type BalanceGeneral,
   type BalanceParcial,
   type Composicion,
+  type Mayor,
 } from "@/lib/oliauto";
 
-export type TipoImportacion = "balance_parcial" | "composicion" | "balance_general";
+export type TipoImportacion = "balance_parcial" | "composicion" | "balance_general" | "mayor";
 
 export interface Importacion {
   id: string;
@@ -18,7 +20,7 @@ export interface Importacion {
   corte: string | null;
   archivo: string;
   resumen: Record<string, unknown>;
-  payload: BalanceParcial | Composicion | BalanceGeneral;
+  payload: BalanceParcial | Composicion | BalanceGeneral | Mayor;
   creado_por: string | null;
   creado_el: string;
 }
@@ -84,6 +86,23 @@ function desdeBalanceGeneral(aoa: unknown[][], headerRow: number) {
   };
 }
 
+/** Calcula el payload + resumen de un libro mayor para persistir. */
+function desdeMayor(aoa: unknown[][], headerRow: number) {
+  const payload = parseMayor(aoa, headerRow);
+  return {
+    periodo: payload.fechaMax?.slice(0, 7) ?? null,
+    corte: payload.fechaMax || null,
+    payload,
+    resumen: {
+      movimientos: payload.movimientos,
+      cuentas: payload.cuentas,
+      totalDebe: payload.totalDebe,
+      totalHaber: payload.totalHaber,
+      sinComprobante: payload.sinComprobante,
+    },
+  };
+}
+
 /** Persiste una importación en Supabase. Devuelve la fila creada. */
 export async function guardarImportacion(args: GuardarArgs): Promise<Importacion> {
   const sb = getSupabase();
@@ -94,7 +113,9 @@ export async function guardarImportacion(args: GuardarArgs): Promise<Importacion
       ? desdeBalance(args.aoa, args.headerRow)
       : args.tipo === "composicion"
         ? desdeComposicion(args.aoa, args.headerRow)
-        : desdeBalanceGeneral(args.aoa, args.headerRow);
+        : args.tipo === "balance_general"
+          ? desdeBalanceGeneral(args.aoa, args.headerRow)
+          : desdeMayor(args.aoa, args.headerRow);
 
   const fila = {
     empresa_id: args.empresaId,

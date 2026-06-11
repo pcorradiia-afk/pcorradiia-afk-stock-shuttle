@@ -358,3 +358,119 @@ export function parseBalanceGeneral(aoa: unknown[][], headerRow: number): Balanc
     cuentasProcesadas,
   };
 }
+
+// ============ Mayor / Libro mayor detallado ============
+
+export interface ResumenComprobante {
+  tipo: string;
+  movimientos: number;
+  debe: number;
+  haber: number;
+}
+
+export interface CuentaMayor {
+  codigo: string;
+  nombre: string;
+  movimientos: number;
+  debe: number;
+  haber: number;
+}
+
+export interface Mayor {
+  movimientos: number;
+  totalDebe: number;
+  totalHaber: number;
+  cuentas: number;
+  fechaMin: string;
+  fechaMax: string;
+  sinComprobante: number;
+  porComprobante: ResumenComprobante[];
+  topCuentas: CuentaMayor[];
+}
+
+/** ¿Parece un libro mayor de Oliauto? (Código cuenta + Asiento + Debe + Haber) */
+export function pareceMayor(header: unknown[]): boolean {
+  const h = header.map((x) => String(x).trim().toLowerCase());
+  const has = (...t: string[]) => t.some((n) => h.some((x) => x === n || x.startsWith(n)));
+  return has("codigo cuenta", "código cuenta") && has("asiento") && has("debe") && has("haber");
+}
+
+/**
+ * Procesa un libro mayor de Oliauto. Los movimientos de cada cuenta vienen
+ * precedidos por una fila de texto con el nombre de la cuenta. Agrega totales,
+ * actividad por tipo de comprobante y las cuentas con más movimiento.
+ */
+export function parseMayor(aoa: unknown[][], headerRow: number): Mayor {
+  const header = (aoa[headerRow - 1] ?? []) as unknown[];
+  const col = (...nombres: string[]) =>
+    header.findIndex((h) => nombres.some((n) => String(h).trim().toLowerCase().startsWith(n)));
+  const iCod = Math.max(col("codigo cuenta", "código cuenta", "codigo", "cuenta"), 0);
+  const iFecha = col("fecha");
+  const iDebe = col("debe");
+  const iHaber = col("haber");
+  const iTipo = col("tipo comprobante");
+
+  let totalDebe = 0;
+  let totalHaber = 0;
+  let movimientos = 0;
+  let sinComprobante = 0;
+  let fmin = Infinity;
+  let fmax = 0;
+  const porTipo = new Map<string, ResumenComprobante>();
+  const porCuenta = new Map<string, CuentaMayor>();
+  let nombrePendiente = "";
+
+  for (let r = headerRow; r < aoa.length; r++) {
+    const row = aoa[r] as unknown[];
+    const codigo = String(row?.[iCod] ?? "").trim();
+    if (!/^[0-9]+$/.test(codigo)) {
+      // Fila de sección: guarda el nombre para la próxima cuenta.
+      if (codigo) nombrePendiente = codigo;
+      continue;
+    }
+    const debe = num(row?.[iDebe]);
+    const haber = num(row?.[iHaber]);
+    movimientos++;
+    totalDebe += debe;
+    totalHaber += haber;
+
+    const f = num(row?.[iFecha]);
+    if (f > 40000 && f < 60000) {
+      if (f < fmin) fmin = f;
+      if (f > fmax) fmax = f;
+    }
+
+    const tipoRaw = iTipo >= 0 ? String(row?.[iTipo] ?? "").trim() : "";
+    const tipo = tipoRaw || "Sin comprobante";
+    if (!tipoRaw) sinComprobante++;
+    let t = porTipo.get(tipo);
+    if (!t) porTipo.set(tipo, (t = { tipo, movimientos: 0, debe: 0, haber: 0 }));
+    t.movimientos++;
+    t.debe += debe;
+    t.haber += haber;
+
+    let c = porCuenta.get(codigo);
+    if (!c) porCuenta.set(codigo, (c = { codigo, nombre: nombrePendiente || codigo, movimientos: 0, debe: 0, haber: 0 }));
+    if (c.nombre === codigo && nombrePendiente) c.nombre = nombrePendiente;
+    c.movimientos++;
+    c.debe += debe;
+    c.haber += haber;
+  }
+
+  const porComprobante = [...porTipo.values()].sort((a, b) => b.movimientos - a.movimientos);
+  const topCuentas = [...porCuenta.values()]
+    .sort((a, b) => b.debe + b.haber - (a.debe + a.haber))
+    .slice(0, 12);
+
+  return {
+    movimientos,
+    totalDebe,
+    totalHaber,
+    cuentas: porCuenta.size,
+    fechaMin: fmin < Infinity ? serialAISO(fmin) : "",
+    fechaMax: fmax > 0 ? serialAISO(fmax) : "",
+    sinComprobante,
+    porComprobante,
+    topCuentas,
+  };
+}
