@@ -1,0 +1,51 @@
+name: Sincronizar Oliauto
+
+# Corre el robot que baja los reportes de Oliauto y los carga en Supabase.
+on:
+  schedule:
+    # Todos los días 12:00 UTC (09:00 Argentina). Ajustar a gusto.
+    - cron: "0 12 * * *"
+  workflow_dispatch: {} # permite ejecutarlo a mano desde la pestaña Actions
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    # Para varias empresas, descomentar la matrix y usar secrets por empresa:
+    # strategy:
+    #   matrix:
+    #     empresa: [e1, e2, e3, e4, e5]
+    defaults:
+      run:
+        working-directory: agent
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+
+      - name: Ejecutar robot
+        run: npm run sync
+        env:
+          OLIAUTO_URL: ${{ secrets.OLIAUTO_URL }}
+          OLIAUTO_USER: ${{ secrets.OLIAUTO_USER }}
+          OLIAUTO_PASS: ${{ secrets.OLIAUTO_PASS }}
+          OLIAUTO_SEL_USER: ${{ secrets.OLIAUTO_SEL_USER }}
+          OLIAUTO_SEL_PASS: ${{ secrets.OLIAUTO_SEL_PASS }}
+          OLIAUTO_SEL_SUBMIT: ${{ secrets.OLIAUTO_SEL_SUBMIT }}
+          OLIAUTO_SEL_EXPORT: ${{ secrets.OLIAUTO_SEL_EXPORT }}
+          OLIAUTO_URL_BALANCE_GENERAL: ${{ secrets.OLIAUTO_URL_BALANCE_GENERAL }}
+          OLIAUTO_EXPORT_BALANCE_GENERAL: ${{ secrets.OLIAUTO_EXPORT_BALANCE_GENERAL }}
+          OLIAUTO_URL_BALANCE_PARCIAL: ${{ secrets.OLIAUTO_URL_BALANCE_PARCIAL }}
+          OLIAUTO_EXPORT_BALANCE_PARCIAL: ${{ secrets.OLIAUTO_EXPORT_BALANCE_PARCIAL }}
+          OLIAUTO_URL_COMPOSICION: ${{ secrets.OLIAUTO_URL_COMPOSICION }}
+          OLIAUTO_EXPORT_COMPOSICION: ${{ secrets.OLIAUTO_EXPORT_COMPOSICION }}
+          OLIAUTO_URL_MAYOR: ${{ secrets.OLIAUTO_URL_MAYOR }}
+          OLIAUTO_EXPORT_MAYOR: ${{ secrets.OLIAUTO_EXPORT_MAYOR }}
+          OLIAUTO_REPORTES: ${{ secrets.OLIAUTO_REPORTES }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          EMPRESA_ID: ${{ secrets.EMPRESA_ID }}

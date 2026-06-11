@@ -1,16 +1,11 @@
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import {
-  parseBalanceGeneral,
-  parseBalanceParcial,
-  parseComposicionSaldos,
-  parseMayor,
-  type BalanceGeneral,
-  type BalanceParcial,
-  type Composicion,
-  type Mayor,
-} from "@/lib/oliauto";
+  computarImportacion,
+  type PayloadImportacion,
+  type TipoImportacion,
+} from "@/lib/importCompute";
 
-export type TipoImportacion = "balance_parcial" | "composicion" | "balance_general" | "mayor";
+export type { TipoImportacion } from "@/lib/importCompute";
 
 export interface Importacion {
   id: string;
@@ -20,7 +15,7 @@ export interface Importacion {
   corte: string | null;
   archivo: string;
   resumen: Record<string, unknown>;
-  payload: BalanceParcial | Composicion | BalanceGeneral | Mayor;
+  payload: PayloadImportacion;
   creado_por: string | null;
   creado_el: string;
 }
@@ -32,75 +27,6 @@ export interface GuardarArgs {
   aoa: unknown[][];
   headerRow: number;
   creadoPor?: string;
-}
-
-/** Calcula el payload + resumen de un balance parcial para persistir. */
-function desdeBalance(aoa: unknown[][], headerRow: number) {
-  const payload = parseBalanceParcial(aoa, headerRow);
-  const ultimo = payload.periodos[payload.periodos.length - 1] ?? null;
-  const tot = ultimo ? payload.totales[ultimo] : undefined;
-  return {
-    periodo: ultimo,
-    corte: null as string | null,
-    payload,
-    resumen: {
-      periodo: ultimo,
-      ingresos: tot?.ingresos ?? 0,
-      resultado: tot?.resultado ?? 0,
-      cuentas: payload.cuentasProcesadas,
-      departamentos: Object.keys(payload.porDepto).length,
-    },
-  };
-}
-
-/** Calcula el payload + resumen de una composición de saldos para persistir. */
-function desdeComposicion(aoa: unknown[][], headerRow: number) {
-  const payload = parseComposicionSaldos(aoa, headerRow);
-  return {
-    periodo: payload.corte?.slice(0, 7) ?? null,
-    corte: payload.corte ?? null,
-    payload,
-    resumen: {
-      corte: payload.corte,
-      totalDeudor: payload.totalDeudor,
-      mas90: payload.buckets.mas90,
-      clientesDeudores: payload.clientesDeudores,
-    },
-  };
-}
-
-/** Calcula el payload + resumen de un balance general para persistir. */
-function desdeBalanceGeneral(aoa: unknown[][], headerRow: number) {
-  const payload = parseBalanceGeneral(aoa, headerRow);
-  return {
-    periodo: null as string | null,
-    corte: null as string | null,
-    payload,
-    resumen: {
-      activo: payload.activo,
-      pasivo: payload.pasivo,
-      patrimonioNeto: payload.patrimonioNeto,
-      resultado: payload.resultadoEjercicio,
-      liquidez: payload.liquidezCorriente,
-    },
-  };
-}
-
-/** Calcula el payload + resumen de un libro mayor para persistir. */
-function desdeMayor(aoa: unknown[][], headerRow: number) {
-  const payload = parseMayor(aoa, headerRow);
-  return {
-    periodo: payload.fechaMax?.slice(0, 7) ?? null,
-    corte: payload.fechaMax || null,
-    payload,
-    resumen: {
-      movimientos: payload.movimientos,
-      cuentas: payload.cuentas,
-      totalDebe: payload.totalDebe,
-      totalHaber: payload.totalHaber,
-      sinComprobante: payload.sinComprobante,
-    },
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -149,14 +75,7 @@ export function listarImportacionesLocal(empresaIds?: string[]): Importacion[] {
  * en la nube. Devuelve la fila creada.
  */
 export async function guardarImportacion(args: GuardarArgs): Promise<Importacion> {
-  const calc =
-    args.tipo === "balance_parcial"
-      ? desdeBalance(args.aoa, args.headerRow)
-      : args.tipo === "composicion"
-        ? desdeComposicion(args.aoa, args.headerRow)
-        : args.tipo === "balance_general"
-          ? desdeBalanceGeneral(args.aoa, args.headerRow)
-          : desdeMayor(args.aoa, args.headerRow);
+  const calc = computarImportacion(args.tipo, args.aoa, args.headerRow);
 
   const fila: Importacion = {
     id: crypto.randomUUID(),

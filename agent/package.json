@@ -1,0 +1,21 @@
+{
+  "name": "fiorasi-oliauto-agent",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Robot de sincronización Oliauto → Supabase para el sistema de control de gestión Grupo Fiorasi.",
+  "scripts": {
+    "sync": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "dotenv": "^16.4.5",
+    "playwright": "^1.47.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.0"
+  }
+}
