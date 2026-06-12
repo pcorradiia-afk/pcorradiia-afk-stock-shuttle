@@ -1,6 +1,110 @@
 import type { Importacion } from "./importsStore";
 import { DEPTOS_OLIAUTO } from "@/lib/oliauto";
-import type { BalanceParcial, Composicion, CeldaPL, Ventas0km } from "@/lib/oliauto";
+import type { BalanceParcial, BalanceGeneral, Composicion, CeldaPL, Mayor, Ventas0km } from "@/lib/oliauto";
+
+/** Última importación de cada empresa para un tipo dado (mapa empresa→importación). */
+function mapaUltima(
+  importaciones: Importacion[],
+  tipo: Importacion["tipo"],
+  empresaIds: string[],
+): Map<string, Importacion> {
+  const m = new Map<string, Importacion>();
+  for (const imp of importaciones) {
+    if (imp.tipo !== tipo || !empresaIds.includes(imp.empresa_id)) continue;
+    if (!m.has(imp.empresa_id)) m.set(imp.empresa_id, imp); // la lista viene desc
+  }
+  return m;
+}
+
+// ---------- Control de consistencia entre reportes ----------
+
+export interface MesConciliacion {
+  mes: string;
+  mayor: number;
+  parcial: number;
+  diferencia: number;
+  ok: boolean;
+}
+
+export interface ConciliacionEmpresa {
+  empresaId: string;
+  tieneMayor: boolean;
+  tieneParcial: boolean;
+  tieneGeneral: boolean;
+  porMes: MesConciliacion[];
+  totalMayor: number;
+  totalParcial: number;
+  difParcialMayor: number;
+  resultadoGeneral: number;
+  difGeneralParcial: number;
+  fechaMayor: string | null;
+  periodoParcial: string | null;
+  /** "ok" todo cuadra · "alerta" hay diferencias · "incompleto" faltan reportes. */
+  estado: "ok" | "alerta" | "incompleto";
+}
+
+const TOLERANCIA = 1; // $1 de tolerancia por redondeo
+
+export function conciliacionPorEmpresa(
+  importaciones: Importacion[],
+  empresaIds: string[],
+): ConciliacionEmpresa[] {
+  const mayores = mapaUltima(importaciones, "mayor", empresaIds);
+  const parciales = mapaUltima(importaciones, "balance_parcial", empresaIds);
+  const generales = mapaUltima(importaciones, "balance_general", empresaIds);
+
+  const conEmpresa = new Set<string>([...mayores.keys(), ...parciales.keys(), ...generales.keys()]);
+
+  return [...conEmpresa].map((empresaId): ConciliacionEmpresa => {
+    const may = mayores.get(empresaId)?.payload as Mayor | undefined;
+    const bp = parciales.get(empresaId)?.payload as BalanceParcial | undefined;
+    const bg = generales.get(empresaId)?.payload as BalanceGeneral | undefined;
+
+    const resMayor = may?.resultadoPorMes ?? {};
+    const resParcial: Record<string, number> = {};
+    if (bp) for (const per of bp.periodos) resParcial[per] = bp.totales[per]?.resultado ?? 0;
+
+    const meses = [...new Set([...Object.keys(resMayor), ...Object.keys(resParcial)])].sort();
+    const porMes: MesConciliacion[] = meses.map((mes) => {
+      const mayor = resMayor[mes] ?? 0;
+      const parcial = resParcial[mes] ?? 0;
+      const diferencia = mayor - parcial;
+      return { mes, mayor, parcial, diferencia, ok: Math.abs(diferencia) <= TOLERANCIA };
+    });
+
+    const totalMayor = Object.values(resMayor).reduce((a, b) => a + b, 0);
+    const totalParcial = Object.values(resParcial).reduce((a, b) => a + b, 0);
+    const resultadoGeneral = bg?.resultadoEjercicio ?? 0;
+
+    const tieneMayor = !!may;
+    const tieneParcial = !!bp;
+    const tieneGeneral = !!bg;
+    const difParcialMayor = totalMayor - totalParcial;
+    const difGeneralParcial = resultadoGeneral - totalParcial;
+
+    let estado: ConciliacionEmpresa["estado"] = "ok";
+    if (!tieneMayor || !tieneParcial) estado = "incompleto";
+    else if (porMes.some((m) => !m.ok) || (tieneGeneral && Math.abs(difGeneralParcial) > TOLERANCIA)) {
+      estado = "alerta";
+    }
+
+    return {
+      empresaId,
+      tieneMayor,
+      tieneParcial,
+      tieneGeneral,
+      porMes,
+      totalMayor,
+      totalParcial,
+      difParcialMayor,
+      resultadoGeneral,
+      difGeneralParcial,
+      fechaMayor: may?.fechaMax ?? null,
+      periodoParcial: bp ? bp.periodos[bp.periodos.length - 1] ?? null : null,
+      estado,
+    };
+  });
+}
 
 // Deriva, desde las importaciones guardadas, las cifras que muestran los
 // tableros. Toma la importación más reciente por empresa y tipo (la lista ya

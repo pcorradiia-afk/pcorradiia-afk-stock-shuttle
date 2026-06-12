@@ -460,6 +460,8 @@ export interface Mayor {
   sinComprobante: number;
   porComprobante: ResumenComprobante[];
   topCuentas: CuentaMayor[];
+  /** Resultado (clase 5) por mes 'YYYY-MM', para conciliar con el balance parcial. */
+  resultadoPorMes: Record<string, number>;
 }
 
 /** ¿Parece un libro mayor de Oliauto? (Código cuenta + Asiento + Debe + Haber) */
@@ -492,6 +494,7 @@ export function parseMayor(aoa: unknown[][], headerRow: number): Mayor {
   let fmax = 0;
   const porTipo = new Map<string, ResumenComprobante>();
   const porCuenta = new Map<string, CuentaMayor>();
+  const resultadoPorMes: Record<string, number> = {};
   let nombrePendiente = "";
 
   for (let r = headerRow; r < aoa.length; r++) {
@@ -512,6 +515,12 @@ export function parseMayor(aoa: unknown[][], headerRow: number): Mayor {
     if (f > 40000 && f < 60000) {
       if (f < fmin) fmin = f;
       if (f > fmax) fmax = f;
+      // Resultado por mes (clase 5): el acreedor es ganancia, por eso se invierte.
+      if (codigo.startsWith("5")) {
+        const d = new Date(Date.UTC(1899, 11, 30 + Math.round(f)));
+        const k = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+        resultadoPorMes[k] = (resultadoPorMes[k] ?? 0) + (haber - debe);
+      }
     }
 
     const tipoRaw = iTipo >= 0 ? String(row?.[iTipo] ?? "").trim() : "";
@@ -546,6 +555,7 @@ export function parseMayor(aoa: unknown[][], headerRow: number): Mayor {
     sinComprobante,
     porComprobante,
     topCuentas,
+    resultadoPorMes,
   };
 }
 
