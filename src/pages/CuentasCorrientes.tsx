@@ -98,9 +98,15 @@ export function CuentasCorrientes() {
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Cartera total" value={moneyShort(total)} icon={Wallet} />
-        <KpiCard label="Cartera vencida" value={moneyShort(vencido)} icon={AlertTriangle} tone="warning" hint={pct(pctMora)} />
+        <KpiCard
+          label={usaImport ? "Vencida (+30 días de facturada)" : "Cartera vencida"}
+          value={moneyShort(vencido)}
+          icon={AlertTriangle}
+          tone="warning"
+          hint={pct(pctMora)}
+        />
         <KpiCard label="Vencido +90 días" value={moneyShort(mas90)} icon={AlertTriangle} tone="negative" />
-        <KpiCard label="Al día" value={moneyShort(alDia)} tone="positive" />
+        <KpiCard label={usaImport ? "Corriente (≤30 días)" : "Al día"} value={moneyShort(alDia)} tone="positive" />
       </div>
 
       <Card className="mt-4">

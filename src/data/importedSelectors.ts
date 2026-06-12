@@ -60,8 +60,10 @@ export function moraImportada(importaciones: Importacion[], empresaIds: string[]
     buckets.d60 += p.buckets.d60;
     buckets.d90 += p.buckets.d90;
     buckets.mas90 += p.buckets.mas90;
-    const vencido = p.buckets.d30 + p.buckets.d60 + p.buckets.d90 + p.buckets.mas90;
-    const total = p.totalDeudor || vencido + p.buckets.alDia;
+    // Sin fecha de vencimiento en la composición, tomamos como "corriente" la
+    // facturación de hasta 30 días (plazo típico de cta. cte.) y vencido el resto.
+    const vencido = p.buckets.d60 + p.buckets.d90 + p.buckets.mas90;
+    const total = p.totalDeudor || vencido + p.buckets.alDia + p.buckets.d30;
     porEmpresa.push({
       empresaId: imp.empresa_id,
       total,
@@ -73,7 +75,8 @@ export function moraImportada(importaciones: Importacion[], empresaIds: string[]
   }
 
   const total = buckets.alDia + buckets.d30 + buckets.d60 + buckets.d90 + buckets.mas90;
-  const vencido = buckets.d30 + buckets.d60 + buckets.d90 + buckets.mas90;
+  // Mismo criterio que arriba: corriente = hasta 30 días de facturada.
+  const vencido = buckets.d60 + buckets.d90 + buckets.mas90;
   porEmpresa.sort((a, b) => b.pctMora - a.pctMora);
 
   return {
@@ -81,7 +84,7 @@ export function moraImportada(importaciones: Importacion[], empresaIds: string[]
     buckets,
     total,
     vencido,
-    alDia: buckets.alDia,
+    alDia: buckets.alDia + buckets.d30,
     mas90: buckets.mas90,
     pctMora: total ? (vencido / total) * 100 : 0,
     porEmpresa,
