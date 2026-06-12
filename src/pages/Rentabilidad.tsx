@@ -45,6 +45,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 const OPERATIVOS: { key: string; label: string; color: string }[] = [
@@ -105,6 +106,7 @@ export function Rentabilidad() {
   const ultimo = g.periodos[g.periodos.length - 1] ?? "";
   const nMeses = g.periodos.length;
   const [vista, setVista] = useState<string>("");
+  const [detalle, setDetalle] = useState<{ linea: string; get: (f: FilaCuadro) => number } | null>(null);
   const modo = vista === "acum" || vista === "prom" || g.periodos.includes(vista) ? vista : ultimo;
   const esEspecial = modo === "acum" || modo === "prom";
   const periodo = modo;
@@ -119,6 +121,13 @@ export function Rentabilidad() {
     modo === "prom" && nMeses > 0
       ? { suscripciones: Math.round(uPlanesRaw.suscripciones / nMeses), entregas: Math.round(uPlanesRaw.entregas / nMeses) }
       : uPlanesRaw;
+
+  // Cantidades (unidades) para el encabezado de cada columna del cuadro.
+  const unidadesCol = (key: string): string => {
+    if (key === "0km" && ventas.payload?.unidades) return `${num(ventas.payload.unidades)} un.`;
+    if (key === "planes" && (uPlanes.suscripciones || uPlanes.entregas)) return `${uPlanes.suscripciones} susc · ${uPlanes.entregas} entr`;
+    return "";
+  };
 
   const etiqueta = (p: string) =>
     p === "acum" ? `Acumulado · ${nMeses} meses` : p === "prom" ? "Promedio mensual" : periodoLabel(p);
@@ -363,11 +372,11 @@ export function Rentabilidad() {
     });
   }
 
-  /** Celda compacta: valor y % s/ventas del depto en la misma línea. */
-  const Cel = ({ v, base, strong, total }: { v: number; base: number; strong?: boolean; total?: boolean }) => (
-    <TableCell className={cn("whitespace-nowrap py-1.5 text-right tabular-nums", total && "bg-muted/40 font-bold", strong && "font-semibold", v < 0 && "text-destructive")}>
+  /** Celda compacta: valor y % s/ventas del depto. Solo el beneficio se pinta en rojo si es negativo. */
+  const Cel = ({ v, base, strong, total, rojoSiNeg }: { v: number; base: number; strong?: boolean; total?: boolean; rojoSiNeg?: boolean }) => (
+    <TableCell className={cn("whitespace-nowrap px-1.5 py-1 text-right text-xs tabular-nums", total && "bg-muted/40 font-bold", strong && "font-semibold", rojoSiNeg && v < 0 && "text-destructive")}>
       {money(v)}
-      <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">{base ? pct((v / base) * 100, 1) : ""}</span>
+      <span className="ml-1 text-[9px] font-normal text-muted-foreground">{base ? pct((v / base) * 100, 0) : ""}</span>
     </TableCell>
   );
 
@@ -447,47 +456,58 @@ export function Rentabilidad() {
 
       {/* Cuadro por centro de costo */}
       <Card className="mt-4">
-        <CardHeader>
+        <CardHeader className="pb-2">
           <CardTitle className="text-base">Cuadro por centro de costo</CardTitle>
-          <p className="text-xs text-muted-foreground">valor · % sobre ventas del departamento</p>
+          <p className="text-xs text-muted-foreground">valor · % sobre ventas del depto. · clic en un concepto para ver su composición</p>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <Table>
+            <Table className="text-xs">
               <TableHeader>
-                <TableRow>
-                  <TableHead className="min-w-[170px]">Concepto</TableHead>
-                  {filas.map((f) => (
-                    <TableHead key={f.key} className="text-right">
-                      {f.label}
-                      {f.key === "planes" && (uPlanes.suscripciones || uPlanes.entregas) ? (
-                        <span className="block text-[10px] font-normal text-muted-foreground">
-                          {uPlanes.suscripciones} susc · {uPlanes.entregas} entr
-                        </span>
-                      ) : null}
-                    </TableHead>
-                  ))}
-                  <TableHead className="text-right">Total</TableHead>
+                <TableRow className="border-b-primary/20 bg-primary/[0.07] hover:bg-primary/[0.07]">
+                  <TableHead className="min-w-[120px] px-1.5 py-2 font-semibold text-primary">Concepto</TableHead>
+                  {filas.map((f) => {
+                    const u = unidadesCol(f.key);
+                    return (
+                      <TableHead key={f.key} className="border-t-2 px-1.5 py-2 text-right font-semibold text-primary" style={{ borderTopColor: f.color }}>
+                        {f.label}
+                        {u && <span className="block text-[9px] font-normal text-muted-foreground">{u}</span>}
+                      </TableHead>
+                    );
+                  })}
+                  <TableHead className="px-1.5 py-2 text-right font-semibold text-primary">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {FILAS_DEF.map((rd) => (
-                  <TableRow key={rd.lbl} className={cn(rd.sub && "bg-muted/30", rd.benef && "bg-primary/5")}>
-                    <TableCell className={cn("whitespace-nowrap py-1.5 font-medium", (rd.sub || rd.benef) && "font-bold")}>{rd.lbl}</TableCell>
-                    {filas.map((f) => (
-                      <Cel key={f.key} v={rd.get(f)} base={f.ventas} strong={rd.sub || rd.benef} />
-                    ))}
-                    <Cel v={rd.tot} base={T.ventas} total strong={rd.sub || rd.benef} />
-                  </TableRow>
-                ))}
+                {FILAS_DEF.map((rd) => {
+                  const linea = rd.sub || rd.benef; // sumatorias: Margen / Cont. marg. / Beneficio
+                  return (
+                    <TableRow
+                      key={rd.lbl}
+                      className={cn(
+                        "cursor-pointer",
+                        rd.sub && "bg-muted/30",
+                        rd.benef && "bg-primary/5",
+                        linea && "border-t-2 border-double border-primary/30",
+                      )}
+                      onClick={() => setDetalle({ linea: rd.lbl, get: rd.get })}
+                    >
+                      <TableCell className={cn("whitespace-nowrap px-1.5 py-1 font-medium underline-offset-2 hover:underline", linea && "font-bold")}>{rd.lbl}</TableCell>
+                      {filas.map((f) => (
+                        <Cel key={f.key} v={rd.get(f)} base={f.ventas} strong={linea} rojoSiNeg={rd.benef} />
+                      ))}
+                      <Cel v={rd.tot} base={T.ventas} total strong={linea} rojoSiNeg={rd.benef} />
+                    </TableRow>
+                  );
+                })}
                 <TableRow>
-                  <TableCell className="text-sm text-muted-foreground">Participación s/ contribución</TableCell>
+                  <TableCell className="px-2 py-1 text-muted-foreground">Participación s/ contribución</TableCell>
                   {filas.map((f) => (
-                    <TableCell key={f.key} className="text-right text-sm tabular-nums text-muted-foreground">
+                    <TableCell key={f.key} className="px-2 py-1 text-right tabular-nums text-muted-foreground">
                       {T.benef ? pct((f.benef / T.benef) * 100, 0) : "—"}
                     </TableCell>
                   ))}
-                  <TableCell className="bg-muted/40 text-right text-sm font-bold tabular-nums">100%</TableCell>
+                  <TableCell className="bg-muted/40 px-2 py-1 text-right font-bold tabular-nums">100%</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -558,6 +578,48 @@ export function Rentabilidad() {
         periodos={g.periodos}
         esGrupo={seleccion === "grupo"}
       />
+
+      {/* Composición de un concepto: por departamento y por mes */}
+      <Dialog open={!!detalle} onOpenChange={(o) => !o && setDetalle(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Composición · {detalle?.linea}</DialogTitle>
+          </DialogHeader>
+          {detalle && (
+            <div className="overflow-x-auto">
+              <Table className="text-xs">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mes</TableHead>
+                    {filas.map((f) => (
+                      <TableHead key={f.key} className="text-right">{f.label}</TableHead>
+                    ))}
+                    <TableHead className="text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {g.periodos.map((per) => {
+                    const vals = filas.map((f) => detalle.get(cascada(f.key, f.label, f.color, celdaAjustada(f.key, per))));
+                    const totMes = vals.reduce((a, b) => a + b, 0);
+                    return (
+                      <TableRow key={per}>
+                        <TableCell className="py-1 font-medium">{periodoLabel(per)}</TableCell>
+                        {vals.map((v, i) => (
+                          <TableCell key={i} className="px-2 py-1 text-right tabular-nums">{money(v)}</TableCell>
+                        ))}
+                        <TableCell className="bg-muted/40 px-2 py-1 text-right font-semibold tabular-nums">{money(totMes)}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            Apertura por departamento y mes de «{detalle?.linea}». El detalle cuenta por cuenta del rubro llega en el próximo paso.
+          </p>
+        </DialogContent>
+      </Dialog>
 
       <Anotaciones contexto="rentabilidad" />
     </div>

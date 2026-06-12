@@ -1,6 +1,6 @@
 import type { Importacion } from "./importsStore";
 import { DEPTOS_OLIAUTO } from "@/lib/oliauto";
-import type { BalanceParcial, BalanceGeneral, Composicion, CeldaPL, Mayor, Ventas0km } from "@/lib/oliauto";
+import type { BalanceParcial, BalanceGeneral, Composicion, CeldaPL, ComunRubro, Mayor, Ventas0km } from "@/lib/oliauto";
 
 /** Última importación de cada empresa para un tipo dado (mapa empresa→importación). */
 function mapaUltima(
@@ -306,6 +306,8 @@ export interface GestionImportada {
   periodos: string[];
   /** porDepto[deptoKey][periodo] consolidado sobre las empresas visibles. */
   porDepto: Record<string, Record<string, CeldaPL>>;
+  /** Gastos comunes de Unidades por período y subrubro (consolidado), para prorrateo. */
+  comunes: Record<string, Record<string, ComunRubro>>;
 }
 
 /**
@@ -318,11 +320,22 @@ export function gestionImportada(
 ): GestionImportada {
   const fuentes = ultimaPorEmpresa(importaciones, "balance_parcial", empresaIds);
   const porDepto: Record<string, Record<string, CeldaPL>> = {};
+  const comunes: Record<string, Record<string, ComunRubro>> = {};
   const periodos = new Set<string>();
 
   for (const imp of fuentes) {
     const p = imp.payload as BalanceParcial;
     for (const per of p.periodos ?? []) periodos.add(per);
+    // Consolidar el desglose de gastos comunes de Unidades por subrubro.
+    for (const [per, rubros] of Object.entries(p.comunesUnidades ?? {})) {
+      const dst = (comunes[per] ??= {});
+      for (const [rub, c] of Object.entries(rubros)) {
+        const a = (dst[rub] ??= { gastos: 0, gastosVar: 0, nombre: c.nombre });
+        a.gastos += c.gastos;
+        a.gastosVar += c.gastosVar;
+        if (!a.nombre && c.nombre) a.nombre = c.nombre;
+      }
+    }
     for (const { key } of DEPTOS_OLIAUTO) {
       const porPer = p.porDepto?.[key];
       if (!porPer) continue;
@@ -344,6 +357,7 @@ export function gestionImportada(
     hayDatos: fuentes.length > 0,
     periodos: [...periodos].sort(),
     porDepto,
+    comunes,
   };
 }
 

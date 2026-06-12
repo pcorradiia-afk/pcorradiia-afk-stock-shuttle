@@ -93,6 +93,13 @@ export interface CeldaPL {
   otrosIng?: number;
 }
 
+/** Gasto común de Unidades por subrubro: total y porción variable. */
+export interface ComunRubro {
+  nombre?: string;
+  gastos: number;
+  gastosVar: number;
+}
+
 export interface BalanceParcial {
   periodos: string[];
   /** resultado[deptoKey][periodo] */
@@ -100,6 +107,8 @@ export interface BalanceParcial {
   /** total[periodo] */
   totales: Record<string, CeldaPL>;
   cuentasProcesadas: number;
+  /** Gastos comunes de Unidades por período y subrubro (6 dígitos), para prorrateo. */
+  comunesUnidades?: Record<string, Record<string, ComunRubro>>;
 }
 
 function celdaVacia(): CeldaPL {
@@ -126,6 +135,9 @@ export function parseBalanceParcial(aoa: unknown[][], headerRow: number): Balanc
   const porDepto: Record<string, Record<string, CeldaPL>> = {};
   const totales: Record<string, CeldaPL> = {};
   for (const p of periodos) totales[p] = celdaVacia();
+  // Gastos comunes del depto Unidades (515) desglosados por subrubro (6 dígitos)
+  // y período, para poder prorratearlos con reglas distintas por rubro.
+  const comunesUnidades: Record<string, Record<string, ComunRubro>> = {};
 
   let cuentasProcesadas = 0;
   for (let r = headerRow; r < aoa.length; r++) {
@@ -160,9 +172,18 @@ export function parseBalanceParcial(aoa: unknown[][], headerRow: number): Balanc
         cd.gastos += val;
         tot.gastos += val;
         // Apertura variable/fijo según la clasificación del EEFF del grupo.
-        if (clasificarGasto(codigo) === "variable") {
+        const esVar = clasificarGasto(codigo) === "variable";
+        if (esVar) {
           cd.gastosVar = (cd.gastosVar ?? 0) + val;
           tot.gastosVar = (tot.gastosVar ?? 0) + val;
+        }
+        // Desglose por subrubro de los gastos comunes de Unidades (para prorratear).
+        if (depto === "unidades") {
+          const rub = codigo.trim().slice(0, 6);
+          const porPer = (comunesUnidades[periodo] ??= {});
+          const c = (porPer[rub] ??= { gastos: 0, gastosVar: 0, nombre: String(row?.[iCod + 1] ?? "").trim() });
+          c.gastos += val;
+          if (esVar) c.gastosVar += val;
         }
       }
       cd.resultado += -val;
@@ -170,7 +191,7 @@ export function parseBalanceParcial(aoa: unknown[][], headerRow: number): Balanc
     }
   }
 
-  return { periodos, porDepto, totales, cuentasProcesadas };
+  return { periodos, porDepto, totales, cuentasProcesadas, comunesUnidades };
 }
 
 /** ¿El archivo parece un balance parcial de Oliauto (tiene columnas mensuales)? */
