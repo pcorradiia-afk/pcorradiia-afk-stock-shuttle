@@ -16,6 +16,8 @@ import { DEPARTAMENTOS, EMPRESAS, PERIODOS } from "@/data/demo";
 import { resumenPorDepto, ultimoPeriodo } from "@/data/selectors";
 import { useImportaciones } from "@/data/useImportaciones";
 import { gestionImportada, moraImportada, patrimonialImportada, ventasImportada } from "@/data/importedSelectors";
+import { useUnidadesPlanes, unidadesTotales } from "@/data/unidadesPlanes";
+import { UnidadesPlanesEditor } from "@/components/UnidadesPlanesEditor";
 import type { CeldaPL } from "@/lib/oliauto";
 import { descargarCuadroExcel } from "@/lib/excel";
 import { abrirReporteEjecutivo, type AreaReporte } from "@/lib/reporteHTML";
@@ -101,6 +103,15 @@ export function Rentabilidad() {
   const esEspecial = modo === "acum" || modo === "prom";
   const periodo = modo;
   const anterior = esEspecial ? null : (g.periodos[g.periodos.indexOf(modo) - 1] ?? null);
+
+  // Unidades de Planes de Ahorro (carga manual) para el período/modo mostrado.
+  const mapaUnidades = useUnidadesPlanes();
+  const periodosView = esEspecial ? g.periodos : [periodo];
+  const uPlanesRaw = unidadesTotales(mapaUnidades, empresaIdsActivos, periodosView);
+  const uPlanes =
+    modo === "prom" && nMeses > 0
+      ? { suscripciones: Math.round(uPlanesRaw.suscripciones / nMeses), entregas: Math.round(uPlanesRaw.entregas / nMeses) }
+      : uPlanesRaw;
 
   const etiqueta = (p: string) =>
     p === "acum" ? `Acumulado · ${nMeses} meses` : p === "prom" ? "Promedio mensual" : periodoLabel(p);
@@ -409,7 +420,14 @@ export function Rentabilidad() {
                 <TableRow>
                   <TableHead className="min-w-[170px]">Concepto</TableHead>
                   {filas.map((f) => (
-                    <TableHead key={f.key} className="text-right">{f.label}</TableHead>
+                    <TableHead key={f.key} className="text-right">
+                      {f.label}
+                      {f.key === "planes" && (uPlanes.suscripciones || uPlanes.entregas) ? (
+                        <span className="block text-[10px] font-normal text-muted-foreground">
+                          {uPlanes.suscripciones} susc · {uPlanes.entregas} entr
+                        </span>
+                      ) : null}
+                    </TableHead>
                   ))}
                   <TableHead className="text-right">Total</TableHead>
                 </TableRow>
@@ -484,6 +502,13 @@ export function Rentabilidad() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+
+      <UnidadesPlanesEditor
+        empresaId={seleccion === "grupo" ? "" : seleccion}
+        empresaNombre={empresaNombre}
+        periodos={g.periodos}
+        esGrupo={seleccion === "grupo"}
+      />
 
       <Anotaciones contexto="rentabilidad" />
     </div>
