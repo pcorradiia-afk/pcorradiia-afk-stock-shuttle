@@ -15,6 +15,7 @@ export interface DeptoDef {
 export const DEPTOS_OLIAUTO: DeptoDef[] = [
   { key: "0km", label: "Unidades 0km" },
   { key: "usados", label: "Unidades usados" },
+  { key: "planes", label: "Planes de Ahorro" },
   { key: "unidades", label: "Unidades (gastos comunes)" },
   { key: "repuestos", label: "Repuestos" },
   { key: "posventa", label: "Servicios / Posventa" },
@@ -28,7 +29,9 @@ export function deptoDeCuenta(codigo: string): string | null {
   if (!c.startsWith("5")) return null; // solo cuentas de resultado
   if (c.startsWith("511") || c.startsWith("513")) return "0km";
   if (c.startsWith("512") || c.startsWith("514")) return "usados";
-  if (c.startsWith("51")) return "unidades";
+  if (c.startsWith("516")) return "planes"; // comisiones/incentivos planes de ahorro y gestoría
+  if (c.startsWith("517")) return "0km"; // financiación de vehículos → otros ingresos 0km
+  if (c.startsWith("51")) return "unidades"; // 515/518/519 gastos comunes del depto
   if (c.startsWith("52")) return "repuestos";
   if (c.startsWith("53")) return "posventa";
   if (c.startsWith("55")) return "admin";
@@ -144,7 +147,12 @@ export function parseBalanceParcial(aoa: unknown[][], headerRow: number): Balanc
       const tot = totales[periodo];
       if (nat === "venta") { cd.ingresos += -val; tot.ingresos += -val; }
       else if (nat === "costo") { cd.costos += val; tot.costos += val; }
-      else if (nat === "mixto") {
+      else if (nat === "mixto" && depto === "planes") {
+        // En Planes de Ahorro las comisiones/incentivos (acreedoras) son la venta
+        // del depto; los débitos (sellos, derechos, etc.) van a gastos.
+        if (val < 0) { cd.ingresos += -val; tot.ingresos += -val; }
+        else { cd.gastos += val; tot.gastos += val; }
+      } else if (nat === "mixto") {
         // Otros ingresos/egresos por depto: neto (acreedor = ingreso positivo).
         cd.otrosIng = (cd.otrosIng ?? 0) + -val;
         tot.otrosIng = (tot.otrosIng ?? 0) + -val;

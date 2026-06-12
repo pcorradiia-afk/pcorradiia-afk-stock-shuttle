@@ -17,7 +17,7 @@ import { resumenPorDepto, ultimoPeriodo } from "@/data/selectors";
 import { useImportaciones } from "@/data/useImportaciones";
 import { gestionImportada, moraImportada, patrimonialImportada, ventasImportada } from "@/data/importedSelectors";
 import type { CeldaPL } from "@/lib/oliauto";
-import { descargarExcel } from "@/lib/excel";
+import { descargarCuadroExcel } from "@/lib/excel";
 import { abrirReporteEjecutivo, type AreaReporte } from "@/lib/reporteHTML";
 import { fecha, money, moneyShort, num, pct, periodoLabel } from "@/lib/format";
 import { KpiCard, PageHeader } from "@/components/ui-kit";
@@ -46,7 +46,8 @@ import { cn } from "@/lib/utils";
 const OPERATIVOS: { key: string; label: string; color: string }[] = [
   { key: "0km", label: "Unidades 0km", color: "#2563eb" },
   { key: "usados", label: "Unidades usados", color: "#7c3aed" },
-  { key: "unidades", label: "Unidades (comunes)", color: "#0ea5e9" },
+  { key: "planes", label: "Planes de Ahorro", color: "#16a34a" },
+  { key: "unidades", label: "Unidades · g. comunes", color: "#0ea5e9" },
   { key: "repuestos", label: "Repuestos", color: "#ca8a04" },
   { key: "posventa", label: "Servicios / Taller", color: "#0891b2" },
 ];
@@ -243,35 +244,39 @@ export function Rentabilidad() {
     ? "Grupo Fiorasi"
     : empresasVisibles.find((e) => e.id === seleccion)?.nombre ?? EMPRESAS.find((e) => e.id === seleccion)?.nombre ?? "";
 
-  // ---- Exportar a Excel ----
+  // ---- Exportar a Excel (con formato) ----
   function exportar() {
-    const cols = filas.map((f) => f.label);
-    const fila = (lbl: string, get: (f: FilaCuadro) => number, tot: number): (string | number)[] =>
-      [lbl, ...filas.map(get), tot];
-    const aoa: (string | number | null)[][] = [
-      [`Cuadro de gestión · ${empresaNombre}`],
-      [`Período: ${etiqueta(periodo)}`],
-      [],
-      ["Concepto", ...cols, "Total"],
-      fila("Ventas", (f) => f.ventas, T.ventas),
-      fila("Costos", (f) => f.costos, T.costos),
-      fila("Margen bruto", (f) => f.margen, T.margen),
-      fila("Gastos variables", (f) => f.gVar, T.gVar),
-      fila("Contribución marginal", (f) => f.contMarg, T.contMarg),
-      fila("Gastos fijos asignados", (f) => f.gFijos, T.gFijos),
-      fila("Otros ingresos/egresos x depto.", (f) => f.otrosIng, T.otrosIng),
-      fila("Beneficio por departamento", (f) => f.benef, T.benef),
-      [],
-      ["Del beneficio operativo al resultado"],
-      ["Beneficio total departamentos", T.benef],
-      ...noOp.map((f): (string | number)[] => [f.label, f.resultado]),
-      ["Resultado final", resultadoFinal],
-      [],
-      ["Punto de equilibrio", Math.round(puntoEq)],
-      ["Margen de seguridad %", Number(margenSeguridad.toFixed(1))],
-    ];
     const slug = empresaNombre.replace(/[^a-zA-Z0-9]+/g, "_");
-    descargarExcel(aoa, "Cuadro de gestión", `cuadro_gestion_${slug}_${periodo}.xlsx`);
+    descargarCuadroExcel(
+      {
+        titulo: `Cuadro de gestión · ${empresaNombre}`,
+        subtitulo: `Período: ${etiqueta(periodo)} · generado ${new Date().toLocaleDateString("es-AR")}`,
+        columnas: filas.map((f) => f.label),
+        basesPct: filas.map((f) => f.ventas),
+        baseTotal: T.ventas,
+        filas: [
+          { concepto: "Ventas", valores: filas.map((f) => f.ventas), total: T.ventas },
+          { concepto: "Costos", valores: filas.map((f) => f.costos), total: T.costos },
+          { concepto: "Margen bruto", valores: filas.map((f) => f.margen), total: T.margen, tipo: "subtotal" },
+          { concepto: "Gastos variables", valores: filas.map((f) => f.gVar), total: T.gVar },
+          { concepto: "Contribución marginal", valores: filas.map((f) => f.contMarg), total: T.contMarg, tipo: "subtotal" },
+          { concepto: "Gastos fijos asignados", valores: filas.map((f) => f.gFijos), total: T.gFijos },
+          { concepto: "Otros ing./egr. x depto.", valores: filas.map((f) => f.otrosIng), total: T.otrosIng },
+          { concepto: "Beneficio por depto.", valores: filas.map((f) => f.benef), total: T.benef, tipo: "benef" },
+        ],
+        puente: [
+          { label: "Beneficio total departamentos", valor: T.benef, tipo: "head" },
+          ...noOp.map((f) => ({ label: f.label, valor: f.resultado })),
+          { label: "Resultado final", valor: resultadoFinal, tipo: "final" as const },
+        ],
+        extras: [
+          ["Punto de equilibrio", money(puntoEq)],
+          ["Margen de seguridad", pct(margenSeguridad)],
+          ["Contribución marginal s/ ventas", T.ventas ? pct((T.contMarg / T.ventas) * 100) : "—"],
+        ],
+      },
+      `cuadro_gestion_${slug}_${periodo}.xls`,
+    );
   }
 
   // ---- Reporte ejecutivo (PDF) ----
@@ -309,11 +314,11 @@ export function Rentabilidad() {
     });
   }
 
-  /** Celda valor + % bajo (s/ ventas del depto). */
+  /** Celda compacta: valor y % s/ventas del depto en la misma línea. */
   const Cel = ({ v, base, strong, total }: { v: number; base: number; strong?: boolean; total?: boolean }) => (
-    <TableCell className={cn("text-right tabular-nums", total && "bg-muted/40 font-bold", strong && "font-semibold", v < 0 && "text-destructive")}>
+    <TableCell className={cn("whitespace-nowrap py-1.5 text-right tabular-nums", total && "bg-muted/40 font-bold", strong && "font-semibold", v < 0 && "text-destructive")}>
       {money(v)}
-      <span className="block text-[10px] font-normal text-muted-foreground">{base ? pct((v / base) * 100, 1) : ""}</span>
+      <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">{base ? pct((v / base) * 100, 1) : ""}</span>
     </TableCell>
   );
 
@@ -412,7 +417,7 @@ export function Rentabilidad() {
               <TableBody>
                 {FILAS_DEF.map((rd) => (
                   <TableRow key={rd.lbl} className={cn(rd.sub && "bg-muted/30", rd.benef && "bg-primary/5")}>
-                    <TableCell className={cn("font-medium", (rd.sub || rd.benef) && "font-bold")}>{rd.lbl}</TableCell>
+                    <TableCell className={cn("whitespace-nowrap py-1.5 font-medium", (rd.sub || rd.benef) && "font-bold")}>{rd.lbl}</TableCell>
                     {filas.map((f) => (
                       <Cel key={f.key} v={rd.get(f)} base={f.ventas} strong={rd.sub || rd.benef} />
                     ))}

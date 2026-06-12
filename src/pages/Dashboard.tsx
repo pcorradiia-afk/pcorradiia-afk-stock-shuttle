@@ -42,6 +42,7 @@ function delta(actual: number, previo: number): number {
 const DEPTOS_CHART: { key: string; nombre: string; color: string }[] = [
   { key: "0km", nombre: "0km", color: "#2563eb" },
   { key: "usados", nombre: "Usados", color: "#7c3aed" },
+  { key: "planes", nombre: "Planes de Ahorro", color: "#16a34a" },
   { key: "unidades", nombre: "Unidades (comunes)", color: "#0ea5e9" },
   { key: "repuestos", nombre: "Repuestos", color: "#ca8a04" },
   { key: "posventa", nombre: "Servicios", color: "#0891b2" },

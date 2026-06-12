@@ -39,6 +39,7 @@ const NO_OPERATIVO = new Set(["admin", "financiero", "varios"]);
 const COLORS: Record<string, string> = {
   "0km": "#2563eb",
   usados: "#7c3aed",
+  planes: "#16a34a",
   unidades: "#0ea5e9",
   repuestos: "#ca8a04",
   posventa: "#0891b2",
