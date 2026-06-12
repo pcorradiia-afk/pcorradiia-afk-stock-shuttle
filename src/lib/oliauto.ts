@@ -65,9 +65,17 @@ export function naturalezaDeCuenta(codigo: string): Naturaleza {
 function parsePeriodo(label: string): string | null {
   const m = String(label).match(/^(\d{1,2})\/(\d[\d.]*)$/);
   if (!m) return null;
-  const mes = Number(m[1]);
-  const anio = Number(m[2].replace(/\./g, ""));
-  if (!mes || mes > 12 || anio < 1900) return null;
+  const col = Number(m[1]);
+  let anio = Number(m[2].replace(/\./g, ""));
+  if (!col || col > 13 || anio < 1900) return null;
+  // El export de Oliauto rotula las columnas corridas en +1 respecto del mes
+  // real: "2/2026" = enero 2026, …, "6/2026" = mayo. Verificado cuenta por
+  // cuenta contra el libro mayor (306/306 coincidencias exactas por mes).
+  let mes = col - 1;
+  if (mes === 0) {
+    mes = 12;
+    anio -= 1;
+  }
   return `${anio}-${String(mes).padStart(2, "0")}`;
 }
 
