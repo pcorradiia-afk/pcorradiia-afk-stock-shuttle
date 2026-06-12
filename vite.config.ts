@@ -20,4 +20,18 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Separa las librerías pesadas en paquetes propios: la primera carga
+        // baja y el navegador cachea los vendors entre deploys.
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom"],
+          charts: ["recharts"],
+          excel: ["xlsx"],
+          supabase: ["@supabase/supabase-js"],
+        },
+      },
+    },
+  },
 }));
