@@ -1,6 +1,6 @@
 import type { Importacion } from "./importsStore";
 import { DEPTOS_OLIAUTO } from "@/lib/oliauto";
-import type { BalanceParcial, BalanceGeneral, Composicion, CeldaPL, ComunRubro, Mayor, Ventas0km } from "@/lib/oliauto";
+import type { BalanceParcial, BalanceGeneral, Composicion, CeldaPL, ComunRubro, CuentaBP, Mayor, Ventas0km } from "@/lib/oliauto";
 
 /** Última importación de cada empresa para un tipo dado (mapa empresa→importación). */
 function mapaUltima(
@@ -308,6 +308,8 @@ export interface GestionImportada {
   porDepto: Record<string, Record<string, CeldaPL>>;
   /** Gastos comunes de Unidades por período y subrubro (consolidado), para prorrateo. */
   comunes: Record<string, Record<string, ComunRubro>>;
+  /** Detalle por cuenta contable (todas las empresas visibles), para drill-down. */
+  cuentas: CuentaBP[];
 }
 
 /**
@@ -321,11 +323,13 @@ export function gestionImportada(
   const fuentes = ultimaPorEmpresa(importaciones, "balance_parcial", empresaIds);
   const porDepto: Record<string, Record<string, CeldaPL>> = {};
   const comunes: Record<string, Record<string, ComunRubro>> = {};
+  const cuentas: CuentaBP[] = [];
   const periodos = new Set<string>();
 
   for (const imp of fuentes) {
     const p = imp.payload as BalanceParcial;
     for (const per of p.periodos ?? []) periodos.add(per);
+    if (p.cuentas) cuentas.push(...p.cuentas);
     // Consolidar el desglose de gastos comunes de Unidades por subrubro.
     for (const [per, rubros] of Object.entries(p.comunesUnidades ?? {})) {
       const dst = (comunes[per] ??= {});
@@ -358,6 +362,7 @@ export function gestionImportada(
     periodos: [...periodos].sort(),
     porDepto,
     comunes,
+    cuentas,
   };
 }
 

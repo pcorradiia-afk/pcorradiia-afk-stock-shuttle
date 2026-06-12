@@ -106,7 +106,7 @@ export function Rentabilidad() {
   const ultimo = g.periodos[g.periodos.length - 1] ?? "";
   const nMeses = g.periodos.length;
   const [vista, setVista] = useState<string>("");
-  const [detalle, setDetalle] = useState<{ linea: string; get: (f: FilaCuadro) => number } | null>(null);
+  const [detalle, setDetalle] = useState<{ linea: string; get: (f: FilaCuadro) => number; lineas: string[] } | null>(null);
   const modo = vista === "acum" || vista === "prom" || g.periodos.includes(vista) ? vista : ultimo;
   const esEspecial = modo === "acum" || modo === "prom";
   const periodo = modo;
@@ -392,16 +392,29 @@ export function Rentabilidad() {
     </TableCell>
   );
 
-  const FILAS_DEF: { lbl: string; get: (f: FilaCuadro) => number; tot: number; sub?: boolean; benef?: boolean }[] = [
-    { lbl: "Ventas", get: (f) => f.ventas, tot: T.ventas },
-    { lbl: "Costos", get: (f) => f.costos, tot: T.costos },
-    { lbl: "Margen bruto", get: (f) => f.margen, tot: T.margen, sub: true },
-    { lbl: "Gastos variables", get: (f) => f.gVar, tot: T.gVar },
-    { lbl: "Contribución marginal", get: (f) => f.contMarg, tot: T.contMarg, sub: true },
-    { lbl: "Gastos fijos asignados", get: (f) => f.gFijos, tot: T.gFijos },
-    { lbl: "Otros ing./egr. x depto.", get: (f) => f.otrosIng, tot: T.otrosIng },
-    { lbl: "Beneficio por depto.", get: (f) => f.benef, tot: T.benef, benef: true },
+  const FILAS_DEF: { lbl: string; get: (f: FilaCuadro) => number; tot: number; sub?: boolean; benef?: boolean; lineas: string[] }[] = [
+    { lbl: "Ventas", get: (f) => f.ventas, tot: T.ventas, lineas: ["venta"] },
+    { lbl: "Costos", get: (f) => f.costos, tot: T.costos, lineas: ["costo"] },
+    { lbl: "Margen bruto", get: (f) => f.margen, tot: T.margen, sub: true, lineas: ["venta", "costo"] },
+    { lbl: "Gastos variables", get: (f) => f.gVar, tot: T.gVar, lineas: ["gvar"] },
+    { lbl: "Contribución marginal", get: (f) => f.contMarg, tot: T.contMarg, sub: true, lineas: ["venta", "costo", "gvar"] },
+    { lbl: "Gastos fijos asignados", get: (f) => f.gFijos, tot: T.gFijos, lineas: ["gfijo"] },
+    { lbl: "Otros ing./egr. x depto.", get: (f) => f.otrosIng, tot: T.otrosIng, lineas: ["otros"] },
+    { lbl: "Beneficio por depto.", get: (f) => f.benef, tot: T.benef, benef: true, lineas: ["venta", "costo", "gvar", "gfijo", "otros"] },
   ];
+
+  // Cuentas contables de las líneas seleccionadas, valuadas según el modo (mes/acum/prom).
+  const cuentasDe = (lineas: string[]) => {
+    const sumar = (vals: Record<string, number>) => {
+      const t = periodosView.reduce((a, per) => a + (vals[per] ?? 0), 0);
+      return modo === "prom" && nMeses > 0 ? t / nMeses : t;
+    };
+    return g.cuentas
+      .filter((c) => lineas.includes(c.linea))
+      .map((c) => ({ ...c, saldo: sumar(c.valores) }))
+      .filter((c) => Math.abs(c.saldo) > 0.5)
+      .sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
+  };
 
   return (
     <div>
@@ -502,7 +515,7 @@ export function Rentabilidad() {
                         rd.benef && "bg-primary/5",
                         linea && "border-t-2 border-double border-primary/30",
                       )}
-                      onClick={() => setDetalle({ linea: rd.lbl, get: rd.get })}
+                      onClick={() => setDetalle({ linea: rd.lbl, get: rd.get, lineas: rd.lineas })}
                     >
                       <TableCell className={cn("whitespace-nowrap px-1.5 py-1 font-medium underline-offset-2 hover:underline", linea && "font-bold")}>{rd.lbl}</TableCell>
                       {filas.map((f) => (
@@ -605,44 +618,61 @@ export function Rentabilidad() {
         esGrupo={seleccion === "grupo"}
       />
 
-      {/* Composición de un concepto: por departamento y por mes */}
+      {/* Composición de un concepto: cuentas contables involucradas */}
       <Dialog open={!!detalle} onOpenChange={(o) => !o && setDetalle(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Composición · {detalle?.linea}</DialogTitle>
+            <DialogTitle>Composición · {detalle?.linea} · {etiqueta(periodo)}</DialogTitle>
           </DialogHeader>
-          {detalle && (
-            <div className="overflow-x-auto">
-              <Table className="text-xs">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Mes</TableHead>
-                    {filas.map((f) => (
-                      <TableHead key={f.key} className="text-right">{f.label}</TableHead>
-                    ))}
-                    <TableHead className="text-right">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {g.periodos.map((per) => {
-                    const vals = filas.map((f) => detalle.get(cascada(f.key, f.label, f.color, celdaAjustada(f.key, per))));
-                    const totMes = vals.reduce((a, b) => a + b, 0);
-                    return (
-                      <TableRow key={per}>
-                        <TableCell className="py-1 font-medium">{periodoLabel(per)}</TableCell>
-                        {vals.map((v, i) => (
-                          <TableCell key={i} className="px-2 py-1 text-right tabular-nums">{money(v)}</TableCell>
-                        ))}
-                        <TableCell className="bg-muted/40 px-2 py-1 text-right font-semibold tabular-nums">{money(totMes)}</TableCell>
+          {detalle && (() => {
+            const cuentas = cuentasDe(detalle.lineas);
+            const totalCtas = cuentas.reduce((a, c) => a + c.saldo, 0);
+            if (cuentas.length === 0) {
+              return (
+                <p className="py-4 text-sm text-muted-foreground">
+                  Esta importación no tiene el detalle por cuenta. Reimportá el balance parcial para verlo.
+                </p>
+              );
+            }
+            return (
+              <div className="max-h-[55vh] overflow-y-auto">
+                <Table className="text-xs">
+                  <TableHeader className="sticky top-0 bg-background">
+                    <TableRow className="bg-primary/[0.07] hover:bg-primary/[0.07]">
+                      <TableHead className="px-1.5 py-1.5 font-semibold text-primary">Cuenta</TableHead>
+                      <TableHead className="px-1.5 py-1.5 font-semibold text-primary">Descripción</TableHead>
+                      <TableHead className="px-1.5 py-1.5 font-semibold text-primary">Depto</TableHead>
+                      <TableHead className="px-1.5 py-1.5 text-right font-semibold text-primary">Saldo</TableHead>
+                      <TableHead className="px-1.5 py-1.5 text-right font-semibold text-primary">%</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cuentas.map((c) => (
+                      <TableRow key={c.codigo}>
+                        <TableCell className="px-1.5 py-1 font-mono">{c.codigo}</TableCell>
+                        <TableCell className="max-w-[280px] truncate px-1.5 py-1" title={c.nombre}>{c.nombre}</TableCell>
+                        <TableCell className="whitespace-nowrap px-1.5 py-1 text-muted-foreground">
+                          {OPERATIVOS.find((d) => d.key === c.depto)?.label ?? NO_OPERATIVOS.find((d) => d.key === c.depto)?.label ?? c.depto}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap px-1.5 py-1 text-right tabular-nums">{money(c.saldo)}</TableCell>
+                        <TableCell className="px-1.5 py-1 text-right tabular-nums text-muted-foreground">
+                          {totalCtas ? pct((c.saldo / totalCtas) * 100, 0) : "—"}
+                        </TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                    ))}
+                    <TableRow className="border-t-2 border-double border-primary/30 bg-muted/40">
+                      <TableCell className="px-1.5 py-1.5 font-bold" colSpan={3}>Total · {cuentas.length} cuentas</TableCell>
+                      <TableCell className="px-1.5 py-1.5 text-right font-bold tabular-nums">{money(totalCtas)}</TableCell>
+                      <TableCell className="px-1.5 py-1.5 text-right font-bold tabular-nums">100%</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            );
+          })()}
           <p className="text-xs text-muted-foreground">
-            Apertura por departamento y mes de «{detalle?.linea}». El detalle cuenta por cuenta del rubro llega en el próximo paso.
+            Cuentas contables que componen «{detalle?.linea}» en {etiqueta(periodo).toLowerCase()}, como figuran en el balance de Oliauto.
+            Los gastos comunes de Unidades figuran con su cuenta original (antes del prorrateo).
           </p>
         </DialogContent>
       </Dialog>

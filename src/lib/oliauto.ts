@@ -100,6 +100,19 @@ export interface ComunRubro {
   gastosVar: number;
 }
 
+/** Línea del cuadro a la que aporta una cuenta. */
+export type LineaCuenta = "venta" | "costo" | "gvar" | "gfijo" | "otros";
+
+/** Detalle por cuenta contable del balance parcial (para drill-down). */
+export interface CuentaBP {
+  codigo: string;
+  nombre: string;
+  depto: string;
+  linea: LineaCuenta;
+  /** Impacto en resultado por período (+ ingreso · − gasto), como en el cuadro. */
+  valores: Record<string, number>;
+}
+
 export interface BalanceParcial {
   periodos: string[];
   /** resultado[deptoKey][periodo] */
@@ -109,6 +122,8 @@ export interface BalanceParcial {
   cuentasProcesadas: number;
   /** Gastos comunes de Unidades por período y subrubro (6 dígitos), para prorrateo. */
   comunesUnidades?: Record<string, Record<string, ComunRubro>>;
+  /** Detalle por cuenta contable (código, nombre, línea y valores por período). */
+  cuentas?: CuentaBP[];
 }
 
 function celdaVacia(): CeldaPL {
@@ -140,6 +155,7 @@ export function parseBalanceParcial(aoa: unknown[][], headerRow: number): Balanc
   const comunesUnidades: Record<string, Record<string, ComunRubro>> = {};
 
   let cuentasProcesadas = 0;
+  const cuentas: CuentaBP[] = [];
   for (let r = headerRow; r < aoa.length; r++) {
     const row = aoa[r] as unknown[];
     const codigo = String(row?.[iCod] ?? "").trim();
@@ -152,27 +168,33 @@ export function parseBalanceParcial(aoa: unknown[][], headerRow: number): Balanc
       porDepto[depto] = {};
       for (const p of periodos) porDepto[depto][p] = celdaVacia();
     }
+    const nombre = String(row?.[iCod + 1] ?? "").trim();
+    let detalle: CuentaBP | null = null;
     for (const { idx, periodo } of colPeriodo) {
       const val = num(row?.[idx]);
       if (val === 0) continue;
       const cd = porDepto[depto][periodo];
       const tot = totales[periodo];
-      if (nat === "venta") { cd.ingresos += -val; tot.ingresos += -val; }
-      else if (nat === "costo") { cd.costos += val; tot.costos += val; }
+      // Línea del cuadro de esta cuenta en este período (para el drill-down).
+      let linea: LineaCuenta;
+      if (nat === "venta") { cd.ingresos += -val; tot.ingresos += -val; linea = "venta"; }
+      else if (nat === "costo") { cd.costos += val; tot.costos += val; linea = "costo"; }
       else if (nat === "mixto" && depto === "planes") {
         // En Planes de Ahorro las comisiones/incentivos (acreedoras) son la venta
         // del depto; los débitos (sellos, derechos, etc.) van a gastos.
-        if (val < 0) { cd.ingresos += -val; tot.ingresos += -val; }
-        else { cd.gastos += val; tot.gastos += val; }
+        if (val < 0) { cd.ingresos += -val; tot.ingresos += -val; linea = "venta"; }
+        else { cd.gastos += val; tot.gastos += val; linea = "gfijo"; }
       } else if (nat === "mixto") {
         // Otros ingresos/egresos por depto: neto (acreedor = ingreso positivo).
         cd.otrosIng = (cd.otrosIng ?? 0) + -val;
         tot.otrosIng = (tot.otrosIng ?? 0) + -val;
+        linea = "otros";
       } else {
         cd.gastos += val;
         tot.gastos += val;
         // Apertura variable/fijo según la clasificación del EEFF del grupo.
         const esVar = clasificarGasto(codigo) === "variable";
+        linea = esVar ? "gvar" : "gfijo";
         if (esVar) {
           cd.gastosVar = (cd.gastosVar ?? 0) + val;
           tot.gastosVar = (tot.gastosVar ?? 0) + val;
@@ -181,17 +203,22 @@ export function parseBalanceParcial(aoa: unknown[][], headerRow: number): Balanc
         if (depto === "unidades") {
           const rub = codigo.trim().slice(0, 6);
           const porPer = (comunesUnidades[periodo] ??= {});
-          const c = (porPer[rub] ??= { gastos: 0, gastosVar: 0, nombre: String(row?.[iCod + 1] ?? "").trim() });
+          const c = (porPer[rub] ??= { gastos: 0, gastosVar: 0, nombre });
           c.gastos += val;
           if (esVar) c.gastosVar += val;
         }
       }
       cd.resultado += -val;
       tot.resultado += -val;
+      if (!detalle) {
+        detalle = { codigo, nombre, depto, linea, valores: {} };
+        cuentas.push(detalle);
+      }
+      detalle.valores[periodo] = (detalle.valores[periodo] ?? 0) + -val;
     }
   }
 
-  return { periodos, porDepto, totales, cuentasProcesadas, comunesUnidades };
+  return { periodos, porDepto, totales, cuentasProcesadas, comunesUnidades, cuentas };
 }
 
 /** ¿El archivo parece un balance parcial de Oliauto (tiene columnas mensuales)? */
