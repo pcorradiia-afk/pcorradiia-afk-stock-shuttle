@@ -267,14 +267,16 @@ export interface PatrimonialImportada {
   liquidez: number;
   solvencia: number;
   endeudamiento: number;
+  /** Resultado del ejercicio (clase 5 del balance general, acumulado YTD). */
+  resultadoEjercicio: number;
 }
 
 export function patrimonialImportada(importaciones: Importacion[], empresaIds: string[]): PatrimonialImportada {
   const fuentes = ultimaPorEmpresa(importaciones, "balance_general", empresaIds);
   if (fuentes.length === 0) {
-    return { hayDatos: false, activo: 0, pasivo: 0, pn: 0, liquidez: 0, solvencia: 0, endeudamiento: 0 };
+    return { hayDatos: false, activo: 0, pasivo: 0, pn: 0, liquidez: 0, solvencia: 0, endeudamiento: 0, resultadoEjercicio: 0 };
   }
-  let activo = 0, pasivo = 0, pn = 0, ac = 0, pc = 0;
+  let activo = 0, pasivo = 0, pn = 0, ac = 0, pc = 0, resultadoEjercicio = 0;
   for (const imp of fuentes) {
     const p = imp.payload as BalanceGeneral;
     activo += p.activo;
@@ -282,6 +284,7 @@ export function patrimonialImportada(importaciones: Importacion[], empresaIds: s
     pn += p.patrimonioNeto;
     ac += p.activoCorriente;
     pc += p.pasivoCorriente;
+    resultadoEjercicio += p.resultadoEjercicio ?? 0;
   }
   return {
     hayDatos: true,
@@ -291,6 +294,7 @@ export function patrimonialImportada(importaciones: Importacion[], empresaIds: s
     liquidez: pc ? ac / pc : 0,
     solvencia: pasivo ? activo / pasivo : 0,
     endeudamiento: pn ? pasivo / pn : 0,
+    resultadoEjercicio,
   };
 }
 

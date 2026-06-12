@@ -19,6 +19,7 @@ import { gestionImportada, moraImportada, patrimonialImportada, ventasImportada 
 import { useUnidadesPlanes, unidadesTotales } from "@/data/unidadesPlanes";
 import { useCriterioProrrateo } from "@/data/criteriosCuadro";
 import { UnidadesPlanesEditor } from "@/components/UnidadesPlanesEditor";
+import { ConciliacionGestion } from "@/components/ConciliacionGestion";
 import type { CeldaPL } from "@/lib/oliauto";
 import { descargarCuadroExcel } from "@/lib/excel";
 import { abrirReporteEjecutivo, type AreaReporte } from "@/lib/reporteHTML";
@@ -539,6 +540,17 @@ export function Rentabilidad() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+
+      <ConciliacionGestion
+        empresaId={seleccion === "grupo" ? "" : seleccion}
+        esGrupo={seleccion === "grupo"}
+        periodo={esEspecial ? (g.periodos[g.periodos.length - 1] ?? "") : periodo}
+        modo={modo}
+        periodos={g.periodos}
+        resultadoCuadro={resultadoFinal}
+        resultadoAcum={serie.reduce((a, s) => a + s.resultado, 0)}
+        balanceResultado={patr.hayDatos ? patr.resultadoEjercicio : null}
+      />
 
       <UnidadesPlanesEditor
         empresaId={seleccion === "grupo" ? "" : seleccion}
