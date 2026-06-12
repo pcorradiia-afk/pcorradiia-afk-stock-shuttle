@@ -223,11 +223,16 @@ export interface DeudorTop {
 export interface Composicion {
   corte: string; // ISO 'YYYY-MM-DD'
   buckets: AgingBuckets;
+  /** Saldo deudor por día de antigüedad (índice = días; 365 acumula 365+). */
+  histograma: number[];
   totalDeudor: number;
   totalAcreedor: number;
   clientesDeudores: number;
   topDeudores: DeudorTop[];
 }
+
+/** Longitud del histograma de antigüedad (índice 365 = "365 o más"). */
+export const HISTO_MAX = 365;
 
 function serialAISO(serial: number): string {
   return new Date(Date.UTC(1899, 11, 30 + Math.round(serial))).toISOString().slice(0, 10);
@@ -268,6 +273,7 @@ export function parseComposicionSaldos(aoa: unknown[][], headerRow: number): Com
   }
 
   const buckets: AgingBuckets = { alDia: 0, d30: 0, d60: 0, d90: 0, mas90: 0 };
+  const histograma = new Array<number>(HISTO_MAX + 1).fill(0);
   let totalDeudor = 0;
   let totalAcreedor = 0;
   let clientesDeudores = 0;
@@ -287,6 +293,7 @@ export function parseComposicionSaldos(aoa: unknown[][], headerRow: number): Com
       if (cg.amt <= 0.005) continue;
       saldoCli += cg.amt;
       const age = ref - cg.f;
+      histograma[Math.max(0, Math.min(Math.round(age), HISTO_MAX))] += cg.amt;
       if (age <= 0) buckets.alDia += cg.amt;
       else if (age <= 30) buckets.d30 += cg.amt;
       else if (age <= 60) buckets.d60 += cg.amt;
@@ -305,6 +312,7 @@ export function parseComposicionSaldos(aoa: unknown[][], headerRow: number): Com
   return {
     corte: ref ? serialAISO(ref) : "",
     buckets,
+    histograma,
     totalDeudor,
     totalAcreedor,
     clientesDeudores,
