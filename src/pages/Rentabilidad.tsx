@@ -10,17 +10,19 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Scale, ShieldCheck, TrendingUp, Wallet } from "lucide-react";
+import { Download, Scale, ShieldCheck, TrendingUp, Wallet } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
-import { DEPARTAMENTOS, PERIODOS } from "@/data/demo";
+import { DEPARTAMENTOS, EMPRESAS, PERIODOS } from "@/data/demo";
 import { resumenPorDepto, ultimoPeriodo } from "@/data/selectors";
 import { useImportaciones } from "@/data/useImportaciones";
-import { gestionImportada } from "@/data/importedSelectors";
+import { gestionImportada, ventasImportada } from "@/data/importedSelectors";
 import type { CeldaPL } from "@/lib/oliauto";
-import { money, moneyShort, pct, periodoLabel } from "@/lib/format";
+import { descargarExcel } from "@/lib/excel";
+import { fecha, money, moneyShort, num, pct, periodoLabel } from "@/lib/format";
 import { KpiCard, PageHeader } from "@/components/ui-kit";
 import { Anotaciones } from "@/components/Anotaciones";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
@@ -40,40 +42,56 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-// Líneas de negocio (operativas) y no operativas, según el plan de Oliauto.
 const OPERATIVOS: { key: string; label: string; color: string }[] = [
   { key: "0km", label: "Unidades 0km", color: "#2563eb" },
   { key: "usados", label: "Unidades usados", color: "#7c3aed" },
-  { key: "unidades", label: "Unidades (gastos comunes)", color: "#0ea5e9" },
+  { key: "unidades", label: "Unidades (comunes)", color: "#0ea5e9" },
   { key: "repuestos", label: "Repuestos", color: "#ca8a04" },
   { key: "posventa", label: "Servicios / Taller", color: "#0891b2" },
 ];
 const NO_OPERATIVOS: { key: string; label: string }[] = [
-  { key: "admin", label: "Gastos de estructura (administración)" },
+  { key: "admin", label: "Gastos de estructura" },
   { key: "financiero", label: "Resultados financieros" },
   { key: "varios", label: "Resultados varios" },
 ];
 
 const vacia = (): CeldaPL => ({ ingresos: 0, costos: 0, gastos: 0, resultado: 0 });
 
-function DeltaCell({ value }: { value: number | null }) {
-  if (value === null) return <TableCell className="text-right text-muted-foreground">—</TableCell>;
-  return (
-    <TableCell className={cn("text-right tabular-nums text-sm", value >= 0 ? "text-emerald-600" : "text-destructive")}>
-      {value >= 0 ? "+" : ""}
-      {moneyShort(value)}
-    </TableCell>
-  );
+/** Cascada de un departamento (formato cuadro: costos/gastos en negativo). */
+interface FilaCuadro {
+  key: string;
+  label: string;
+  color: string;
+  ventas: number;
+  costos: number; // negativo
+  margen: number;
+  gVar: number; // negativo
+  contMarg: number;
+  gFijos: number; // negativo
+  otrosIng: number;
+  benef: number;
+}
+
+function cascada(key: string, label: string, color: string, c: CeldaPL): FilaCuadro {
+  const ventas = c.ingresos;
+  const costos = -c.costos;
+  const margen = ventas + costos;
+  const gVar = -(c.gastosVar ?? 0);
+  const contMarg = margen + gVar;
+  const gFijos = -(c.gastos - (c.gastosVar ?? 0));
+  const otrosIng = c.otrosIng ?? 0;
+  const benef = contMarg + gFijos + otrosIng;
+  return { key, label, color, ventas, costos, margen, gVar, contMarg, gFijos, otrosIng, benef };
 }
 
 export function Rentabilidad() {
-  const { empresaIdsActivos } = useAuth();
+  const { empresaIdsActivos, seleccion, empresasVisibles } = useAuth();
   const importaciones = useImportaciones(empresaIdsActivos);
   const g = useMemo(() => gestionImportada(importaciones, empresaIdsActivos), [importaciones, empresaIdsActivos]);
+  const ventas = useMemo(() => ventasImportada(importaciones, empresaIdsActivos), [importaciones, empresaIdsActivos]);
 
   const ultimo = g.periodos[g.periodos.length - 1] ?? "";
   const nMeses = g.periodos.length;
-  // vista: "" (último mes) · un período 'YYYY-MM' · "acum" · "prom"
   const [vista, setVista] = useState<string>("");
   const modo = vista === "acum" || vista === "prom" || g.periodos.includes(vista) ? vista : ultimo;
   const esEspecial = modo === "acum" || modo === "prom";
@@ -86,10 +104,7 @@ export function Rentabilidad() {
 
   // ---- Vista demo si todavía no hay importaciones ----
   const [periodoDemo, setPeriodoDemo] = useState(ultimoPeriodo);
-  const filasDemo = useMemo(
-    () => resumenPorDepto(empresaIdsActivos, periodoDemo),
-    [empresaIdsActivos, periodoDemo],
-  );
+  const filasDemo = useMemo(() => resumenPorDepto(empresaIdsActivos, periodoDemo), [empresaIdsActivos, periodoDemo]);
 
   if (!g.hayDatos) {
     const tot = filasDemo.reduce(
@@ -155,111 +170,139 @@ export function Rentabilidad() {
   }
 
   // ---- Cuadro real desde lo importado ----
-  // Soporta un período puntual, "acum" (suma de meses) y "prom" (promedio mensual).
   const celda = (key: string, per: string | null): CeldaPL => {
     if (per === "acum" || per === "prom") {
       const porPer = g.porDepto[key] ?? {};
       const acc = vacia();
-      let split = false;
+      let split = false, otros = false;
       for (const c of Object.values(porPer)) {
-        acc.ingresos += c.ingresos;
-        acc.costos += c.costos;
-        acc.gastos += c.gastos;
-        acc.resultado += c.resultado;
-        if (c.gastosVar !== undefined) {
-          acc.gastosVar = (acc.gastosVar ?? 0) + c.gastosVar;
-          split = true;
-        }
+        acc.ingresos += c.ingresos; acc.costos += c.costos; acc.gastos += c.gastos; acc.resultado += c.resultado;
+        if (c.gastosVar !== undefined) { acc.gastosVar = (acc.gastosVar ?? 0) + c.gastosVar; split = true; }
+        if (c.otrosIng !== undefined) { acc.otrosIng = (acc.otrosIng ?? 0) + c.otrosIng; otros = true; }
       }
       if (!split) acc.gastosVar = undefined;
+      if (!otros) acc.otrosIng = undefined;
       if (per === "prom" && nMeses > 0) {
-        acc.ingresos /= nMeses;
-        acc.costos /= nMeses;
-        acc.gastos /= nMeses;
-        acc.resultado /= nMeses;
+        acc.ingresos /= nMeses; acc.costos /= nMeses; acc.gastos /= nMeses; acc.resultado /= nMeses;
         if (acc.gastosVar !== undefined) acc.gastosVar /= nMeses;
+        if (acc.otrosIng !== undefined) acc.otrosIng /= nMeses;
       }
       return acc;
     }
     return (per && g.porDepto[key]?.[per]) || vacia();
   };
 
-  // ¿La importación trae la apertura variable/fijo? (solo en importaciones nuevas)
-  const tieneSplit = OPERATIVOS.some((d) => celda(d.key, periodo).gastosVar !== undefined);
+  const filas = OPERATIVOS.map((d) => cascada(d.key, d.label, d.color, celda(d.key, periodo)))
+    .filter((f) => f.ventas || f.costos || f.gFijos || f.gVar || f.otrosIng || f.benef);
 
-  const filas = OPERATIVOS.map((d) => {
-    const c = celda(d.key, periodo);
-    const prev = anterior ? celda(d.key, anterior) : null;
-    const gVar = c.gastosVar ?? 0;
-    const margen = c.ingresos - c.costos;
-    return {
-      ...d,
-      ...c,
-      margen,
-      gVar,
-      gFijos: c.gastos - gVar,
-      contMarg: margen - gVar,
-      delta: prev ? c.resultado - prev.resultado : null,
-      conMov: c.ingresos || c.costos || c.gastos || c.resultado,
-    };
-  }).filter((f) => f.conMov);
-
-  const op = filas.reduce(
+  const T = filas.reduce(
     (a, f) => ({
-      ingresos: a.ingresos + f.ingresos,
-      costos: a.costos + f.costos,
-      gastos: a.gastos + f.gastos,
-      margen: a.margen + f.margen,
-      gVar: a.gVar + f.gVar,
-      gFijos: a.gFijos + f.gFijos,
-      contMarg: a.contMarg + f.contMarg,
-      resultado: a.resultado + f.resultado,
+      ventas: a.ventas + f.ventas, costos: a.costos + f.costos, margen: a.margen + f.margen,
+      gVar: a.gVar + f.gVar, contMarg: a.contMarg + f.contMarg, gFijos: a.gFijos + f.gFijos,
+      otrosIng: a.otrosIng + f.otrosIng, benef: a.benef + f.benef,
     }),
-    { ingresos: 0, costos: 0, gastos: 0, margen: 0, gVar: 0, gFijos: 0, contMarg: 0, resultado: 0 },
+    { ventas: 0, costos: 0, margen: 0, gVar: 0, contMarg: 0, gFijos: 0, otrosIng: 0, benef: 0 },
   );
 
   const noOp = NO_OPERATIVOS.map((d) => {
     const c = celda(d.key, periodo);
     const prev = anterior ? celda(d.key, anterior) : null;
-    return { ...d, ...c, delta: prev ? c.resultado - prev.resultado : null };
-  }).filter((f) => f.ingresos || f.gastos || f.resultado);
+    return { ...d, resultado: c.resultado, delta: prev ? c.resultado - prev.resultado : null };
+  }).filter((f) => f.resultado);
+  const noOpResultado = noOp.reduce((a, f) => a + f.resultado, 0);
+  const resultadoFinal = T.benef + noOpResultado;
 
-  const resultadoFinal = op.resultado + noOp.reduce((a, f) => a + f.resultado, 0);
+  // Punto de equilibrio (metodología EEFF): contribución marginal sobre ventas,
+  // costos fijos netos de otros ingresos y de los resultados no operativos.
+  const cmRatio = T.ventas ? T.contMarg / T.ventas : 0;
+  const fijosNetos = -(T.gFijos + T.otrosIng + noOpResultado);
+  const puntoEq = cmRatio > 0 ? fijosNetos / cmRatio : 0;
+  const margenSeguridad = T.ventas && puntoEq ? ((T.ventas - puntoEq) / T.ventas) * 100 : 0;
 
-  // Punto de equilibrio según la metodología del EEFF: la clasificación
-  // variable/fijo se aplica sobre TODOS los gastos (incluye estructura y los
-  // variables que viven en financieros/varios, ej. imp. a débitos y créditos).
-  const todos = [...OPERATIVOS, ...NO_OPERATIVOS].map((d) => celda(d.key, periodo));
-  const gastosTotales = todos.reduce((a, c) => a + c.gastos, 0);
-  const gVarTotal = todos.reduce((a, c) => a + (c.gastosVar ?? 0), 0);
-  const contribucion = tieneSplit ? op.margen - gVarTotal : op.margen;
-  const gastosFijos = gastosTotales - (tieneSplit ? gVarTotal : 0);
-  const contribPct = op.ingresos ? contribucion / op.ingresos : 0;
-  const puntoEq = contribPct > 0 ? gastosFijos / contribPct : 0;
-  const margenSeguridad = op.ingresos && puntoEq ? ((op.ingresos - puntoEq) / op.ingresos) * 100 : 0;
-  const margenPct = contribPct;
+  // delta del resultado operativo vs período anterior
+  const benefPrev = anterior
+    ? OPERATIVOS.reduce((a, d) => a + cascada(d.key, "", "", celda(d.key, anterior)).benef, 0)
+    : null;
 
   const serie = g.periodos.map((per) => {
-    const tot = [...OPERATIVOS, ...NO_OPERATIVOS].reduce(
-      (a, d) => {
-        const c = celda(d.key, per);
-        return { ingresos: a.ingresos + c.ingresos, resultado: a.resultado + c.resultado };
-      },
-      { ingresos: 0, resultado: 0 },
-    );
-    return { periodo: periodoLabel(per), ...tot };
+    const f = OPERATIVOS.reduce((a, d) => {
+      const x = cascada(d.key, "", "", celda(d.key, per));
+      return { ventas: a.ventas + x.ventas, benef: a.benef + x.benef };
+    }, { ventas: 0, benef: 0 });
+    const no = NO_OPERATIVOS.reduce((a, d) => a + celda(d.key, per).resultado, 0);
+    return { periodo: periodoLabel(per), ventas: f.ventas, resultado: f.benef + no };
   });
+
+  const chartContrib = [...filas].sort((a, b) => b.benef - a.benef);
+  const maxBenef = Math.max(1, ...chartContrib.map((f) => Math.abs(f.benef)));
+
+  const empresaNombre = seleccion === "grupo"
+    ? "Grupo Fiorasi"
+    : empresasVisibles.find((e) => e.id === seleccion)?.nombre ?? EMPRESAS.find((e) => e.id === seleccion)?.nombre ?? "";
+
+  // ---- Exportar a Excel ----
+  function exportar() {
+    const cols = filas.map((f) => f.label);
+    const fila = (lbl: string, get: (f: FilaCuadro) => number, tot: number): (string | number)[] =>
+      [lbl, ...filas.map(get), tot];
+    const aoa: (string | number | null)[][] = [
+      [`Cuadro de gestión · ${empresaNombre}`],
+      [`Período: ${etiqueta(periodo)}`],
+      [],
+      ["Concepto", ...cols, "Total"],
+      fila("Ventas", (f) => f.ventas, T.ventas),
+      fila("Costos", (f) => f.costos, T.costos),
+      fila("Margen bruto", (f) => f.margen, T.margen),
+      fila("Gastos variables", (f) => f.gVar, T.gVar),
+      fila("Contribución marginal", (f) => f.contMarg, T.contMarg),
+      fila("Gastos fijos asignados", (f) => f.gFijos, T.gFijos),
+      fila("Otros ingresos/egresos x depto.", (f) => f.otrosIng, T.otrosIng),
+      fila("Beneficio por departamento", (f) => f.benef, T.benef),
+      [],
+      ["Del beneficio operativo al resultado"],
+      ["Beneficio total departamentos", T.benef],
+      ...noOp.map((f): (string | number)[] => [f.label, f.resultado]),
+      ["Resultado final", resultadoFinal],
+      [],
+      ["Punto de equilibrio", Math.round(puntoEq)],
+      ["Margen de seguridad %", Number(margenSeguridad.toFixed(1))],
+    ];
+    const slug = empresaNombre.replace(/[^a-zA-Z0-9]+/g, "_");
+    descargarExcel(aoa, "Cuadro de gestión", `cuadro_gestion_${slug}_${periodo}.xlsx`);
+  }
+
+  /** Celda valor + % bajo (s/ ventas del depto). */
+  const Cel = ({ v, base, strong, total }: { v: number; base: number; strong?: boolean; total?: boolean }) => (
+    <TableCell className={cn("text-right tabular-nums", total && "bg-muted/40 font-bold", strong && "font-semibold", v < 0 && "text-destructive")}>
+      {money(v)}
+      <span className="block text-[10px] font-normal text-muted-foreground">{base ? pct((v / base) * 100, 1) : ""}</span>
+    </TableCell>
+  );
+
+  const FILAS_DEF: { lbl: string; get: (f: FilaCuadro) => number; tot: number; sub?: boolean; benef?: boolean }[] = [
+    { lbl: "Ventas", get: (f) => f.ventas, tot: T.ventas },
+    { lbl: "Costos", get: (f) => f.costos, tot: T.costos },
+    { lbl: "Margen bruto", get: (f) => f.margen, tot: T.margen, sub: true },
+    { lbl: "Gastos variables", get: (f) => f.gVar, tot: T.gVar },
+    { lbl: "Contribución marginal", get: (f) => f.contMarg, tot: T.contMarg, sub: true },
+    { lbl: "Gastos fijos asignados", get: (f) => f.gFijos, tot: T.gFijos },
+    { lbl: "Otros ing./egr. x depto.", get: (f) => f.otrosIng, tot: T.otrosIng },
+    { lbl: "Beneficio por depto.", get: (f) => f.benef, tot: T.benef, benef: true },
+  ];
 
   return (
     <div>
       <PageHeader
         title="Análisis de gestión"
-        description="Cuadro de situación económica: contribución por departamento, estructura y punto de equilibrio."
+        description={`Cuadro de situación económica · ${empresaNombre}`}
         action={
           <div className="flex items-center gap-2">
             <Badge>Datos importados</Badge>
+            <Button variant="outline" size="sm" onClick={exportar}>
+              <Download className="mr-1.5 h-4 w-4" /> Excel
+            </Button>
             <Select value={modo} onValueChange={setVista}>
-              <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {nMeses > 1 && <SelectItem value="acum">Acumulado · {nMeses} meses</SelectItem>}
                 {nMeses > 1 && <SelectItem value="prom">Promedio mensual</SelectItem>}
@@ -272,174 +315,131 @@ export function Rentabilidad() {
         }
       />
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard label={`Facturación ${sufijo}`} value={moneyShort(op.ingresos)} icon={TrendingUp} />
-        <KpiCard
-          label={tieneSplit ? "Contribución marginal" : "Margen bruto"}
-          value={moneyShort(contribucion)}
-          icon={Scale}
-          hint={op.ingresos ? pct(margenPct * 100) + " s/ ventas" : ""}
-        />
-        <KpiCard
-          label={`Resultado ${sufijo}`}
-          value={moneyShort(resultadoFinal)}
-          icon={Wallet}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <KpiCard label={`Facturación ${sufijo}`} value={moneyShort(T.ventas)} icon={TrendingUp}
+          hint={ventas.payload ? `${num(ventas.payload.unidades)} u. 0km · $${moneyShort(ventas.payload.precioProm)} prom.` : undefined} />
+        <KpiCard label="Margen bruto" value={moneyShort(T.margen)} icon={Scale}
+          hint={T.ventas ? pct((T.margen / T.ventas) * 100) + " s/ ventas" : ""} />
+        <KpiCard label="Contribución marg." value={moneyShort(T.contMarg)} icon={Scale}
+          hint={T.ventas ? pct((T.contMarg / T.ventas) * 100) + " s/ ventas" : ""} />
+        <KpiCard label={`Resultado ${sufijo}`} value={moneyShort(resultadoFinal)} icon={Wallet}
           tone={resultadoFinal >= 0 ? "positive" : "negative"}
-          hint={op.ingresos ? pct((resultadoFinal / op.ingresos) * 100) + " s/ ventas" : ""}
-        />
-        <KpiCard
-          label="Punto de equilibrio"
-          value={moneyShort(puntoEq)}
-          icon={ShieldCheck}
+          delta={benefPrev !== null && benefPrev ? ((T.benef - benefPrev) / Math.abs(benefPrev)) * 100 : undefined}
+          hint={T.ventas ? pct((resultadoFinal / T.ventas) * 100) + " s/ ventas" : ""} />
+        <KpiCard label="Punto de equilibrio" value={moneyShort(puntoEq)} icon={ShieldCheck}
           tone={margenSeguridad >= 0 ? "positive" : "negative"}
-          hint={`margen de seguridad ${pct(margenSeguridad)}`}
-        />
+          hint={`margen seg. ${pct(margenSeguridad)}`} />
       </div>
 
-      {/* Cascada departamental */}
+      {/* Contribución por departamento */}
+      <Card className="mt-4">
+        <CardHeader><CardTitle className="text-base">Contribución por departamento · {etiqueta(periodo)}</CardTitle></CardHeader>
+        <CardContent className="space-y-2">
+          {chartContrib.map((f) => (
+            <div key={f.key} className="grid grid-cols-[140px_1fr_150px] items-center gap-3">
+              <span className="truncate text-sm font-medium">{f.label}</span>
+              <div className="h-5 overflow-hidden rounded bg-muted">
+                <div className="h-full rounded" style={{ width: `${Math.max((Math.abs(f.benef) / maxBenef) * 100, 2)}%`, background: f.benef >= 0 ? f.color : "hsl(var(--destructive))" }} />
+              </div>
+              <span className="text-right text-sm tabular-nums">
+                <b>{money(f.benef)}</b>
+                <span className="ml-1.5 text-xs text-muted-foreground">{T.benef ? pct((f.benef / T.benef) * 100, 0) : ""}</span>
+              </span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Cuadro por centro de costo */}
       <Card className="mt-4">
         <CardHeader>
-          <CardTitle className="text-base">Contribución por departamento · {etiqueta(periodo)}</CardTitle>
+          <CardTitle className="text-base">Cuadro por centro de costo</CardTitle>
+          <p className="text-xs text-muted-foreground">valor · % sobre ventas del departamento</p>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Departamento</TableHead>
-                  <TableHead className="text-right">Ventas</TableHead>
-                  <TableHead className="text-right">Costos</TableHead>
-                  {tieneSplit && <TableHead className="text-right">G. variables</TableHead>}
-                  <TableHead className="text-right">{tieneSplit ? "Cont. marginal" : "Margen bruto"}</TableHead>
-                  <TableHead className="text-right">{tieneSplit ? "G. fijos" : "Gastos"}</TableHead>
-                  <TableHead className="text-right">Resultado</TableHead>
-                  <TableHead className="text-right">% s/ ventas</TableHead>
-                  <TableHead className="text-right">vs. {anterior ? periodoLabel(anterior) : "mes ant."}</TableHead>
+                  <TableHead className="min-w-[170px]">Concepto</TableHead>
+                  {filas.map((f) => (
+                    <TableHead key={f.key} className="text-right">{f.label}</TableHead>
+                  ))}
+                  <TableHead className="text-right">Total</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filas.map((f) => (
-                  <TableRow key={f.key}>
-                    <TableCell className="font-medium">
-                      <span className="flex items-center gap-2">
-                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: f.color }} />
-                        {f.label}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{money(f.ingresos)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{money(f.costos)}</TableCell>
-                    {tieneSplit && (
-                      <TableCell className="text-right tabular-nums text-muted-foreground">{money(f.gVar)}</TableCell>
-                    )}
-                    <TableCell className="text-right tabular-nums">{money(tieneSplit ? f.contMarg : f.margen)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">
-                      {money(tieneSplit ? f.gFijos : f.gastos)}
-                    </TableCell>
-                    <TableCell className={cn("text-right font-semibold tabular-nums", f.resultado < 0 && "text-destructive")}>
-                      {money(f.resultado)}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {f.ingresos > 1_000_000 ? pct((f.resultado / f.ingresos) * 100) : "—"}
-                    </TableCell>
-                    <DeltaCell value={f.delta} />
+                {FILAS_DEF.map((rd) => (
+                  <TableRow key={rd.lbl} className={cn(rd.sub && "bg-muted/30", rd.benef && "bg-primary/5")}>
+                    <TableCell className={cn("font-medium", (rd.sub || rd.benef) && "font-bold")}>{rd.lbl}</TableCell>
+                    {filas.map((f) => (
+                      <Cel key={f.key} v={rd.get(f)} base={f.ventas} strong={rd.sub || rd.benef} />
+                    ))}
+                    <Cel v={rd.tot} base={T.ventas} total strong={rd.sub || rd.benef} />
                   </TableRow>
                 ))}
-              </TableBody>
-              <TableFooter>
                 <TableRow>
-                  <TableCell className="font-bold">Total operativo</TableCell>
-                  <TableCell className="text-right font-bold tabular-nums">{money(op.ingresos)}</TableCell>
-                  <TableCell className="text-right font-bold tabular-nums">{money(op.costos)}</TableCell>
-                  {tieneSplit && <TableCell className="text-right font-bold tabular-nums">{money(op.gVar)}</TableCell>}
-                  <TableCell className="text-right font-bold tabular-nums">{money(tieneSplit ? op.contMarg : op.margen)}</TableCell>
-                  <TableCell className="text-right font-bold tabular-nums">{money(tieneSplit ? op.gFijos : op.gastos)}</TableCell>
-                  <TableCell className={cn("text-right font-bold tabular-nums", op.resultado < 0 && "text-destructive")}>
-                    {money(op.resultado)}
-                  </TableCell>
-                  <TableCell className="text-right font-bold tabular-nums">
-                    {op.ingresos ? pct((op.resultado / op.ingresos) * 100) : "—"}
-                  </TableCell>
-                  <TableCell />
+                  <TableCell className="text-sm text-muted-foreground">Participación s/ contribución</TableCell>
+                  {filas.map((f) => (
+                    <TableCell key={f.key} className="text-right text-sm tabular-nums text-muted-foreground">
+                      {T.benef ? pct((f.benef / T.benef) * 100, 0) : "—"}
+                    </TableCell>
+                  ))}
+                  <TableCell className="bg-muted/40 text-right text-sm font-bold tabular-nums">100%</TableCell>
                 </TableRow>
-              </TableFooter>
+              </TableBody>
             </Table>
           </div>
         </CardContent>
       </Card>
 
-      {/* Estructura y no operativos → resultado final */}
+      {/* Del beneficio operativo al resultado */}
       <Card className="mt-4">
-        <CardHeader>
-          <CardTitle className="text-base">Del resultado operativo al resultado final</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">Del beneficio operativo al resultado</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableBody>
               <TableRow>
-                <TableCell className="font-medium">Resultado operativo (contribución departamental)</TableCell>
-                <TableCell className={cn("text-right font-semibold tabular-nums", op.resultado < 0 && "text-destructive")}>
-                  {money(op.resultado)}
-                </TableCell>
-                <TableCell className="w-32" />
+                <TableCell className="font-semibold">Beneficio total departamentos</TableCell>
+                <TableCell className="text-right font-semibold tabular-nums">{money(T.benef)}</TableCell>
+                <TableCell className="w-28 text-right text-xs text-muted-foreground">{T.ventas ? pct((T.benef / T.ventas) * 100) : ""}</TableCell>
               </TableRow>
               {noOp.map((f) => (
                 <TableRow key={f.key}>
                   <TableCell className="text-muted-foreground">{f.label}</TableCell>
-                  <TableCell className={cn("text-right tabular-nums", f.resultado < 0 && "text-destructive")}>
-                    {money(f.resultado)}
-                  </TableCell>
-                  <DeltaCell value={f.delta} />
+                  <TableCell className={cn("text-right tabular-nums", f.resultado < 0 && "text-destructive")}>{money(f.resultado)}</TableCell>
+                  <TableCell className="text-right text-xs text-muted-foreground">{T.ventas ? pct((f.resultado / T.ventas) * 100) : ""}</TableCell>
                 </TableRow>
               ))}
-              <TableRow className="border-t-2">
+              <TableRow className="border-t-2 bg-primary/5">
                 <TableCell className="font-bold">Resultado final {modo === "prom" ? "(prom. mensual)" : modo === "acum" ? "(acumulado)" : "del mes"}</TableCell>
-                <TableCell className={cn("text-right font-bold tabular-nums", resultadoFinal < 0 && "text-destructive")}>
-                  {money(resultadoFinal)}
-                </TableCell>
-                <TableCell />
+                <TableCell className={cn("text-right font-bold tabular-nums", resultadoFinal < 0 && "text-destructive")}>{money(resultadoFinal)}</TableCell>
+                <TableCell className="text-right text-xs font-bold">{T.ventas ? pct((resultadoFinal / T.ventas) * 100) : ""}</TableCell>
               </TableRow>
             </TableBody>
           </Table>
         </CardContent>
       </Card>
 
-      {/* Evolución mensual */}
+      {/* Evolución */}
       <Card className="mt-4">
-        <CardHeader>
-          <CardTitle className="text-base">Evolución mensual · facturación y resultado</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">Evolución mensual · facturación y resultado</CardTitle></CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={280}>
+          <ResponsiveContainer width="100%" height={260}>
             <ComposedChart data={serie} margin={{ left: 8, right: 8, top: 8 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
               <XAxis dataKey="periodo" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
               <YAxis tickFormatter={moneyShort} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={70} />
-              <Tooltip formatter={(v: number, name: string) => [money(v), name === "ingresos" ? "Facturación" : "Resultado"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 13 }} />
-              <Legend formatter={(v) => (v === "ingresos" ? "Facturación" : "Resultado")} />
-              <Bar dataKey="ingresos" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={48} />
+              <Tooltip formatter={(v: number, n: string) => [money(v), n === "ventas" ? "Facturación" : "Resultado"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 13 }} />
+              <Legend formatter={(v) => (v === "ventas" ? "Facturación" : "Resultado")} />
+              <Bar dataKey="ventas" fill="#2563eb" radius={[6, 6, 0, 0]} maxBarSize={46} />
               <Line dataKey="resultado" stroke="#16a34a" strokeWidth={2.5} dot={{ r: 4 }} />
             </ComposedChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
-      <p className="mt-3 text-xs text-muted-foreground">
-        {tieneSplit ? (
-          <>
-            El <strong>punto de equilibrio</strong> usa la clasificación variable/fijo del EEFF del
-            grupo (extraída del libro mensual): PE = gastos fijos (asignados + estructura) ÷ % de
-            contribución marginal.
-          </>
-        ) : (
-          <>
-            El <strong>punto de equilibrio</strong> es aproximado (esta importación no tiene la
-            apertura variable/fijo). Reimportá el balance parcial para calcularlo con la
-            clasificación exacta del EEFF.
-          </>
-        )}
-      </p>
-
-      <Anotaciones contexto={`gestion:${empresaIdsActivos.join(",") || "grupo"}`} titulo="Anotaciones de gestión" />
+      <Anotaciones contexto="rentabilidad" />
     </div>
   );
 }

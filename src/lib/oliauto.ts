@@ -86,6 +86,8 @@ export interface CeldaPL {
   resultado: number;
   /** Porción variable de los gastos, según la clasificación del EEFF del grupo. */
   gastosVar?: number;
+  /** Otros ingresos/egresos por depto (cuentas mixtas 516/517/524/534); neto, + = ingreso. */
+  otrosIng?: number;
 }
 
 export interface BalanceParcial {
@@ -98,7 +100,7 @@ export interface BalanceParcial {
 }
 
 function celdaVacia(): CeldaPL {
-  return { ingresos: 0, costos: 0, gastos: 0, resultado: 0, gastosVar: 0 };
+  return { ingresos: 0, costos: 0, gastos: 0, resultado: 0, gastosVar: 0, otrosIng: 0 };
 }
 
 /**
@@ -140,11 +142,13 @@ export function parseBalanceParcial(aoa: unknown[][], headerRow: number): Balanc
       if (val === 0) continue;
       const cd = porDepto[depto][periodo];
       const tot = totales[periodo];
-      // En "mixto", un saldo acreedor (negativo) es ingreso; deudor (positivo) es gasto.
-      const efectiva = nat === "mixto" ? (val < 0 ? "venta" : "gasto") : nat;
-      if (efectiva === "venta") { cd.ingresos += -val; tot.ingresos += -val; }
-      else if (efectiva === "costo") { cd.costos += val; tot.costos += val; }
-      else {
+      if (nat === "venta") { cd.ingresos += -val; tot.ingresos += -val; }
+      else if (nat === "costo") { cd.costos += val; tot.costos += val; }
+      else if (nat === "mixto") {
+        // Otros ingresos/egresos por depto: neto (acreedor = ingreso positivo).
+        cd.otrosIng = (cd.otrosIng ?? 0) + -val;
+        tot.otrosIng = (tot.otrosIng ?? 0) + -val;
+      } else {
         cd.gastos += val;
         tot.gastos += val;
         // Apertura variable/fijo según la clasificación del EEFF del grupo.

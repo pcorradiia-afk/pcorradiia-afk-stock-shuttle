@@ -292,8 +292,9 @@ export function gestionImportada(
         a.costos += celda.costos;
         a.gastos += celda.gastos;
         a.resultado += celda.resultado;
-        // gastosVar solo está en importaciones nuevas; undefined = sin apertura.
+        // gastosVar / otrosIng solo están en importaciones nuevas.
         if (celda.gastosVar !== undefined) a.gastosVar = (a.gastosVar ?? 0) + celda.gastosVar;
+        if (celda.otrosIng !== undefined) a.otrosIng = (a.otrosIng ?? 0) + celda.otrosIng;
       }
     }
   }
