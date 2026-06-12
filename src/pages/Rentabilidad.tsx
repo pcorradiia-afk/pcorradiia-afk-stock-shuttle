@@ -149,13 +149,21 @@ export function Rentabilidad() {
   const celda = (key: string, per: string | null): CeldaPL =>
     (per && g.porDepto[key]?.[per]) || vacia();
 
+  // ¿La importación trae la apertura variable/fijo? (solo en importaciones nuevas)
+  const tieneSplit = OPERATIVOS.some((d) => celda(d.key, periodo).gastosVar !== undefined);
+
   const filas = OPERATIVOS.map((d) => {
     const c = celda(d.key, periodo);
     const prev = anterior ? celda(d.key, anterior) : null;
+    const gVar = c.gastosVar ?? 0;
+    const margen = c.ingresos - c.costos;
     return {
       ...d,
       ...c,
-      margen: c.ingresos - c.costos,
+      margen,
+      gVar,
+      gFijos: c.gastos - gVar,
+      contMarg: margen - gVar,
       delta: prev ? c.resultado - prev.resultado : null,
       conMov: c.ingresos || c.costos || c.gastos || c.resultado,
     };
@@ -167,9 +175,12 @@ export function Rentabilidad() {
       costos: a.costos + f.costos,
       gastos: a.gastos + f.gastos,
       margen: a.margen + f.margen,
+      gVar: a.gVar + f.gVar,
+      gFijos: a.gFijos + f.gFijos,
+      contMarg: a.contMarg + f.contMarg,
       resultado: a.resultado + f.resultado,
     }),
-    { ingresos: 0, costos: 0, gastos: 0, margen: 0, resultado: 0 },
+    { ingresos: 0, costos: 0, gastos: 0, margen: 0, gVar: 0, gFijos: 0, contMarg: 0, resultado: 0 },
   );
 
   const noOp = NO_OPERATIVOS.map((d) => {
@@ -179,13 +190,19 @@ export function Rentabilidad() {
   }).filter((f) => f.ingresos || f.gastos || f.resultado);
 
   const resultadoFinal = op.resultado + noOp.reduce((a, f) => a + f.resultado, 0);
-  const estructura = celda("admin", periodo).gastos;
 
-  // Punto de equilibrio aproximado: gastos fijos / % de margen bruto.
-  const gastosFijos = op.gastos + estructura;
-  const margenPct = op.ingresos ? op.margen / op.ingresos : 0;
-  const puntoEq = margenPct > 0 ? gastosFijos / margenPct : 0;
+  // Punto de equilibrio según la metodología del EEFF: la clasificación
+  // variable/fijo se aplica sobre TODOS los gastos (incluye estructura y los
+  // variables que viven en financieros/varios, ej. imp. a débitos y créditos).
+  const todos = [...OPERATIVOS, ...NO_OPERATIVOS].map((d) => celda(d.key, periodo));
+  const gastosTotales = todos.reduce((a, c) => a + c.gastos, 0);
+  const gVarTotal = todos.reduce((a, c) => a + (c.gastosVar ?? 0), 0);
+  const contribucion = tieneSplit ? op.margen - gVarTotal : op.margen;
+  const gastosFijos = gastosTotales - (tieneSplit ? gVarTotal : 0);
+  const contribPct = op.ingresos ? contribucion / op.ingresos : 0;
+  const puntoEq = contribPct > 0 ? gastosFijos / contribPct : 0;
   const margenSeguridad = op.ingresos && puntoEq ? ((op.ingresos - puntoEq) / op.ingresos) * 100 : 0;
+  const margenPct = contribPct;
 
   const serie = g.periodos.map((per) => {
     const tot = [...OPERATIVOS, ...NO_OPERATIVOS].reduce(
@@ -221,8 +238,8 @@ export function Rentabilidad() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard label="Facturación del mes" value={moneyShort(op.ingresos)} icon={TrendingUp} />
         <KpiCard
-          label="Margen bruto"
-          value={moneyShort(op.margen)}
+          label={tieneSplit ? "Contribución marginal" : "Margen bruto"}
+          value={moneyShort(contribucion)}
           icon={Scale}
           hint={op.ingresos ? pct(margenPct * 100) + " s/ ventas" : ""}
         />
@@ -255,8 +272,9 @@ export function Rentabilidad() {
                   <TableHead>Departamento</TableHead>
                   <TableHead className="text-right">Ventas</TableHead>
                   <TableHead className="text-right">Costos</TableHead>
-                  <TableHead className="text-right">Margen bruto</TableHead>
-                  <TableHead className="text-right">Gastos</TableHead>
+                  {tieneSplit && <TableHead className="text-right">G. variables</TableHead>}
+                  <TableHead className="text-right">{tieneSplit ? "Cont. marginal" : "Margen bruto"}</TableHead>
+                  <TableHead className="text-right">{tieneSplit ? "G. fijos" : "Gastos"}</TableHead>
                   <TableHead className="text-right">Resultado</TableHead>
                   <TableHead className="text-right">% s/ ventas</TableHead>
                   <TableHead className="text-right">vs. {anterior ? periodoLabel(anterior) : "mes ant."}</TableHead>
@@ -273,8 +291,13 @@ export function Rentabilidad() {
                     </TableCell>
                     <TableCell className="text-right tabular-nums">{money(f.ingresos)}</TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">{money(f.costos)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{money(f.margen)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-muted-foreground">{money(f.gastos)}</TableCell>
+                    {tieneSplit && (
+                      <TableCell className="text-right tabular-nums text-muted-foreground">{money(f.gVar)}</TableCell>
+                    )}
+                    <TableCell className="text-right tabular-nums">{money(tieneSplit ? f.contMarg : f.margen)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {money(tieneSplit ? f.gFijos : f.gastos)}
+                    </TableCell>
                     <TableCell className={cn("text-right font-semibold tabular-nums", f.resultado < 0 && "text-destructive")}>
                       {money(f.resultado)}
                     </TableCell>
@@ -290,8 +313,9 @@ export function Rentabilidad() {
                   <TableCell className="font-bold">Total operativo</TableCell>
                   <TableCell className="text-right font-bold tabular-nums">{money(op.ingresos)}</TableCell>
                   <TableCell className="text-right font-bold tabular-nums">{money(op.costos)}</TableCell>
-                  <TableCell className="text-right font-bold tabular-nums">{money(op.margen)}</TableCell>
-                  <TableCell className="text-right font-bold tabular-nums">{money(op.gastos)}</TableCell>
+                  {tieneSplit && <TableCell className="text-right font-bold tabular-nums">{money(op.gVar)}</TableCell>}
+                  <TableCell className="text-right font-bold tabular-nums">{money(tieneSplit ? op.contMarg : op.margen)}</TableCell>
+                  <TableCell className="text-right font-bold tabular-nums">{money(tieneSplit ? op.gFijos : op.gastos)}</TableCell>
                   <TableCell className={cn("text-right font-bold tabular-nums", op.resultado < 0 && "text-destructive")}>
                     {money(op.resultado)}
                   </TableCell>
@@ -363,9 +387,19 @@ export function Rentabilidad() {
       </Card>
 
       <p className="mt-3 text-xs text-muted-foreground">
-        El <strong>punto de equilibrio</strong> es aproximado: toma los gastos (departamentales + estructura)
-        como fijos y el margen bruto como contribución. Para replicar exactamente la apertura
-        variable/fijo de tu EEFF se carga la tabla de clasificación de cuentas (próximo paso).
+        {tieneSplit ? (
+          <>
+            El <strong>punto de equilibrio</strong> usa la clasificación variable/fijo del EEFF del
+            grupo (extraída del libro mensual): PE = gastos fijos (asignados + estructura) ÷ % de
+            contribución marginal.
+          </>
+        ) : (
+          <>
+            El <strong>punto de equilibrio</strong> es aproximado (esta importación no tiene la
+            apertura variable/fijo). Reimportá el balance parcial para calcularlo con la
+            clasificación exacta del EEFF.
+          </>
+        )}
       </p>
     </div>
   );

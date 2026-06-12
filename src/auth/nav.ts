@@ -23,7 +23,7 @@ export interface NavItem {
 
 export const NAV: NavItem[] = [
   { to: "/", label: "Tablero", icon: LayoutDashboard, permiso: PERMISOS.DASHBOARD_VER, grupo: "Gestión" },
-  { to: "/rentabilidad", label: "Rentabilidad por depto.", icon: LineChart, permiso: PERMISOS.RENTABILIDAD_VER, grupo: "Gestión" },
+  { to: "/rentabilidad", label: "Análisis de gestión", icon: LineChart, permiso: PERMISOS.RENTABILIDAD_VER, grupo: "Gestión" },
   { to: "/comercial", label: "Ventas y márgenes", icon: ListChecks, permiso: PERMISOS.COMERCIAL_VER, grupo: "Gestión" },
   { to: "/cuentas-corrientes", label: "Cuentas corrientes", icon: Wallet, permiso: PERMISOS.CC_VER, grupo: "Gestión" },
   { to: "/auditoria", label: "Auditoría y hallazgos", icon: ShieldCheck, permiso: PERMISOS.AUDITORIA_VER, grupo: "Auditoría" },

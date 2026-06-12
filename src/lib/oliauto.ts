@@ -1,3 +1,5 @@
+import { clasificarGasto } from "@/data/clasificacionGastos";
+
 // Motor de análisis para reportes de Oliauto.
 // Clasifica las cuentas de resultado (clase 5) por departamento usando el código,
 // que en el plan de cuentas de Oliauto ya codifica el departamento:
@@ -74,6 +76,8 @@ export interface CeldaPL {
   costos: number;
   gastos: number;
   resultado: number;
+  /** Porción variable de los gastos, según la clasificación del EEFF del grupo. */
+  gastosVar?: number;
 }
 
 export interface BalanceParcial {
@@ -86,7 +90,7 @@ export interface BalanceParcial {
 }
 
 function celdaVacia(): CeldaPL {
-  return { ingresos: 0, costos: 0, gastos: 0, resultado: 0 };
+  return { ingresos: 0, costos: 0, gastos: 0, resultado: 0, gastosVar: 0 };
 }
 
 /**
@@ -132,7 +136,15 @@ export function parseBalanceParcial(aoa: unknown[][], headerRow: number): Balanc
       const efectiva = nat === "mixto" ? (val < 0 ? "venta" : "gasto") : nat;
       if (efectiva === "venta") { cd.ingresos += -val; tot.ingresos += -val; }
       else if (efectiva === "costo") { cd.costos += val; tot.costos += val; }
-      else { cd.gastos += val; tot.gastos += val; }
+      else {
+        cd.gastos += val;
+        tot.gastos += val;
+        // Apertura variable/fijo según la clasificación del EEFF del grupo.
+        if (clasificarGasto(codigo) === "variable") {
+          cd.gastosVar = (cd.gastosVar ?? 0) + val;
+          tot.gastosVar = (tot.gastosVar ?? 0) + val;
+        }
+      }
       cd.resultado += -val;
       tot.resultado += -val;
     }
