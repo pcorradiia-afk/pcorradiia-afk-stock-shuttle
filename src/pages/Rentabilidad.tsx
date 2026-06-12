@@ -307,8 +307,6 @@ export function Rentabilidad() {
   const mesesRestantes = Math.max(0, 12 - mesUltimo);
   const proyeccionAnual = nMeses > 0 ? acumAnual + (acumAnual / nMeses) * mesesRestantes : 0;
 
-  const chartContrib = [...filas].sort((a, b) => b.benef - a.benef);
-  const maxBenef = Math.max(1, ...chartContrib.map((f) => Math.abs(f.benef)));
 
   const empresaNombre = seleccion === "grupo"
     ? "Grupo Fiorasi"
@@ -459,25 +457,6 @@ export function Rentabilidad() {
           tone={margenSeguridad >= 0 ? "positive" : "negative"}
           hint={`margen seg. ${pct(margenSeguridad)}`} />
       </div>
-
-      {/* Contribución por departamento */}
-      <Card className="mt-4">
-        <CardHeader><CardTitle className="text-base">Contribución por departamento · {etiqueta(periodo)}</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {chartContrib.map((f) => (
-            <div key={f.key} className="grid grid-cols-[140px_1fr_150px] items-center gap-3">
-              <span className="truncate text-sm font-medium">{f.label}</span>
-              <div className="h-5 overflow-hidden rounded bg-muted">
-                <div className="h-full rounded" style={{ width: `${Math.max((Math.abs(f.benef) / maxBenef) * 100, 2)}%`, background: f.benef >= 0 ? f.color : "hsl(var(--destructive))" }} />
-              </div>
-              <span className="text-right text-sm tabular-nums">
-                <b>{money(f.benef)}</b>
-                <span className="ml-1.5 text-xs text-muted-foreground">{T.benef ? pct((f.benef / T.benef) * 100, 0) : ""}</span>
-              </span>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
 
       {/* Cuadro por centro de costo */}
       <Card className="mt-4">
