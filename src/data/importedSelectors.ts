@@ -257,6 +257,43 @@ export function ventasImportada(importaciones: Importacion[], empresaIds: string
   return { hayDatos: true, payload, conciliacion };
 }
 
+// ---------- Situación patrimonial (balance general) ----------
+
+export interface PatrimonialImportada {
+  hayDatos: boolean;
+  activo: number;
+  pasivo: number;
+  pn: number;
+  liquidez: number;
+  solvencia: number;
+  endeudamiento: number;
+}
+
+export function patrimonialImportada(importaciones: Importacion[], empresaIds: string[]): PatrimonialImportada {
+  const fuentes = ultimaPorEmpresa(importaciones, "balance_general", empresaIds);
+  if (fuentes.length === 0) {
+    return { hayDatos: false, activo: 0, pasivo: 0, pn: 0, liquidez: 0, solvencia: 0, endeudamiento: 0 };
+  }
+  let activo = 0, pasivo = 0, pn = 0, ac = 0, pc = 0;
+  for (const imp of fuentes) {
+    const p = imp.payload as BalanceGeneral;
+    activo += p.activo;
+    pasivo += p.pasivo;
+    pn += p.patrimonioNeto;
+    ac += p.activoCorriente;
+    pc += p.pasivoCorriente;
+  }
+  return {
+    hayDatos: true,
+    activo,
+    pasivo,
+    pn,
+    liquidez: pc ? ac / pc : 0,
+    solvencia: pasivo ? activo / pasivo : 0,
+    endeudamiento: pn ? pasivo / pn : 0,
+  };
+}
+
 // ---------- Análisis de gestión (cuadro de situación económica) ----------
 
 export interface GestionImportada {

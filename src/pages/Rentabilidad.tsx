@@ -10,14 +10,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Download, Scale, ShieldCheck, TrendingUp, Wallet } from "lucide-react";
+import { Download, FileText, Scale, ShieldCheck, TrendingUp, Wallet } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { DEPARTAMENTOS, EMPRESAS, PERIODOS } from "@/data/demo";
 import { resumenPorDepto, ultimoPeriodo } from "@/data/selectors";
 import { useImportaciones } from "@/data/useImportaciones";
-import { gestionImportada, ventasImportada } from "@/data/importedSelectors";
+import { gestionImportada, moraImportada, patrimonialImportada, ventasImportada } from "@/data/importedSelectors";
 import type { CeldaPL } from "@/lib/oliauto";
 import { descargarExcel } from "@/lib/excel";
+import { abrirReporteEjecutivo, type AreaReporte } from "@/lib/reporteHTML";
 import { fecha, money, moneyShort, num, pct, periodoLabel } from "@/lib/format";
 import { KpiCard, PageHeader } from "@/components/ui-kit";
 import { Anotaciones } from "@/components/Anotaciones";
@@ -89,6 +90,8 @@ export function Rentabilidad() {
   const importaciones = useImportaciones(empresaIdsActivos);
   const g = useMemo(() => gestionImportada(importaciones, empresaIdsActivos), [importaciones, empresaIdsActivos]);
   const ventas = useMemo(() => ventasImportada(importaciones, empresaIdsActivos), [importaciones, empresaIdsActivos]);
+  const mora = useMemo(() => moraImportada(importaciones, empresaIdsActivos), [importaciones, empresaIdsActivos]);
+  const patr = useMemo(() => patrimonialImportada(importaciones, empresaIdsActivos), [importaciones, empresaIdsActivos]);
 
   const ultimo = g.periodos[g.periodos.length - 1] ?? "";
   const nMeses = g.periodos.length;
@@ -271,6 +274,41 @@ export function Rentabilidad() {
     descargarExcel(aoa, "Cuadro de gestión", `cuadro_gestion_${slug}_${periodo}.xlsx`);
   }
 
+  // ---- Reporte ejecutivo (PDF) ----
+  function reporte() {
+    const areas: AreaReporte[] = filas.map((f) => ({
+      nombre: f.label,
+      ventas: f.ventas,
+      costos: f.costos,
+      margen: f.margen,
+      gVar: f.gVar,
+      contMarg: f.contMarg,
+      gFijos: f.gFijos,
+      otrosIng: f.otrosIng,
+      benef: f.benef,
+      partBenef: T.benef ? (f.benef / T.benef) * 100 : 0,
+      deltaResultado: anterior ? f.benef - cascada(f.key, "", "", celda(f.key, anterior)).benef : null,
+    }));
+    abrirReporteEjecutivo({
+      empresa: empresaNombre,
+      periodoLabel: etiqueta(periodo),
+      modoLabel: esEspecial ? "" : "cifras mensuales",
+      ventasTot: T.ventas,
+      margenTot: T.margen,
+      contMargTot: T.contMarg,
+      resultadoFinal,
+      puntoEq,
+      margenSeg: margenSeguridad,
+      areas,
+      noOp: noOp.map((n) => ({ label: n.label, resultado: n.resultado })),
+      unidades0km: ventas.payload ? { unidades: ventas.payload.unidades, precioProm: ventas.payload.precioProm } : undefined,
+      mora: mora.hayDatos ? { total: mora.total, pctMora: mora.pctMora, mas90: mora.mas90 } : undefined,
+      patrimonial: patr.hayDatos
+        ? { activo: patr.activo, pasivo: patr.pasivo, pn: patr.pn, liquidez: patr.liquidez, solvencia: patr.solvencia, endeudamiento: patr.endeudamiento }
+        : undefined,
+    });
+  }
+
   /** Celda valor + % bajo (s/ ventas del depto). */
   const Cel = ({ v, base, strong, total }: { v: number; base: number; strong?: boolean; total?: boolean }) => (
     <TableCell className={cn("text-right tabular-nums", total && "bg-muted/40 font-bold", strong && "font-semibold", v < 0 && "text-destructive")}>
@@ -298,6 +336,9 @@ export function Rentabilidad() {
         action={
           <div className="flex items-center gap-2">
             <Badge>Datos importados</Badge>
+            <Button variant="outline" size="sm" onClick={reporte}>
+              <FileText className="mr-1.5 h-4 w-4" /> Reporte PDF
+            </Button>
             <Button variant="outline" size="sm" onClick={exportar}>
               <Download className="mr-1.5 h-4 w-4" /> Excel
             </Button>
