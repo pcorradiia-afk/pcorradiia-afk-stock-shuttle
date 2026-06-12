@@ -26,6 +26,7 @@ import {
 import type { Composicion } from "@/lib/oliauto";
 import { fecha, money, moneyShort, pct, periodoLabel } from "@/lib/format";
 import { KpiCard, PageHeader } from "@/components/ui-kit";
+import { Anotaciones } from "@/components/Anotaciones";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -261,6 +262,8 @@ export function CuentasCorrientes() {
           </div>
         </CardContent>
       </Card>
+
+      <Anotaciones contexto={`cuentas-corrientes:${ids.join(",") || "grupo"}`} titulo="Anotaciones de cobranzas" />
     </div>
   );
 }

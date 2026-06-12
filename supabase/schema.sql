@@ -69,8 +69,30 @@ create index if not exists importaciones_tipo_idx    on public.importaciones (ti
 -- pero la anon key es pública. Antes de exponer la app, reemplazá estas
 -- políticas por unas basadas en Supabase Auth (auth.uid()) — ver SUPABASE_SETUP.md.
 -- ---------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
+-- Anotaciones: notas de usuarios ancladas a un "contexto" (una pantalla o una
+-- empresa/período puntual), para dejar comentarios donde se considere relevante.
+-- ---------------------------------------------------------------------------
+create table if not exists public.anotaciones (
+  id          uuid primary key default gen_random_uuid(),
+  contexto    text not null,            -- ej. 'tablero', 'cuentas-corrientes:e1'
+  empresa_id  text references public.empresas (id),
+  texto       text not null,
+  autor       text,
+  creado_el   timestamptz not null default now()
+);
+create index if not exists anotaciones_contexto_idx on public.anotaciones (contexto);
+
 alter table public.empresas      enable row level security;
 alter table public.importaciones enable row level security;
+alter table public.anotaciones   enable row level security;
+
+drop policy if exists anotaciones_lectura on public.anotaciones;
+create policy anotaciones_lectura on public.anotaciones for select using (true);
+drop policy if exists anotaciones_alta on public.anotaciones;
+create policy anotaciones_alta on public.anotaciones for insert with check (true);
+drop policy if exists anotaciones_baja on public.anotaciones;
+create policy anotaciones_baja on public.anotaciones for delete using (true);
 
 drop policy if exists empresas_lectura on public.empresas;
 create policy empresas_lectura on public.empresas

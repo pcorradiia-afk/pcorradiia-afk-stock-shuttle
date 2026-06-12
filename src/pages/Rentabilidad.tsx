@@ -19,6 +19,7 @@ import { gestionImportada } from "@/data/importedSelectors";
 import type { CeldaPL } from "@/lib/oliauto";
 import { money, moneyShort, pct, periodoLabel } from "@/lib/format";
 import { KpiCard, PageHeader } from "@/components/ui-kit";
+import { Anotaciones } from "@/components/Anotaciones";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -437,6 +438,8 @@ export function Rentabilidad() {
           </>
         )}
       </p>
+
+      <Anotaciones contexto={`gestion:${empresaIdsActivos.join(",") || "grupo"}`} titulo="Anotaciones de gestión" />
     </div>
   );
 }

@@ -29,6 +29,7 @@ import { gestionImportada, moraImportada } from "@/data/importedSelectors";
 import type { CeldaPL } from "@/lib/oliauto";
 import { money, moneyShort, num, pct, periodoLabel } from "@/lib/format";
 import { KpiCard, PageHeader } from "@/components/ui-kit";
+import { Anotaciones } from "@/components/Anotaciones";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -255,6 +256,8 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Anotaciones contexto={`tablero:${seleccion}`} titulo="Anotaciones del período" />
     </div>
   );
 }
