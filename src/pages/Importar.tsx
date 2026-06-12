@@ -98,6 +98,56 @@ function resumenItem(tipo: TipoImportacion, aoa: unknown[][]): { metrica: string
   }
 }
 
+/** Tabla con la última fecha de importación por empresa y tipo de reporte. */
+function UltimaActualizacion({ empresaIds }: { empresaIds: string[] }) {
+  const importaciones = useImportaciones(empresaIds);
+  if (importaciones.length === 0) return null;
+
+  const ultima: Record<string, Record<string, string>> = {};
+  for (const imp of importaciones) {
+    const e = (ultima[imp.empresa_id] ??= {});
+    if (!e[imp.tipo] || e[imp.tipo] < imp.creado_el) e[imp.tipo] = imp.creado_el;
+  }
+  const empresas = EMPRESAS.filter((e) => ultima[e.id]);
+
+  return (
+    <Card className="mt-4">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Última actualización por empresa</CardTitle>
+      </CardHeader>
+      <CardContent className="p-0">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Empresa</TableHead>
+                {TIPOS.map((t) => (
+                  <TableHead key={t} className="text-center">{TIPO_LABEL[t]}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {empresas.map((e) => (
+                <TableRow key={e.id}>
+                  <TableCell className="font-medium">{e.nombre}</TableCell>
+                  {TIPOS.map((t) => {
+                    const f = ultima[e.id]?.[t];
+                    return (
+                      <TableCell key={t} className="text-center text-sm tabular-nums">
+                        {f ? fecha(f) : <span className="text-muted-foreground">—</span>}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function Importar() {
   const { usuario, empresasVisibles, empresaIdsActivos, seleccion } = useAuth();
   const opciones = empresasVisibles.length > 0 ? empresasVisibles : EMPRESAS;
@@ -435,6 +485,8 @@ export function Importar() {
           </CardContent>
         </Card>
       )}
+
+      <UltimaActualizacion empresaIds={empresaIdsActivos} />
 
       {/* DMS del grupo */}
       <Card className="mt-4">

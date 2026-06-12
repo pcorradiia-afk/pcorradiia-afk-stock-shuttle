@@ -36,7 +36,7 @@ export function deptoDeCuenta(codigo: string): string | null {
 }
 
 function num(v: unknown): number {
-  const n = parseFloat(String(v ?? "").replace(/[^0-9.\-]/g, ""));
+  const n = parseFloat(String(v ?? "").replace(/[^0-9.-]/g, ""));
   return isNaN(n) ? 0 : n;
 }
 
