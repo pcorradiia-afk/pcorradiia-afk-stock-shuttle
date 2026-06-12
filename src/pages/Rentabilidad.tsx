@@ -122,10 +122,14 @@ export function Rentabilidad() {
       ? { suscripciones: Math.round(uPlanesRaw.suscripciones / nMeses), entregas: Math.round(uPlanesRaw.entregas / nMeses) }
       : uPlanesRaw;
 
-  // Cantidades (unidades) para el encabezado de cada columna del cuadro.
+  // Cantidades y precio promedio para el encabezado de cada columna del cuadro.
   const unidadesCol = (key: string): string => {
-    if (key === "0km" && ventas.payload?.unidades) return `${num(ventas.payload.unidades)} un.`;
-    if (key === "planes" && (uPlanes.suscripciones || uPlanes.entregas)) return `${uPlanes.suscripciones} susc · ${uPlanes.entregas} entr`;
+    if (key === "0km" && ventas.payload?.unidades) {
+      return `${num(ventas.payload.unidades)} un · ${moneyShort(ventas.payload.precioProm)} prom`;
+    }
+    if (key === "planes" && (uPlanes.suscripciones || uPlanes.entregas)) {
+      return `${uPlanes.suscripciones} susc · ${uPlanes.entregas} entr`;
+    }
     return "";
   };
 
@@ -294,6 +298,14 @@ export function Rentabilidad() {
     const no = NO_OPERATIVOS.reduce((a, d) => a + celda(d.key, per).resultado, 0);
     return { periodo: periodoLabel(per), ventas: f.ventas, resultado: f.benef + no };
   });
+
+  // Proyección anual: acumulado del año + promedio mensual × meses restantes
+  // hasta diciembre (con 5 meses a mayo, proyecta 7 meses más).
+  const acumAnual = serie.reduce((a, s) => a + s.resultado, 0);
+  const mesUltimo = Number(ultimo.slice(5, 7)) || nMeses;
+  const anioProy = ultimo.slice(0, 4);
+  const mesesRestantes = Math.max(0, 12 - mesUltimo);
+  const proyeccionAnual = nMeses > 0 ? acumAnual + (acumAnual / nMeses) * mesesRestantes : 0;
 
   const chartContrib = [...filas].sort((a, b) => b.benef - a.benef);
   const maxBenef = Math.max(1, ...chartContrib.map((f) => Math.abs(f.benef)));
@@ -469,9 +481,9 @@ export function Rentabilidad() {
                   {filas.map((f) => {
                     const u = unidadesCol(f.key);
                     return (
-                      <TableHead key={f.key} className="border-t-2 px-1.5 py-2 text-right font-semibold text-primary" style={{ borderTopColor: f.color }}>
+                      <TableHead key={f.key} className="px-1.5 py-2 text-right font-semibold text-primary">
                         {f.label}
-                        {u && <span className="block text-[9px] font-normal text-muted-foreground">{u}</span>}
+                        <span className="block text-[9px] font-normal text-muted-foreground">{u || " "}</span>
                       </TableHead>
                     );
                   })}
@@ -517,26 +529,40 @@ export function Rentabilidad() {
 
       {/* Del beneficio operativo al resultado */}
       <Card className="mt-4">
-        <CardHeader><CardTitle className="text-base">Del beneficio operativo al resultado</CardTitle></CardHeader>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Del beneficio operativo al resultado</CardTitle>
+        </CardHeader>
         <CardContent className="p-0">
-          <Table>
+          <Table className="text-xs">
             <TableBody>
-              <TableRow>
-                <TableCell className="font-semibold">Beneficio total departamentos</TableCell>
-                <TableCell className="text-right font-semibold tabular-nums">{money(T.benef)}</TableCell>
-                <TableCell className="w-28 text-right text-xs text-muted-foreground">{T.ventas ? pct((T.benef / T.ventas) * 100) : ""}</TableCell>
+              <TableRow className="bg-primary/[0.07] hover:bg-primary/[0.07]">
+                <TableCell className="px-1.5 py-1 font-semibold text-primary">Beneficio total departamentos</TableCell>
+                <TableCell className="px-1.5 py-1 text-right font-semibold tabular-nums text-primary">{money(T.benef)}</TableCell>
+                <TableCell className="w-24 px-1.5 py-1 text-right text-[10px] text-muted-foreground">{T.ventas ? pct((T.benef / T.ventas) * 100) : ""}</TableCell>
               </TableRow>
               {noOp.map((f) => (
                 <TableRow key={f.key}>
-                  <TableCell className="text-muted-foreground">{f.label}</TableCell>
-                  <TableCell className={cn("text-right tabular-nums", f.resultado < 0 && "text-destructive")}>{money(f.resultado)}</TableCell>
-                  <TableCell className="text-right text-xs text-muted-foreground">{T.ventas ? pct((f.resultado / T.ventas) * 100) : ""}</TableCell>
+                  <TableCell className="px-1.5 py-1 text-muted-foreground">{f.label}</TableCell>
+                  <TableCell className="px-1.5 py-1 text-right tabular-nums">{money(f.resultado)}</TableCell>
+                  <TableCell className="px-1.5 py-1 text-right text-[10px] text-muted-foreground">{T.ventas ? pct((f.resultado / T.ventas) * 100) : ""}</TableCell>
                 </TableRow>
               ))}
-              <TableRow className="border-t-2 bg-primary/5">
-                <TableCell className="font-bold">Resultado final {modo === "prom" ? "(prom. mensual)" : modo === "acum" ? "(acumulado)" : "del mes"}</TableCell>
-                <TableCell className={cn("text-right font-bold tabular-nums", resultadoFinal < 0 && "text-destructive")}>{money(resultadoFinal)}</TableCell>
-                <TableCell className="text-right text-xs font-bold">{T.ventas ? pct((resultadoFinal / T.ventas) * 100) : ""}</TableCell>
+              <TableRow className="border-t-2 border-double border-primary/30 bg-primary/5">
+                <TableCell className="px-1.5 py-1 font-bold">Resultado final {modo === "prom" ? "(prom. mensual)" : modo === "acum" ? "(acumulado)" : "del mes"}</TableCell>
+                <TableCell className={cn("px-1.5 py-1 text-right font-bold tabular-nums", resultadoFinal < 0 && "text-destructive")}>{money(resultadoFinal)}</TableCell>
+                <TableCell className="px-1.5 py-1 text-right text-[10px] font-bold">{T.ventas ? pct((resultadoFinal / T.ventas) * 100) : ""}</TableCell>
+              </TableRow>
+              <TableRow className="hover:bg-transparent">
+                <TableCell className="px-1.5 py-1.5 font-semibold text-primary">
+                  Proyección anual {anioProy}
+                  <span className="ml-1.5 text-[10px] font-normal text-muted-foreground">
+                    acum. {nMeses} meses + prom. mensual × {mesesRestantes} restantes
+                  </span>
+                </TableCell>
+                <TableCell className={cn("px-1.5 py-1.5 text-right font-bold tabular-nums text-primary", proyeccionAnual < 0 && "text-destructive")}>
+                  {money(proyeccionAnual)}
+                </TableCell>
+                <TableCell />
               </TableRow>
             </TableBody>
           </Table>
