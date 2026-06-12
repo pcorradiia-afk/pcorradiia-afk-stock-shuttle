@@ -71,9 +71,17 @@ export function Rentabilidad() {
   const g = useMemo(() => gestionImportada(importaciones, empresaIdsActivos), [importaciones, empresaIdsActivos]);
 
   const ultimo = g.periodos[g.periodos.length - 1] ?? "";
-  const [periodoSel, setPeriodoSel] = useState<string>("");
-  const periodo = periodoSel && g.periodos.includes(periodoSel) ? periodoSel : ultimo;
-  const anterior = g.periodos[g.periodos.indexOf(periodo) - 1] ?? null;
+  const nMeses = g.periodos.length;
+  // vista: "" (último mes) · un período 'YYYY-MM' · "acum" · "prom"
+  const [vista, setVista] = useState<string>("");
+  const modo = vista === "acum" || vista === "prom" || g.periodos.includes(vista) ? vista : ultimo;
+  const esEspecial = modo === "acum" || modo === "prom";
+  const periodo = modo;
+  const anterior = esEspecial ? null : (g.periodos[g.periodos.indexOf(modo) - 1] ?? null);
+
+  const etiqueta = (p: string) =>
+    p === "acum" ? `Acumulado · ${nMeses} meses` : p === "prom" ? "Promedio mensual" : periodoLabel(p);
+  const sufijo = modo === "acum" ? "acumulada" : modo === "prom" ? "prom. mensual" : "del mes";
 
   // ---- Vista demo si todavía no hay importaciones ----
   const [periodoDemo, setPeriodoDemo] = useState(ultimoPeriodo);
@@ -146,8 +154,34 @@ export function Rentabilidad() {
   }
 
   // ---- Cuadro real desde lo importado ----
-  const celda = (key: string, per: string | null): CeldaPL =>
-    (per && g.porDepto[key]?.[per]) || vacia();
+  // Soporta un período puntual, "acum" (suma de meses) y "prom" (promedio mensual).
+  const celda = (key: string, per: string | null): CeldaPL => {
+    if (per === "acum" || per === "prom") {
+      const porPer = g.porDepto[key] ?? {};
+      const acc = vacia();
+      let split = false;
+      for (const c of Object.values(porPer)) {
+        acc.ingresos += c.ingresos;
+        acc.costos += c.costos;
+        acc.gastos += c.gastos;
+        acc.resultado += c.resultado;
+        if (c.gastosVar !== undefined) {
+          acc.gastosVar = (acc.gastosVar ?? 0) + c.gastosVar;
+          split = true;
+        }
+      }
+      if (!split) acc.gastosVar = undefined;
+      if (per === "prom" && nMeses > 0) {
+        acc.ingresos /= nMeses;
+        acc.costos /= nMeses;
+        acc.gastos /= nMeses;
+        acc.resultado /= nMeses;
+        if (acc.gastosVar !== undefined) acc.gastosVar /= nMeses;
+      }
+      return acc;
+    }
+    return (per && g.porDepto[key]?.[per]) || vacia();
+  };
 
   // ¿La importación trae la apertura variable/fijo? (solo en importaciones nuevas)
   const tieneSplit = OPERATIVOS.some((d) => celda(d.key, periodo).gastosVar !== undefined);
@@ -223,9 +257,11 @@ export function Rentabilidad() {
         action={
           <div className="flex items-center gap-2">
             <Badge>Datos importados</Badge>
-            <Select value={periodo} onValueChange={setPeriodoSel}>
-              <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+            <Select value={modo} onValueChange={setVista}>
+              <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
               <SelectContent>
+                {nMeses > 1 && <SelectItem value="acum">Acumulado · {nMeses} meses</SelectItem>}
+                {nMeses > 1 && <SelectItem value="prom">Promedio mensual</SelectItem>}
                 {[...g.periodos].reverse().map((p) => (
                   <SelectItem key={p} value={p}>{periodoLabel(p)}</SelectItem>
                 ))}
@@ -236,7 +272,7 @@ export function Rentabilidad() {
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <KpiCard label="Facturación del mes" value={moneyShort(op.ingresos)} icon={TrendingUp} />
+        <KpiCard label={`Facturación ${sufijo}`} value={moneyShort(op.ingresos)} icon={TrendingUp} />
         <KpiCard
           label={tieneSplit ? "Contribución marginal" : "Margen bruto"}
           value={moneyShort(contribucion)}
@@ -244,7 +280,7 @@ export function Rentabilidad() {
           hint={op.ingresos ? pct(margenPct * 100) + " s/ ventas" : ""}
         />
         <KpiCard
-          label="Resultado final"
+          label={`Resultado ${sufijo}`}
           value={moneyShort(resultadoFinal)}
           icon={Wallet}
           tone={resultadoFinal >= 0 ? "positive" : "negative"}
@@ -262,7 +298,7 @@ export function Rentabilidad() {
       {/* Cascada departamental */}
       <Card className="mt-4">
         <CardHeader>
-          <CardTitle className="text-base">Contribución por departamento · {periodoLabel(periodo)}</CardTitle>
+          <CardTitle className="text-base">Contribución por departamento · {etiqueta(periodo)}</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -355,7 +391,7 @@ export function Rentabilidad() {
                 </TableRow>
               ))}
               <TableRow className="border-t-2">
-                <TableCell className="font-bold">Resultado final del mes</TableCell>
+                <TableCell className="font-bold">Resultado final {modo === "prom" ? "(prom. mensual)" : modo === "acum" ? "(acumulado)" : "del mes"}</TableCell>
                 <TableCell className={cn("text-right font-bold tabular-nums", resultadoFinal < 0 && "text-destructive")}>
                   {money(resultadoFinal)}
                 </TableCell>
