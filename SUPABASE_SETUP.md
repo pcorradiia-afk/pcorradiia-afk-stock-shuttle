@@ -75,3 +75,24 @@ Antes de exponer la app a internet conviene migrar a **Supabase Auth**:
 los usuarios inician sesión de verdad y las políticas (RLS) se basan en
 `auth.uid()` y en la empresa asignada a cada uno. Ese es el siguiente paso
 natural una vez que confirmemos que la persistencia funciona — avisame y lo armamos.
+
+---
+
+## 6. Usuarios reales (autenticación)
+
+Con las variables cargadas, la app pasa automáticamente a **login con email y
+contraseña**. Para dar de alta a alguien:
+
+1. Supabase → **Authentication → Users → Add user → Create new user**:
+   email + contraseña (marcá *Auto Confirm User*).
+2. Supabase → **Table Editor → `perfiles` → Insert row**:
+   - `email`: el mismo email (en minúsculas)
+   - `nombre`: nombre y apellido
+   - `rol_id`: `superadmin` · `direccion` · `controller` · `auditor` · `responsable`
+   - `scope`: `grupo` (ve todo) o `empresas` (solo las asignadas)
+   - `empresa_ids`: ej. `{e1,e3}` si scope=empresas
+3. Listo: esa persona ya puede entrar. Sin fila en `perfiles` (o con `activo=false`),
+   el login se rechaza aunque la contraseña sea correcta.
+
+> El administrador inicial (`fernandobogliacino@gmail.com`) queda sembrado como
+> superadmin por el schema.sql — creale el usuario en Authentication con ese email.

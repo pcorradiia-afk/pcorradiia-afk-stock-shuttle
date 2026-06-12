@@ -1,6 +1,7 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Empresa, Permiso, Usuario } from "@/types";
 import { EMPRESAS, USUARIOS } from "@/data/demo";
+import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { puedeVerEmpresa } from "./permissions";
 import { tienePermiso } from "./rolesStore";
 
@@ -9,8 +10,22 @@ const STORAGE_KEY = "fiorasi.session.v1";
 /** 'grupo' = vista consolidada; o el id de una empresa puntual. */
 export type SeleccionEmpresa = "grupo" | string;
 
+interface PerfilRow {
+  email: string;
+  nombre: string;
+  rol_id: string;
+  scope: "grupo" | "empresas";
+  empresa_ids: string[];
+  cargo: string | null;
+  activo: boolean;
+}
+
 interface AuthState {
   usuario: Usuario | null;
+  /** Autenticación real (Supabase) o modo demo. */
+  modoReal: boolean;
+  /** true mientras se restaura la sesión real al cargar la app. */
+  cargando: boolean;
   /** Empresas que el usuario tiene permitido ver. */
   empresasVisibles: Empresa[];
   /** Si puede usar la vista consolidada del grupo. */
@@ -18,7 +33,10 @@ interface AuthState {
   seleccion: SeleccionEmpresa;
   /** Ids de empresa según la selección actual (para consultar datos). */
   empresaIdsActivos: string[];
+  /** Login demo (modo sin Supabase). */
   login: (usuarioId: string) => void;
+  /** Login real con email y contraseña. Devuelve mensaje de error o null. */
+  loginReal: (email: string, password: string) => Promise<string | null>;
   logout: () => void;
   setSeleccion: (s: SeleccionEmpresa) => void;
   can: (permiso: Permiso) => boolean;
@@ -40,17 +58,79 @@ function load(): Persisted | null {
   }
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  // Restauramos la sesión de forma síncrona para que recargar la página
-  // (o entrar por URL directa) no rebote al usuario.
-  const persisted = load();
-  const usuarioInicial =
-    (persisted && USUARIOS.find((x) => x.id === persisted.usuarioId && x.activo)) || null;
+function perfilAUsuario(p: PerfilRow): Usuario {
+  return {
+    id: p.email,
+    nombre: p.nombre,
+    email: p.email,
+    rolId: p.rol_id,
+    scope: p.scope,
+    empresaIds: p.empresa_ids ?? [],
+    cargo: p.cargo ?? "",
+    activo: p.activo,
+  };
+}
 
-  const [usuario, setUsuario] = useState<Usuario | null>(usuarioInicial);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const modoReal = isSupabaseConfigured();
+
+  // ---- Modo demo: restauración síncrona ----
+  const persisted = load();
+  const usuarioDemoInicial =
+    (!modoReal && persisted && USUARIOS.find((x) => x.id === persisted.usuarioId && x.activo)) || null;
+
+  const [usuario, setUsuario] = useState<Usuario | null>(usuarioDemoInicial);
+  const [cargando, setCargando] = useState(modoReal);
   const [seleccion, setSeleccionState] = useState<SeleccionEmpresa>(
-    usuarioInicial ? persisted!.seleccion : "grupo",
+    usuarioDemoInicial ? persisted!.seleccion : "grupo",
   );
+
+  // ---- Modo real: restaurar sesión de Supabase al montar ----
+  useEffect(() => {
+    if (!modoReal) return;
+    const sb = getSupabase()!;
+    let vivo = true;
+
+    async function cargarPerfil(email: string | undefined): Promise<Usuario | null> {
+      if (!email) return null;
+      const { data } = await sb
+        .from("perfiles")
+        .select("*")
+        .eq("email", email.toLowerCase())
+        .maybeSingle();
+      const p = data as PerfilRow | null;
+      if (!p || !p.activo) return null;
+      return perfilAUsuario(p);
+    }
+
+    sb.auth.getSession().then(async ({ data }) => {
+      const u = await cargarPerfil(data.session?.user?.email);
+      if (!vivo) return;
+      setUsuario(u);
+      if (u) {
+        const sel = load()?.seleccion;
+        if (sel) setSeleccionState(sel);
+      }
+      setCargando(false);
+    });
+
+    const { data: sub } = sb.auth.onAuthStateChange(async (evento, session) => {
+      if (evento === "SIGNED_OUT") {
+        if (vivo) setUsuario(null);
+        return;
+      }
+      if (evento === "SIGNED_IN") {
+        const u = await cargarPerfil(session?.user?.email);
+        if (vivo) setUsuario(u);
+      }
+    });
+
+    return () => {
+      vivo = false;
+      sub.subscription.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modoReal]);
 
   const empresasVisibles = useMemo(
     () => EMPRESAS.filter((e) => e.activa && puedeVerEmpresa(usuario, e.id)),
@@ -64,6 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   function login(usuarioId: string) {
+    if (modoReal) return; // en modo real se usa loginReal
     const u = USUARIOS.find((x) => x.id === usuarioId && x.activo) ?? null;
     setUsuario(u);
     if (!u) return;
@@ -73,9 +154,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     persist(usuarioId, sel);
   }
 
+  async function loginReal(email: string, password: string): Promise<string | null> {
+    const sb = getSupabase();
+    if (!sb) return "Supabase no está configurado.";
+    const { data, error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+    if (error) {
+      return error.message === "Invalid login credentials"
+        ? "Email o contraseña incorrectos."
+        : error.message;
+    }
+    const { data: pData } = await sb
+      .from("perfiles")
+      .select("*")
+      .eq("email", (data.user?.email ?? email).toLowerCase())
+      .maybeSingle();
+    const p = pData as PerfilRow | null;
+    if (!p || !p.activo) {
+      await sb.auth.signOut();
+      return "Tu usuario no tiene un perfil habilitado. Pedile al administrador que lo cargue en la tabla «perfiles».";
+    }
+    const u = perfilAUsuario(p);
+    setUsuario(u);
+    const visibles = EMPRESAS.filter((e) => e.activa && puedeVerEmpresa(u, e.id));
+    const sel: SeleccionEmpresa = visibles.length > 1 ? "grupo" : visibles[0]?.id ?? "grupo";
+    setSeleccionState(sel);
+    persist(u.id, sel);
+    return null;
+  }
+
   function logout() {
     setUsuario(null);
     localStorage.removeItem(STORAGE_KEY);
+    if (modoReal) void getSupabase()?.auth.signOut();
   }
 
   function setSeleccion(s: SeleccionEmpresa) {
@@ -90,11 +200,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value: AuthState = {
     usuario,
+    modoReal,
+    cargando,
     empresasVisibles,
     puedeConsolidar,
     seleccion,
     empresaIdsActivos,
     login,
+    loginReal,
     logout,
     setSeleccion,
     can: (permiso) => tienePermiso(usuario, permiso),

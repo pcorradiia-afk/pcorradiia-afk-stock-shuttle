@@ -62,12 +62,31 @@ create index if not exists importaciones_empresa_idx on public.importaciones (em
 create index if not exists importaciones_tipo_idx    on public.importaciones (tipo);
 
 -- ---------------------------------------------------------------------------
+-- Perfiles de usuario (autenticación real con Supabase Auth).
+-- El usuario se crea en Authentication → Users; su fila acá (por email) define
+-- rol, alcance y empresas. Sin perfil activo, la app no lo deja pasar.
+-- ---------------------------------------------------------------------------
+create table if not exists public.perfiles (
+  email       text primary key,
+  nombre      text not null,
+  rol_id      text not null default 'responsable'
+              check (rol_id in ('superadmin','direccion','controller','auditor','responsable')),
+  scope       text not null default 'empresas' check (scope in ('grupo','empresas')),
+  empresa_ids text[] not null default '{}',
+  cargo       text default '',
+  activo      boolean not null default true
+);
+
+-- Semilla: administrador inicial (editá/agregá los tuyos en Table Editor).
+insert into public.perfiles (email, nombre, rol_id, scope, cargo) values
+  ('fernandobogliacino@gmail.com', 'Fernando Bogliacino', 'superadmin', 'grupo', 'Dirección')
+on conflict (email) do nothing;
+
+-- ---------------------------------------------------------------------------
 -- Row Level Security
 --
--- ⚠️ MVP: estas políticas permiten lectura/escritura con la anon key (la que
--- usa el frontend). Es suficiente para empezar a persistir de forma interna,
--- pero la anon key es pública. Antes de exponer la app, reemplazá estas
--- políticas por unas basadas en Supabase Auth (auth.uid()) — ver SUPABASE_SETUP.md.
+-- Con autenticación: solo usuarios logueados (rol authenticated) leen/escriben.
+-- La anon key sin sesión NO accede a los datos. El robot usa la service role.
 -- ---------------------------------------------------------------------------
 -- ---------------------------------------------------------------------------
 -- Anotaciones: notas de usuarios ancladas a un "contexto" (una pantalla o una
@@ -86,26 +105,33 @@ create index if not exists anotaciones_contexto_idx on public.anotaciones (conte
 alter table public.empresas      enable row level security;
 alter table public.importaciones enable row level security;
 alter table public.anotaciones   enable row level security;
+alter table public.perfiles      enable row level security;
+
+-- Perfiles: cada usuario logueado puede leer los perfiles (la app necesita el
+-- suyo y los superadmin ven el listado). Las altas/edits se hacen por Table Editor.
+drop policy if exists perfiles_lectura on public.perfiles;
+create policy perfiles_lectura on public.perfiles
+  for select to authenticated using (true);
 
 drop policy if exists anotaciones_lectura on public.anotaciones;
-create policy anotaciones_lectura on public.anotaciones for select using (true);
+create policy anotaciones_lectura on public.anotaciones for select to authenticated using (true);
 drop policy if exists anotaciones_alta on public.anotaciones;
-create policy anotaciones_alta on public.anotaciones for insert with check (true);
+create policy anotaciones_alta on public.anotaciones for insert to authenticated with check (true);
 drop policy if exists anotaciones_baja on public.anotaciones;
-create policy anotaciones_baja on public.anotaciones for delete using (true);
+create policy anotaciones_baja on public.anotaciones for delete to authenticated using (true);
 
 drop policy if exists empresas_lectura on public.empresas;
 create policy empresas_lectura on public.empresas
-  for select using (true);
+  for select to authenticated using (true);
 
 drop policy if exists importaciones_lectura on public.importaciones;
 create policy importaciones_lectura on public.importaciones
-  for select using (true);
+  for select to authenticated using (true);
 
 drop policy if exists importaciones_alta on public.importaciones;
 create policy importaciones_alta on public.importaciones
-  for insert with check (true);
+  for insert to authenticated with check (true);
 
 drop policy if exists importaciones_baja on public.importaciones;
 create policy importaciones_baja on public.importaciones
-  for delete using (true);
+  for delete to authenticated using (true);
