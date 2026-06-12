@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { pushConfig } from "./configSync";
 
 // Unidades de Planes de Ahorro cargadas a mano (no salen del balance):
 // suscripciones y entregas por empresa y mes. Local-first, igual que el resto.
@@ -41,6 +42,7 @@ export function guardarUnidadesPlan(
   else todo[k] = { suscripciones: datos.suscripciones || 0, entregas: datos.entregas || 0 };
   localStorage.setItem(KEY, JSON.stringify(todo));
   window.dispatchEvent(new Event(EVENTO));
+  pushConfig(KEY);
 }
 
 function suscribir(cb: () => void) {

@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { pushConfig } from "./configSync";
 
 // Reglas de prorrateo de los gastos comunes de Unidades (cuentas 515) hacia
 // las líneas 0km / Usados / Planes. Cada subrubro (6 dígitos) tiene una regla;
@@ -47,6 +48,7 @@ export function guardarRegla(subrubro: string, regla: ReglaProrrateo) {
   m[subrubro] = regla;
   localStorage.setItem(KEY, JSON.stringify(m));
   window.dispatchEvent(new Event(EVENTO));
+  pushConfig(KEY);
 }
 
 function suscribir(cb: () => void) {

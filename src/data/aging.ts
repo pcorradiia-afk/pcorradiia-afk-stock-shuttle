@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { pushConfig } from "./configSync";
 import { HISTO_MAX } from "@/lib/oliauto";
 
 // Tramos de antigüedad parametrizables para el aging de cuentas corrientes.
@@ -25,11 +26,13 @@ export function guardarTramos(tramos: number[]) {
   const limpio = Array.from(new Set(tramos.filter((n) => n > 0 && n <= HISTO_MAX))).sort((a, b) => a - b);
   localStorage.setItem(KEY, JSON.stringify(limpio.length ? limpio : TRAMOS_DEFECTO));
   window.dispatchEvent(new Event(EVENTO));
+  pushConfig(KEY);
 }
 
 export function resetTramos() {
-  localStorage.removeItem(KEY);
+  localStorage.setItem(KEY, JSON.stringify(TRAMOS_DEFECTO));
   window.dispatchEvent(new Event(EVENTO));
+  pushConfig(KEY);
 }
 
 function suscribir(cb: () => void) {

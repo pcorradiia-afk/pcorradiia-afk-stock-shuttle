@@ -135,3 +135,30 @@ create policy importaciones_alta on public.importaciones
 drop policy if exists importaciones_baja on public.importaciones;
 create policy importaciones_baja on public.importaciones
   for delete to authenticated using (true);
+
+-- ---------------------------------------------------------------------------
+-- Configuración compartida del grupo (parámetros y cargas manuales que deben
+-- verse igual desde cualquier dispositivo): unidades de planes, ajustes
+-- extracontables, reglas de prorrateo, tramos de aging, etc.
+-- Una fila por clave; el valor es el JSON completo (last-write-wins).
+-- ---------------------------------------------------------------------------
+create table if not exists public.config (
+  clave           text primary key,
+  valor           jsonb not null,
+  actualizado_por text,
+  actualizado_el  timestamptz not null default now()
+);
+
+alter table public.config enable row level security;
+
+drop policy if exists config_lectura on public.config;
+create policy config_lectura on public.config
+  for select to authenticated using (true);
+
+drop policy if exists config_alta on public.config;
+create policy config_alta on public.config
+  for insert to authenticated with check (true);
+
+drop policy if exists config_update on public.config;
+create policy config_update on public.config
+  for update to authenticated using (true);

@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { Empresa, Permiso, Usuario } from "@/types";
 import { EMPRESAS, USUARIOS } from "@/data/demo";
+import { pullConfigs } from "@/data/configSync";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import { puedeVerEmpresa } from "./permissions";
 import { tienePermiso } from "./rolesStore";
@@ -110,6 +111,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (u) {
         const sel = load()?.seleccion;
         if (sel) setSeleccionState(sel);
+        // Baja la configuración compartida del grupo (unidades, ajustes, reglas…).
+        void pullConfigs();
       }
       setCargando(false);
     });
@@ -179,6 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const sel: SeleccionEmpresa = visibles.length > 1 ? "grupo" : visibles[0]?.id ?? "grupo";
     setSeleccionState(sel);
     persist(u.id, sel);
+    void pullConfigs();
     return null;
   }
 

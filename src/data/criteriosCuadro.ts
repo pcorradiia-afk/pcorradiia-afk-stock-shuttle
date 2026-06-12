@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { pushConfig } from "./configSync";
 
 // Parametrización del cuadro de gestión:
 //  1) criterio de prorrateo de los gastos comunes de Unidades (515) entre
@@ -37,6 +38,7 @@ function leerCriterio(): CriterioProrrateo {
 export function guardarCriterio(c: CriterioProrrateo) {
   localStorage.setItem(KEY_CRIT, JSON.stringify(c));
   window.dispatchEvent(new Event(EVENTO));
+  pushConfig(KEY_CRIT);
 }
 
 // ---------- Ajustes extracontables ----------
@@ -79,11 +81,13 @@ export function agregarAjuste(a: Omit<AjusteExtra, "id">) {
   lista.push({ ...a, id: crypto.randomUUID() });
   localStorage.setItem(KEY_AJ, JSON.stringify(lista));
   window.dispatchEvent(new Event(EVENTO));
+  pushConfig(KEY_AJ);
 }
 
 export function borrarAjuste(id: string) {
   localStorage.setItem(KEY_AJ, JSON.stringify(leerAjustes().filter((a) => a.id !== id)));
   window.dispatchEvent(new Event(EVENTO));
+  pushConfig(KEY_AJ);
 }
 
 // ---------- Hooks reactivos ----------
