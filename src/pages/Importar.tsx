@@ -25,7 +25,9 @@ import {
   pareceBalanceParcial,
   pareceComposicion,
   pareceMayor,
+  pareceVentas0km,
 } from "@/lib/oliauto";
+import { AnalisisVentas0km } from "@/components/AnalisisVentas0km";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { AnalisisBalanceParcial } from "@/components/AnalisisBalanceParcial";
 import { AnalisisBalanceGeneral } from "@/components/AnalisisBalanceGeneral";
@@ -53,13 +55,14 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 
-const TIPOS: TipoImportacion[] = ["balance_general", "balance_parcial", "composicion", "mayor"];
+const TIPOS: TipoImportacion[] = ["balance_general", "balance_parcial", "composicion", "mayor", "ventas_0km"];
 
 const TIPO_LABEL: Record<TipoImportacion, string> = {
   balance_general: "Situación patrimonial",
   balance_parcial: "Rentabilidad por depto.",
   composicion: "Cuentas corrientes",
   mayor: "Libro mayor",
+  ventas_0km: "Ventas 0km",
 };
 
 interface ItemCola {
@@ -79,6 +82,7 @@ function detectarTipo(header: unknown[]): TipoImportacion | "" {
   if (pareceComposicion(header)) return "composicion";
   if (pareceBalanceGeneral(header)) return "balance_general";
   if (pareceMayor(header)) return "mayor";
+  if (pareceVentas0km(header)) return "ventas_0km";
   return "";
 }
 
@@ -91,6 +95,7 @@ function resumenItem(tipo: TipoImportacion, aoa: unknown[][]): { metrica: string
     if (tipo === "balance_parcial") metrica = `Resultado ${moneyShort(r.resultado ?? 0)}`;
     else if (tipo === "balance_general") metrica = `Activo ${moneyShort(r.activo ?? 0)}`;
     else if (tipo === "composicion") metrica = `Cartera ${moneyShort(r.totalDeudor ?? 0)}`;
+    else if (tipo === "ventas_0km") metrica = `${num(r.unidades ?? 0)} un. · ${moneyShort(r.ventas ?? 0)}`;
     else metrica = `${num(r.movimientos ?? 0)} movimientos`;
     return { metrica, ref };
   } catch {
@@ -482,6 +487,7 @@ export function Importar() {
             {verItem.tipo === "balance_general" && <AnalisisBalanceGeneral aoa={verItem.aoa} headerRow={1} />}
             {verItem.tipo === "composicion" && <AnalisisComposicion aoa={verItem.aoa} headerRow={1} />}
             {verItem.tipo === "mayor" && <AnalisisMayor aoa={verItem.aoa} headerRow={1} />}
+            {verItem.tipo === "ventas_0km" && <AnalisisVentas0km aoa={verItem.aoa} headerRow={1} />}
           </CardContent>
         </Card>
       )}

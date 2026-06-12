@@ -540,3 +540,108 @@ export function parseMayor(aoa: unknown[][], headerRow: number): Mayor {
     topCuentas,
   };
 }
+
+// ============ Ventas de unidades 0km (resultado por factura) ============
+
+export interface FilaVenta {
+  fecha: string;
+  cliente: string;
+  ficha: string;
+  venta: number;
+  costo: number;
+  vendedor: string;
+  sucursal: string;
+}
+
+export interface AgrupadoVenta {
+  nombre: string;
+  unidades: number;
+  ventas: number;
+  resultado: number;
+}
+
+export interface Ventas0km {
+  unidades: number;
+  ventas: number;
+  costo: number;
+  resultado: number;
+  precioProm: number;
+  margenPct: number;
+  fechaMin: string;
+  fechaMax: string;
+  porSucursal: AgrupadoVenta[];
+  porVendedor: AgrupadoVenta[];
+}
+
+function colVenta(header: unknown[], ...nombres: string[]): number {
+  return header.findIndex((h) => nombres.some((n) => String(h).trim().toLowerCase() === n.toLowerCase()));
+}
+
+/** ¿El archivo parece el reporte de resultado de unidades 0km? */
+export function pareceVentas0km(header: unknown[]): boolean {
+  const h = header.map((x) => String(x).trim().toLowerCase());
+  const tiene = (...n: string[]) => n.some((x) => h.includes(x));
+  return tiene("venta") && tiene("costo") && tiene("vendedor") && tiene("sucursal");
+}
+
+export function parseVentas0km(aoa: unknown[][], headerRow: number): Ventas0km {
+  const header = (aoa[headerRow - 1] ?? []) as unknown[];
+  const cFecha = colVenta(header, "factura", "fecha");
+  const cCli = colVenta(header, "cliente");
+  const cFicha = colVenta(header, "ficha");
+  const cVenta = colVenta(header, "venta");
+  const cCosto = colVenta(header, "costo");
+  const cVend = colVenta(header, "vendedor");
+  const cSuc = colVenta(header, "sucursal");
+
+  let ventas = 0;
+  let costo = 0;
+  let unidades = 0;
+  let fmin = Infinity;
+  let fmax = 0;
+  const suc = new Map<string, AgrupadoVenta>();
+  const vend = new Map<string, AgrupadoVenta>();
+
+  const agreg = (m: Map<string, AgrupadoVenta>, nombre: string, v: number, r: number) => {
+    let a = m.get(nombre);
+    if (!a) m.set(nombre, (a = { nombre, unidades: 0, ventas: 0, resultado: 0 }));
+    a.unidades++;
+    a.ventas += v;
+    a.resultado += r;
+  };
+
+  for (let r = headerRow; r < aoa.length; r++) {
+    const row = aoa[r] as unknown[];
+    const v = num(row?.[cVenta]);
+    const c = num(row?.[cCosto]);
+    if (!v && !c) continue;
+    unidades++;
+    ventas += v;
+    costo += c;
+    const f = num(row?.[cFecha]);
+    if (f > 40000 && f < 60000) {
+      if (f < fmin) fmin = f;
+      if (f > fmax) fmax = f;
+    }
+    const res = v - c;
+    agreg(suc, String(row?.[cSuc] ?? "").trim() || "(s/suc.)", v, res);
+    agreg(vend, String(row?.[cVend] ?? "").trim() || "(s/vend.)", v, res);
+  }
+
+  const porSucursal = [...suc.values()].sort((a, b) => b.ventas - a.ventas);
+  const porVendedor = [...vend.values()].sort((a, b) => b.ventas - a.ventas);
+  const resultado = ventas - costo;
+
+  return {
+    unidades,
+    ventas,
+    costo,
+    resultado,
+    precioProm: unidades ? ventas / unidades : 0,
+    margenPct: ventas ? (resultado / ventas) * 100 : 0,
+    fechaMin: fmin < Infinity ? serialAISO(fmin) : "",
+    fechaMax: fmax > 0 ? serialAISO(fmax) : "",
+    porSucursal,
+    porVendedor,
+  };
+}

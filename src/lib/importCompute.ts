@@ -6,15 +6,22 @@ import {
   parseBalanceParcial,
   parseComposicionSaldos,
   parseMayor,
+  parseVentas0km,
   type BalanceGeneral,
   type BalanceParcial,
   type Composicion,
   type Mayor,
+  type Ventas0km,
 } from "./oliauto";
 
-export type TipoImportacion = "balance_parcial" | "composicion" | "balance_general" | "mayor";
+export type TipoImportacion =
+  | "balance_parcial"
+  | "composicion"
+  | "balance_general"
+  | "mayor"
+  | "ventas_0km";
 
-export type PayloadImportacion = BalanceParcial | Composicion | BalanceGeneral | Mayor;
+export type PayloadImportacion = BalanceParcial | Composicion | BalanceGeneral | Mayor | Ventas0km;
 
 export interface ImportacionCalculada {
   periodo: string | null;
@@ -92,6 +99,22 @@ function desdeMayor(aoa: unknown[][], headerRow: number): ImportacionCalculada {
   };
 }
 
+/** Calcula el payload + resumen del reporte de ventas 0km. */
+function desdeVentas0km(aoa: unknown[][], headerRow: number): ImportacionCalculada {
+  const payload = parseVentas0km(aoa, headerRow);
+  return {
+    periodo: payload.fechaMax?.slice(0, 7) ?? null,
+    corte: payload.fechaMax || null,
+    payload,
+    resumen: {
+      unidades: payload.unidades,
+      ventas: payload.ventas,
+      resultado: payload.resultado,
+      precioProm: payload.precioProm,
+    },
+  };
+}
+
 /** Despacha el cálculo según el tipo de reporte. */
 export function computarImportacion(
   tipo: TipoImportacion,
@@ -107,5 +130,7 @@ export function computarImportacion(
       return desdeBalanceGeneral(aoa, headerRow);
     case "mayor":
       return desdeMayor(aoa, headerRow);
+    case "ventas_0km":
+      return desdeVentas0km(aoa, headerRow);
   }
 }

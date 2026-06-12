@@ -3,18 +3,22 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { Car, DollarSign, Percent } from "lucide-react";
+import { Car, CheckCircle2, DollarSign, Percent, Tag } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { EMPRESAS, VENTAS } from "@/data/demo";
 import { ultimoPeriodo, ventasSerie } from "@/data/selectors";
-import { money, moneyShort, num, pct, periodoLabel } from "@/lib/format";
+import { useImportaciones } from "@/data/useImportaciones";
+import { ventasImportada } from "@/data/importedSelectors";
+import { fecha, money, moneyShort, num, pct, periodoLabel } from "@/lib/format";
 import { KpiCard, PageHeader } from "@/components/ui-kit";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
@@ -24,27 +28,145 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 export function Comercial() {
   const { empresaIdsActivos } = useAuth();
   const ids = empresaIdsActivos;
-  const serie = useMemo(() => ventasSerie(ids).map((s) => ({ ...s, label: periodoLabel(s.periodo) })), [ids]);
+  const importaciones = useImportaciones(ids);
+  const v = useMemo(() => ventasImportada(importaciones, ids), [importaciones, ids]);
 
-  const mes = VENTAS.filter((v) => ids.includes(v.empresaId) && v.periodo === ultimoPeriodo);
-  const unidades = mes.reduce((a, v) => a + v.unidades, 0);
-  const facturacion = mes.reduce((a, v) => a + v.facturacion, 0);
-  const margen = mes.reduce((a, v) => a + v.margen, 0);
+  if (v.hayDatos && v.payload) {
+    const p = v.payload;
+    return (
+      <div>
+        <PageHeader
+          title="Ventas y márgenes · 0km"
+          description={`Resultado de unidades 0km${p.fechaMin ? ` · ${fecha(p.fechaMin)} a ${fecha(p.fechaMax)}` : ""}`}
+          action={<Badge>Datos importados</Badge>}
+        />
+
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <KpiCard label="Unidades vendidas" value={num(p.unidades)} icon={Car} />
+          <KpiCard label="Facturación" value={moneyShort(p.ventas)} icon={DollarSign} />
+          <KpiCard label="Precio promedio" value={moneyShort(p.precioProm)} icon={Tag} />
+          <KpiCard label="Resultado / margen" value={moneyShort(p.resultado)} icon={Percent} tone="positive" hint={pct(p.margenPct)} />
+        </div>
+
+        {/* Conciliación con el balance */}
+        {v.conciliacion && (
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-base">Conciliación con el balance (cuentas 0km)</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Concepto</TableHead>
+                    <TableHead className="text-right">Reporte de ventas</TableHead>
+                    <TableHead className="text-right">Balance (mayor)</TableHead>
+                    <TableHead className="text-right">Diferencia</TableHead>
+                    <TableHead className="text-right">%</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[
+                    { c: "Ventas 0km", rep: p.ventas, bal: v.conciliacion.ventasBalance, dif: v.conciliacion.difVentas },
+                    { c: "Costo 0km", rep: p.costo, bal: v.conciliacion.costoBalance, dif: v.conciliacion.difCosto },
+                  ].map((f) => {
+                    const difPct = f.bal ? (f.dif / f.bal) * 100 : 0;
+                    const ok = Math.abs(difPct) < 2;
+                    return (
+                      <TableRow key={f.c}>
+                        <TableCell className="font-medium">{f.c}</TableCell>
+                        <TableCell className="text-right tabular-nums">{money(f.rep)}</TableCell>
+                        <TableCell className="text-right tabular-nums text-muted-foreground">{money(f.bal)}</TableCell>
+                        <TableCell className={cn("text-right tabular-nums", Math.abs(f.dif) > 1 && "text-amber-600")}>{money(f.dif)}</TableCell>
+                        <TableCell className="text-right">
+                          <span className={cn("inline-flex items-center gap-1 tabular-nums", ok ? "text-emerald-600" : "text-amber-600")}>
+                            {ok && <CheckCircle2 className="h-3.5 w-3.5" />}
+                            {pct(difPct)}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </CardContent>
+            <div className="border-t px-4 py-2 text-xs text-muted-foreground">
+              Diferencias &lt; 2% se consideran conciliadas. Suelen deberse a ventanas de fechas
+              distintas entre el reporte y el balance, o a notas de crédito.
+            </div>
+          </Card>
+        )}
+
+        <Card className="mt-4">
+          <CardHeader><CardTitle className="text-base">Facturación por sucursal</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={p.porSucursal} layout="vertical" margin={{ left: 8, right: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} className="stroke-border" />
+                <XAxis type="number" tickFormatter={moneyShort} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey="nombre" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={130} interval={0} />
+                <Tooltip formatter={(x: number) => [money(x), "Ventas"]} contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 13 }} />
+                <Bar dataKey="ventas" radius={[0, 6, 6, 0]} maxBarSize={24}>
+                  {p.porSucursal.map((_, i) => <Cell key={i} fill="#2563eb" />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="mt-4">
+          <CardHeader><CardTitle className="text-base">Ranking de vendedores</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Vendedor</TableHead>
+                    <TableHead className="text-right">Unidades</TableHead>
+                    <TableHead className="text-right">Facturación</TableHead>
+                    <TableHead className="text-right">Resultado</TableHead>
+                    <TableHead className="text-right">% margen</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {p.porVendedor.map((s) => (
+                    <TableRow key={s.nombre}>
+                      <TableCell className="font-medium">{s.nombre}</TableCell>
+                      <TableCell className="text-right tabular-nums">{num(s.unidades)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{money(s.ventas)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{money(s.resultado)}</TableCell>
+                      <TableCell className="text-right tabular-nums">{s.ventas ? pct((s.resultado / s.ventas) * 100) : "—"}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ---- Vista demo ----
+  const serie = ventasSerie(ids).map((s) => ({ ...s, label: periodoLabel(s.periodo) }));
+  const mes = VENTAS.filter((x) => ids.includes(x.empresaId) && x.periodo === ultimoPeriodo);
+  const unidades = mes.reduce((a, x) => a + x.unidades, 0);
+  const facturacion = mes.reduce((a, x) => a + x.facturacion, 0);
+  const margen = mes.reduce((a, x) => a + x.margen, 0);
   const margenPct = facturacion ? (margen / facturacion) * 100 : 0;
-
-  // Ranking por empresa visible.
   const porEmpresa = ids
     .map((id) => {
-      const vs = mes.filter((v) => v.empresaId === id);
+      const vs = mes.filter((x) => x.empresaId === id);
       return {
         empresa: EMPRESAS.find((e) => e.id === id)?.nombre ?? id,
-        unidades: vs.reduce((a, v) => a + v.unidades, 0),
-        facturacion: vs.reduce((a, v) => a + v.facturacion, 0),
-        margen: vs.reduce((a, v) => a + v.margen, 0),
+        unidades: vs.reduce((a, x) => a + x.unidades, 0),
+        facturacion: vs.reduce((a, x) => a + x.facturacion, 0),
+        margen: vs.reduce((a, x) => a + x.margen, 0),
       };
     })
     .sort((a, b) => b.facturacion - a.facturacion);
@@ -54,6 +176,7 @@ export function Comercial() {
       <PageHeader
         title="Ventas y márgenes"
         description={`Unidades 0km y usados · período ${periodoLabel(ultimoPeriodo)}`}
+        action={<Badge variant="secondary">Datos demo</Badge>}
       />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -75,7 +198,7 @@ export function Comercial() {
               <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={36} />
               <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", fontSize: 13 }} />
               <Legend />
-              <Bar dataKey="0km" stackId="u" fill="#2563eb" radius={[0, 0, 0, 0]} maxBarSize={46} name="0km" />
+              <Bar dataKey="0km" stackId="u" fill="#2563eb" maxBarSize={46} name="0km" />
               <Bar dataKey="usados" stackId="u" fill="#7c3aed" radius={[6, 6, 0, 0]} maxBarSize={46} name="Usados" />
             </BarChart>
           </ResponsiveContainer>

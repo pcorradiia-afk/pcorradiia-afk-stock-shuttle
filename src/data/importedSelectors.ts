@@ -1,6 +1,6 @@
 import type { Importacion } from "./importsStore";
 import { DEPTOS_OLIAUTO } from "@/lib/oliauto";
-import type { BalanceParcial, Composicion, CeldaPL } from "@/lib/oliauto";
+import type { BalanceParcial, Composicion, CeldaPL, Ventas0km } from "@/lib/oliauto";
 
 // Deriva, desde las importaciones guardadas, las cifras que muestran los
 // tableros. Toma la importación más reciente por empresa y tipo (la lista ya
@@ -60,8 +60,7 @@ export function moraImportada(importaciones: Importacion[], empresaIds: string[]
     buckets.d60 += p.buckets.d60;
     buckets.d90 += p.buckets.d90;
     buckets.mas90 += p.buckets.mas90;
-    // Sin fecha de vencimiento en la composición, tomamos como "corriente" la
-    // facturación de hasta 30 días (plazo típico de cta. cte.) y vencido el resto.
+    // Corriente = facturación de hasta 30 días; vencido = el resto.
     const vencido = p.buckets.d60 + p.buckets.d90 + p.buckets.mas90;
     const total = p.totalDeudor || vencido + p.buckets.alDia + p.buckets.d30;
     porEmpresa.push({
@@ -75,7 +74,6 @@ export function moraImportada(importaciones: Importacion[], empresaIds: string[]
   }
 
   const total = buckets.alDia + buckets.d30 + buckets.d60 + buckets.d90 + buckets.mas90;
-  // Mismo criterio que arriba: corriente = hasta 30 días de facturada.
   const vencido = buckets.d60 + buckets.d90 + buckets.mas90;
   porEmpresa.sort((a, b) => b.pctMora - a.pctMora);
 
@@ -90,6 +88,69 @@ export function moraImportada(importaciones: Importacion[], empresaIds: string[]
     porEmpresa,
     corte,
   };
+}
+
+// ---------- Ventas 0km ----------
+
+export interface VentasImportada {
+  hayDatos: boolean;
+  payload: Ventas0km | null;
+  /** Conciliación contra el balance parcial (cuentas 0km), si está importado. */
+  conciliacion: {
+    ventasBalance: number;
+    costoBalance: number;
+    difVentas: number;
+    difCosto: number;
+  } | null;
+}
+
+export function ventasImportada(importaciones: Importacion[], empresaIds: string[]): VentasImportada {
+  const fuentes = ultimaPorEmpresa(importaciones, "ventas_0km", empresaIds);
+  if (fuentes.length === 0) return { hayDatos: false, payload: null, conciliacion: null };
+
+  // Consolida (en general una sola empresa).
+  const base = fuentes[0].payload as Ventas0km;
+  let payload = base;
+  if (fuentes.length > 1) {
+    payload = fuentes.reduce<Ventas0km>((acc, f) => {
+      const p = f.payload as Ventas0km;
+      return {
+        ...acc,
+        unidades: acc.unidades + p.unidades,
+        ventas: acc.ventas + p.ventas,
+        costo: acc.costo + p.costo,
+        resultado: acc.resultado + p.resultado,
+      };
+    }, { ...base, unidades: 0, ventas: 0, costo: 0, resultado: 0 });
+    payload.precioProm = payload.unidades ? payload.ventas / payload.unidades : 0;
+    payload.margenPct = payload.ventas ? (payload.resultado / payload.ventas) * 100 : 0;
+  }
+
+  // Conciliación: ventas (deptos 0km) y costos del balance parcial acumulado.
+  const bal = ultimaPorEmpresa(importaciones, "balance_parcial", empresaIds);
+  let conciliacion: VentasImportada["conciliacion"] = null;
+  if (bal.length > 0) {
+    let ventasBalance = 0;
+    let costoBalance = 0;
+    for (const imp of bal) {
+      const bp = imp.payload as BalanceParcial;
+      for (const per of bp.periodos ?? []) {
+        const c = bp.porDepto?.["0km"]?.[per];
+        if (c) {
+          ventasBalance += c.ingresos;
+          costoBalance += c.costos;
+        }
+      }
+    }
+    conciliacion = {
+      ventasBalance,
+      costoBalance,
+      difVentas: payload.ventas - ventasBalance,
+      difCosto: payload.costo - costoBalance,
+    };
+  }
+
+  return { hayDatos: true, payload, conciliacion };
 }
 
 // ---------- Análisis de gestión (cuadro de situación económica) ----------
