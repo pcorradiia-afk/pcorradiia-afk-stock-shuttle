@@ -386,7 +386,7 @@ export function Rentabilidad() {
   const Cel = ({ v, base, strong, total, rojoSiNeg }: { v: number; base: number; strong?: boolean; total?: boolean; rojoSiNeg?: boolean }) => (
     <TableCell className={cn("whitespace-nowrap px-1.5 py-1 text-right text-xs tabular-nums", total && "bg-muted/40 font-bold", strong && "font-semibold", rojoSiNeg && v < 0 && "text-destructive")}>
       {money(v)}
-      <span className="ml-1 text-[9px] font-normal text-muted-foreground">{base ? pct((v / base) * 100, 0) : ""}</span>
+      <span className="ml-1 inline-block w-8 text-left text-[9px] font-normal text-muted-foreground">{base ? pct((v / base) * 100, 0) : ""}</span>
     </TableCell>
   );
 
@@ -461,7 +461,7 @@ export function Rentabilidad() {
       {/* Cuadro por centro de costo */}
       <Card className="mt-4">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">Cuadro por centro de costo</CardTitle>
+          <CardTitle className="text-base">Estado de Resultados de {empresaNombre}</CardTitle>
           <p className="text-xs text-muted-foreground">valor · % sobre ventas del depto. · clic en un concepto para ver su composición</p>
         </CardHeader>
         <CardContent className="p-0">
@@ -475,11 +475,12 @@ export function Rentabilidad() {
                     return (
                       <TableHead key={f.key} className="px-1.5 py-2 text-right font-semibold text-primary">
                         {f.label}
-                        <span className="block text-[9px] font-normal text-muted-foreground">{u || " "}</span>
+                        <span className="ml-1 inline-block w-8" />
+                        <span className="block pr-9 text-[9px] font-normal text-muted-foreground">{u || " "}</span>
                       </TableHead>
                     );
                   })}
-                  <TableHead className="px-1.5 py-2 text-right font-semibold text-primary">Total</TableHead>
+                  <TableHead className="px-1.5 py-2 text-right font-semibold text-primary">Total<span className="ml-1 inline-block w-8" /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -509,9 +510,10 @@ export function Rentabilidad() {
                   {filas.map((f) => (
                     <TableCell key={f.key} className="px-2 py-1 text-right tabular-nums text-muted-foreground">
                       {T.benef ? pct((f.benef / T.benef) * 100, 0) : "—"}
+                      <span className="ml-1 inline-block w-8" />
                     </TableCell>
                   ))}
-                  <TableCell className="bg-muted/40 px-2 py-1 text-right font-bold tabular-nums">100%</TableCell>
+                  <TableCell className="bg-muted/40 px-2 py-1 text-right font-bold tabular-nums">100%<span className="ml-1 inline-block w-8" /></TableCell>
                 </TableRow>
               </TableBody>
             </Table>
