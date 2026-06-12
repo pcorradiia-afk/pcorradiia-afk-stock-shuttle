@@ -17,6 +17,7 @@ import { resumenPorDepto, ultimoPeriodo } from "@/data/selectors";
 import { useImportaciones } from "@/data/useImportaciones";
 import { gestionImportada, moraImportada, patrimonialImportada, ventasImportada } from "@/data/importedSelectors";
 import { useUnidadesPlanes, unidadesTotales } from "@/data/unidadesPlanes";
+import { useCriterioProrrateo } from "@/data/criteriosCuadro";
 import { UnidadesPlanesEditor } from "@/components/UnidadesPlanesEditor";
 import type { CeldaPL } from "@/lib/oliauto";
 import { descargarCuadroExcel } from "@/lib/excel";
@@ -53,6 +54,10 @@ const OPERATIVOS: { key: string; label: string; color: string }[] = [
   { key: "repuestos", label: "Repuestos", color: "#ca8a04" },
   { key: "posventa", label: "Servicios / Taller", color: "#0891b2" },
 ];
+// Destinos del prorrateo de los gastos comunes de Unidades (depto "unidades").
+const DESTINOS_PRORRATEO = ["0km", "usados", "planes"] as const;
+// Columnas que se muestran: "unidades" (comunes) se prorratea y desaparece.
+const OPERATIVOS_VIEW = OPERATIVOS.filter((d) => d.key !== "unidades");
 const NO_OPERATIVOS: { key: string; label: string }[] = [
   { key: "admin", label: "Gastos de estructura" },
   { key: "financiero", label: "Resultados financieros" },
@@ -106,6 +111,7 @@ export function Rentabilidad() {
 
   // Unidades de Planes de Ahorro (carga manual) para el período/modo mostrado.
   const mapaUnidades = useUnidadesPlanes();
+  const criterio = useCriterioProrrateo();
   const periodosView = esEspecial ? g.periodos : [periodo];
   const uPlanesRaw = unidadesTotales(mapaUnidades, empresaIdsActivos, periodosView);
   const uPlanes =
@@ -207,7 +213,38 @@ export function Rentabilidad() {
     return (per && g.porDepto[key]?.[per]) || vacia();
   };
 
-  const filas = OPERATIVOS.map((d) => cascada(d.key, d.label, d.color, celda(d.key, periodo)))
+  // Pesos del prorrateo de los gastos comunes de Unidades hacia 0km/usados/planes.
+  const pesos = (per: string | null): Record<string, number> => {
+    if (criterio.modo === "manual") {
+      const t = criterio.pct["0km"] + criterio.pct.usados + criterio.pct.planes || 1;
+      return { "0km": criterio.pct["0km"] / t, usados: criterio.pct.usados / t, planes: criterio.pct.planes / t };
+    }
+    const v = DESTINOS_PRORRATEO.map((k) => Math.max(0, celda(k, per).ingresos));
+    const tot = v[0] + v[1] + v[2];
+    if (!tot) return { "0km": 1, usados: 0, planes: 0 };
+    return { "0km": v[0] / tot, usados: v[1] / tot, planes: v[2] / tot };
+  };
+
+  // Celda con el prorrateo aplicado: "unidades" (comunes) se reparte y queda en 0.
+  const celdaAjustada = (key: string, per: string | null): CeldaPL => {
+    const base = celda(key, per);
+    if (key === "unidades") return vacia();
+    if (key === "0km" || key === "usados" || key === "planes") {
+      const comun = celda("unidades", per);
+      const w = pesos(per)[key] ?? 0;
+      return {
+        ingresos: base.ingresos + comun.ingresos * w,
+        costos: base.costos + comun.costos * w,
+        gastos: base.gastos + comun.gastos * w,
+        resultado: base.resultado + comun.resultado * w,
+        gastosVar: (base.gastosVar ?? 0) + (comun.gastosVar ?? 0) * w,
+        otrosIng: (base.otrosIng ?? 0) + (comun.otrosIng ?? 0) * w,
+      };
+    }
+    return base;
+  };
+
+  const filas = OPERATIVOS_VIEW.map((d) => cascada(d.key, d.label, d.color, celdaAjustada(d.key, periodo)))
     .filter((f) => f.ventas || f.costos || f.gFijos || f.gVar || f.otrosIng || f.benef);
 
   const T = filas.reduce(
@@ -236,12 +273,12 @@ export function Rentabilidad() {
 
   // delta del resultado operativo vs período anterior
   const benefPrev = anterior
-    ? OPERATIVOS.reduce((a, d) => a + cascada(d.key, "", "", celda(d.key, anterior)).benef, 0)
+    ? OPERATIVOS_VIEW.reduce((a, d) => a + cascada(d.key, "", "", celdaAjustada(d.key, anterior)).benef, 0)
     : null;
 
   const serie = g.periodos.map((per) => {
-    const f = OPERATIVOS.reduce((a, d) => {
-      const x = cascada(d.key, "", "", celda(d.key, per));
+    const f = OPERATIVOS_VIEW.reduce((a, d) => {
+      const x = cascada(d.key, "", "", celdaAjustada(d.key, per));
       return { ventas: a.ventas + x.ventas, benef: a.benef + x.benef };
     }, { ventas: 0, benef: 0 });
     const no = NO_OPERATIVOS.reduce((a, d) => a + celda(d.key, per).resultado, 0);
@@ -303,7 +340,7 @@ export function Rentabilidad() {
       otrosIng: f.otrosIng,
       benef: f.benef,
       partBenef: T.benef ? (f.benef / T.benef) * 100 : 0,
-      deltaResultado: anterior ? f.benef - cascada(f.key, "", "", celda(f.key, anterior)).benef : null,
+      deltaResultado: anterior ? f.benef - cascada(f.key, "", "", celdaAjustada(f.key, anterior)).benef : null,
     }));
     abrirReporteEjecutivo({
       empresa: empresaNombre,
