@@ -89,6 +89,52 @@ export function moraImportada(importaciones: Importacion[], empresaIds: string[]
   };
 }
 
+// ---------- Análisis de gestión (cuadro de situación económica) ----------
+
+export interface GestionImportada {
+  hayDatos: boolean;
+  /** Períodos disponibles (orden cronológico). */
+  periodos: string[];
+  /** porDepto[deptoKey][periodo] consolidado sobre las empresas visibles. */
+  porDepto: Record<string, Record<string, CeldaPL>>;
+}
+
+/**
+ * Consolida los balances parciales importados (último por empresa) en una
+ * matriz depto × período, base del cuadro de situación económica.
+ */
+export function gestionImportada(
+  importaciones: Importacion[],
+  empresaIds: string[],
+): GestionImportada {
+  const fuentes = ultimaPorEmpresa(importaciones, "balance_parcial", empresaIds);
+  const porDepto: Record<string, Record<string, CeldaPL>> = {};
+  const periodos = new Set<string>();
+
+  for (const imp of fuentes) {
+    const p = imp.payload as BalanceParcial;
+    for (const per of p.periodos ?? []) periodos.add(per);
+    for (const { key } of DEPTOS_OLIAUTO) {
+      const porPer = p.porDepto?.[key];
+      if (!porPer) continue;
+      const destino = (porDepto[key] ??= {});
+      for (const [per, celda] of Object.entries(porPer)) {
+        const a = (destino[per] ??= vacia());
+        a.ingresos += celda.ingresos;
+        a.costos += celda.costos;
+        a.gastos += celda.gastos;
+        a.resultado += celda.resultado;
+      }
+    }
+  }
+
+  return {
+    hayDatos: fuentes.length > 0,
+    periodos: [...periodos].sort(),
+    porDepto,
+  };
+}
+
 // ---------- Rentabilidad por departamento ----------
 
 export interface FilaDepto {
