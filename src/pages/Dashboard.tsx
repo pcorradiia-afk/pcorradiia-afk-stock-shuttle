@@ -26,6 +26,7 @@ import {
 } from "@/data/selectors";
 import { useImportaciones } from "@/data/useImportaciones";
 import { gestionImportada, moraImportada } from "@/data/importedSelectors";
+import { useClasificacionCuentas } from "@/data/clasificacionCuentas";
 import type { CeldaPL } from "@/lib/oliauto";
 import { money, moneyShort, num, pct, periodoLabel } from "@/lib/format";
 import { KpiCard, PageHeader } from "@/components/ui-kit";
@@ -59,7 +60,8 @@ export function Dashboard() {
 
   // ---- Datos importados ----
   const importaciones = useImportaciones(ids);
-  const g = useMemo(() => gestionImportada(importaciones, ids), [importaciones, ids]);
+  const clasif = useClasificacionCuentas();
+  const g = useMemo(() => gestionImportada(importaciones, ids, clasif), [importaciones, ids, clasif]);
   const moraImp = useMemo(() => moraImportada(importaciones, ids), [importaciones, ids]);
   const usaImport = g.hayDatos;
 

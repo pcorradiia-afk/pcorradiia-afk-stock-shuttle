@@ -1,6 +1,6 @@
 import type { Importacion } from "./importsStore";
 import { DEPTOS_OLIAUTO } from "@/lib/oliauto";
-import type { BalanceParcial, BalanceGeneral, Composicion, CeldaPL, ComunRubro, CuentaBP, Mayor, Ventas0km } from "@/lib/oliauto";
+import type { BalanceParcial, BalanceGeneral, Composicion, CeldaPL, ComunRubro, CuentaBP, LineaCuenta, Mayor, Ventas0km } from "@/lib/oliauto";
 
 /** Última importación de cada empresa para un tipo dado (mapa empresa→importación). */
 function mapaUltima(
@@ -316,9 +316,14 @@ export interface GestionImportada {
  * Consolida los balances parciales importados (último por empresa) en una
  * matriz depto × período, base del cuadro de situación económica.
  */
+/** Reasignación manual de una cuenta: a qué depto y/o línea del cuadro va. */
+export type OverrideCuenta = { depto?: string; linea?: LineaCuenta };
+export type OverridesCuentas = Record<string, OverrideCuenta>;
+
 export function gestionImportada(
   importaciones: Importacion[],
   empresaIds: string[],
+  overrides: OverridesCuentas = {},
 ): GestionImportada {
   const fuentes = ultimaPorEmpresa(importaciones, "balance_parcial", empresaIds);
   const porDepto: Record<string, Record<string, CeldaPL>> = {};
@@ -326,33 +331,62 @@ export function gestionImportada(
   const cuentas: CuentaBP[] = [];
   const periodos = new Set<string>();
 
+  const celdaDe = (depto: string, per: string) => (((porDepto[depto] ??= {})[per] ??= vacia()));
+
   for (const imp of fuentes) {
     const p = imp.payload as BalanceParcial;
     for (const per of p.periodos ?? []) periodos.add(per);
-    if (p.cuentas) cuentas.push(...p.cuentas);
-    // Consolidar el desglose de gastos comunes de Unidades por subrubro.
-    for (const [per, rubros] of Object.entries(p.comunesUnidades ?? {})) {
-      const dst = (comunes[per] ??= {});
-      for (const [rub, c] of Object.entries(rubros)) {
-        const a = (dst[rub] ??= { gastos: 0, gastosVar: 0, nombre: c.nombre });
-        a.gastos += c.gastos;
-        a.gastosVar += c.gastosVar;
-        if (!a.nombre && c.nombre) a.nombre = c.nombre;
+
+    if (p.cuentas && p.cuentas.length > 0) {
+      // Reconstruye el cuadro desde cada cuenta, aplicando la parametrización.
+      for (const c of p.cuentas) {
+        const ov = overrides[c.codigo] ?? {};
+        const depto = ov.depto ?? c.depto;
+        const linea = ov.linea ?? c.linea;
+        cuentas.push({ ...c, depto, linea }); // efectivo (con overrides) para el drill-down
+        for (const [per, r] of Object.entries(c.valores)) {
+          // r = contribución al resultado (acreedor positivo).
+          const cd = celdaDe(depto, per);
+          cd.resultado += r;
+          if (linea === "venta") cd.ingresos += r;
+          else if (linea === "costo") cd.costos += -r;
+          else if (linea === "otros") cd.otrosIng = (cd.otrosIng ?? 0) + r;
+          else {
+            cd.gastos += -r;
+            if (linea === "gvar") cd.gastosVar = (cd.gastosVar ?? 0) + -r;
+            // Gastos comunes de Unidades → desglose por subrubro para prorratear.
+            if (depto === "unidades") {
+              const rub = c.codigo.slice(0, 6);
+              const dst = (comunes[per] ??= {});
+              const a = (dst[rub] ??= { gastos: 0, gastosVar: 0, nombre: c.nombre });
+              a.gastos += -r;
+              if (linea === "gvar") a.gastosVar += -r;
+            }
+          }
+        }
       }
-    }
-    for (const { key } of DEPTOS_OLIAUTO) {
-      const porPer = p.porDepto?.[key];
-      if (!porPer) continue;
-      const destino = (porDepto[key] ??= {});
-      for (const [per, celda] of Object.entries(porPer)) {
-        const a = (destino[per] ??= vacia());
-        a.ingresos += celda.ingresos;
-        a.costos += celda.costos;
-        a.gastos += celda.gastos;
-        a.resultado += celda.resultado;
-        // gastosVar / otrosIng solo están en importaciones nuevas.
-        if (celda.gastosVar !== undefined) a.gastosVar = (a.gastosVar ?? 0) + celda.gastosVar;
-        if (celda.otrosIng !== undefined) a.otrosIng = (a.otrosIng ?? 0) + celda.otrosIng;
+    } else {
+      // Importación vieja sin detalle por cuenta: usar el agregado del parser.
+      for (const [per, rubros] of Object.entries(p.comunesUnidades ?? {})) {
+        const dst = (comunes[per] ??= {});
+        for (const [rub, c] of Object.entries(rubros)) {
+          const a = (dst[rub] ??= { gastos: 0, gastosVar: 0, nombre: c.nombre });
+          a.gastos += c.gastos;
+          a.gastosVar += c.gastosVar;
+        }
+      }
+      for (const { key } of DEPTOS_OLIAUTO) {
+        const porPer = p.porDepto?.[key];
+        if (!porPer) continue;
+        for (const [per, celda] of Object.entries(porPer)) {
+          const a = celdaDe(key, per);
+          a.ingresos += celda.ingresos;
+          a.costos += celda.costos;
+          a.gastos += celda.gastos;
+          a.resultado += celda.resultado;
+          if (celda.gastosVar !== undefined) a.gastosVar = (a.gastosVar ?? 0) + celda.gastosVar;
+          if (celda.otrosIng !== undefined) a.otrosIng = (a.otrosIng ?? 0) + celda.otrosIng;
+        }
       }
     }
   }

@@ -21,6 +21,7 @@ const REGISTRO: DefConfig[] = [
   { clave: "criterio_prorrateo", storageKey: "fiorasi.cuadro.prorrateo.v1", evento: "fiorasi:cuadro" },
   { clave: "prorrateo_reglas", storageKey: "fiorasi.prorrateo.reglas.v1", evento: "fiorasi:prorrateoReglas" },
   { clave: "aging_tramos", storageKey: "fiorasi.aging.tramos.v1", evento: "fiorasi:aging" },
+  { clave: "clasificacion_cuentas", storageKey: "fiorasi.clasificacionCuentas.v1", evento: "fiorasi:clasificacionCuentas" },
 ];
 
 const porStorageKey = new Map(REGISTRO.map((d) => [d.storageKey, d]));

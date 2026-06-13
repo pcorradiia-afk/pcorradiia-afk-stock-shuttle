@@ -19,6 +19,7 @@ import { gestionImportada, moraImportada, patrimonialImportada, ventasImportada 
 import { useUnidadesPlanes, unidadesTotales } from "@/data/unidadesPlanes";
 import { useCriterioProrrateo } from "@/data/criteriosCuadro";
 import { useReglasProrrateo, reglaDe, guardarRegla, REGLAS, type ReglaProrrateo } from "@/data/prorrateoReglas";
+import { useClasificacionCuentas, setClasificacion, LINEAS_EERR } from "@/data/clasificacionCuentas";
 import { UnidadesPlanesEditor } from "@/components/UnidadesPlanesEditor";
 import { ConciliacionGestion } from "@/components/ConciliacionGestion";
 import type { CeldaPL } from "@/lib/oliauto";
@@ -99,7 +100,8 @@ function cascada(key: string, label: string, color: string, c: CeldaPL): FilaCua
 export function Rentabilidad() {
   const { empresaIdsActivos, seleccion, empresasVisibles } = useAuth();
   const importaciones = useImportaciones(empresaIdsActivos);
-  const g = useMemo(() => gestionImportada(importaciones, empresaIdsActivos), [importaciones, empresaIdsActivos]);
+  const clasif = useClasificacionCuentas();
+  const g = useMemo(() => gestionImportada(importaciones, empresaIdsActivos, clasif), [importaciones, empresaIdsActivos, clasif]);
   const ventas = useMemo(() => ventasImportada(importaciones, empresaIdsActivos), [importaciones, empresaIdsActivos]);
   const mora = useMemo(() => moraImportada(importaciones, empresaIdsActivos), [importaciones, empresaIdsActivos]);
   const patr = useMemo(() => patrimonialImportada(importaciones, empresaIdsActivos), [importaciones, empresaIdsActivos]);
