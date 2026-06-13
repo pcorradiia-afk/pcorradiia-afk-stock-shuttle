@@ -92,6 +92,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const sb = getSupabase()!;
     let vivo = true;
 
+    // Failsafe: si la restauración no termina en pocos segundos (proyecto
+    // Supabase pausado, red caída o getSession que nunca resuelve), no dejamos
+    // la app atrapada en el spinner: la liberamos para que caiga al login.
+    const failsafe = setTimeout(() => {
+      if (vivo) setCargando(false);
+    }, 8000);
+
     async function cargarPerfil(email: string | undefined): Promise<Usuario | null> {
       if (!email) return null;
       const { data } = await sb
@@ -104,18 +111,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return perfilAUsuario(p);
     }
 
-    sb.auth.getSession().then(async ({ data }) => {
-      const u = await cargarPerfil(data.session?.user?.email);
-      if (!vivo) return;
-      setUsuario(u);
-      if (u) {
-        const sel = load()?.seleccion;
-        if (sel) setSeleccionState(sel);
-        // Baja la configuración compartida del grupo (unidades, ajustes, reglas…).
-        void pullConfigs();
-      }
-      setCargando(false);
-    });
+    sb.auth
+      .getSession()
+      .then(async ({ data }) => {
+        const u = await cargarPerfil(data.session?.user?.email);
+        if (!vivo) return;
+        setUsuario(u);
+        if (u) {
+          const sel = load()?.seleccion;
+          if (sel) setSeleccionState(sel);
+          // Baja la configuración compartida del grupo (unidades, ajustes, reglas…).
+          void pullConfigs();
+        }
+      })
+      .catch((e) => {
+        // No se pudo restaurar la sesión: seguimos sin usuario (irá al login).
+        console.warn("[auth] no se pudo restaurar la sesión:", e);
+      })
+      .finally(() => {
+        if (vivo) setCargando(false);
+      });
 
     const { data: sub } = sb.auth.onAuthStateChange(async (evento, session) => {
       if (evento === "SIGNED_OUT") {
@@ -130,6 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => {
       vivo = false;
+      clearTimeout(failsafe);
       sub.subscription.unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
