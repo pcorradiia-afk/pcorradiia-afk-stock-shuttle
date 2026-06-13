@@ -10,23 +10,24 @@ from __future__ import annotations
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from ..marcas import Marca
+from ..marcas import Contexto
 
 
-def esta_abierta(marca: Marca, tz: str, ahora: datetime | None = None) -> bool:
+def esta_abierta(ctx: Contexto, tz: str, ahora: datetime | None = None) -> bool:
     """Devuelve True si la marca está dentro de su horario de atención."""
     momento = ahora or datetime.now(ZoneInfo(tz))
-    if momento.weekday() not in marca.horario.dias_laborables:
+    horario = ctx.horario
+    if momento.weekday() not in horario.dias_laborables:
         return False
-    return marca.horario.apertura <= momento.hour < marca.horario.cierre
+    return horario.apertura <= momento.hour < horario.cierre
 
 
-def mensaje_fuera_de_horario(marca: Marca) -> str:
+def mensaje_fuera_de_horario(ctx: Contexto) -> str:
     """Texto amable para responder cuando la concesionaria está cerrada."""
-    h = marca.horario
+    h = ctx.horario
     return (
-        f"¡Gracias por escribir a {marca.saludo}! 🙌 En este momento estamos "
-        f"fuera de nuestro horario de atención (lunes a sábado de "
-        f"{h.apertura}:00 a {h.cierre}:00 hs). Dejanos tu consulta y un asesor "
-        f"te responde apenas reabramos."
+        f"¡Gracias por escribir a {ctx.saludo}! 🙌 En este momento estamos fuera "
+        f"de nuestro horario de atención (lunes a sábado de {h.apertura}:00 a "
+        f"{h.cierre}:00 hs). Dejanos tu consulta y un asesor te responde apenas "
+        f"reabramos."
     )

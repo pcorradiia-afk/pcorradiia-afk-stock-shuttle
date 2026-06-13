@@ -1,8 +1,11 @@
 """Integración con Twilio: respuestas TwiML y envío saliente.
 
-Separa dos responsabilidades:
-  - Construir el menú interactivo de respuesta (TwiML) personalizado por marca.
-  - Enviar mensajes proactivos (campañas, plantillas, multimedia) por la API.
+Tres tipos de respuesta TwiML:
+  - `menu_de_lineas`  → cuando un número atiende varias líneas y hay que elegir.
+  - `menu_bienvenida` → menú de opciones DENTRO de una línea ya resuelta.
+  - `respuesta_texto` → un texto plano cualquiera.
+
+Y el envío saliente (`enviar_mensaje`) para campañas, plantillas y multimedia.
 """
 
 from __future__ import annotations
@@ -10,25 +13,51 @@ from __future__ import annotations
 from twilio.twiml.messaging_response import MessagingResponse
 
 from ..config import obtener_config
-from ..marcas import Marca
+from ..marcas import (
+    ETIQUETA_LINEA,
+    LINEA_PLANES,
+    LINEA_POSVENTA,
+    LINEA_VENTAS,
+    Contexto,
+    Cuenta,
+)
+
+# Opciones del menú dentro de cada línea (texto genérico; la marca se inserta aparte).
+OPCIONES_POR_LINEA: dict[str, list[str]] = {
+    LINEA_PLANES: ["Estado de cuotas", "Adjudicaciones y licitaciones", "Entrega de unidad"],
+    LINEA_VENTAS: ["Ver modelos y stock", "Financiación / plan de ahorro", "Cotizar mi usado"],
+    LINEA_POSVENTA: ["Pedir turno de service", "Estado de mi reparación", "Encuesta de calidad"],
+}
 
 
-def menu_bienvenida(marca: Marca) -> str:
-    """Devuelve TwiML con un menú de bienvenida personalizado con la marca.
-
-    WhatsApp por Twilio no renderiza botones nativos vía TwiML clásico, así que
-    el "menú" se presenta como opciones numeradas que el cliente responde con un
-    número. La detección de esas respuestas se maneja en el webhook.
-    """
+def menu_de_lineas(cuenta: Cuenta) -> str:
+    """TwiML para que el cliente elija la línea cuando el número atiende varias."""
     respuesta = MessagingResponse()
+    opciones = "\n".join(
+        f"{i}️⃣ {ETIQUETA_LINEA[linea]}"
+        for i, linea in enumerate(cuenta.lineas.keys(), start=1)
+    )
     respuesta.message(
-        f"¡Hola! 👋 Bienvenido/a a *{marca.saludo}* (oficial {marca.marca}).\n\n"
+        f"¡Hola! 👋 Bienvenido/a a *{cuenta.marca.saludo}* "
+        f"(oficial {cuenta.marca.marca}).\n\n"
+        "¿Sobre qué tema necesitás ayuda?\n"
+        f"{opciones}\n\n"
+        "Respondé con el número del tema."
+    )
+    return str(respuesta)
+
+
+def menu_bienvenida(ctx: Contexto) -> str:
+    """TwiML con el menú de opciones de una línea ya resuelta, con la marca."""
+    respuesta = MessagingResponse()
+    opciones = OPCIONES_POR_LINEA.get(ctx.linea, [])
+    lineas_menu = "\n".join(f"{i}️⃣ {txt}" for i, txt in enumerate(opciones, start=1))
+    respuesta.message(
+        f"*{ctx.saludo}* · {ctx.etiqueta_linea} ({ctx.nombre_marca}).\n\n"
         "¿Con qué te puedo ayudar?\n"
-        "1️⃣ Ver modelos y stock\n"
-        "2️⃣ Consultar mi plan de ahorro\n"
-        "3️⃣ Turnos de service / taller\n"
-        "4️⃣ Hablar con un asesor\n\n"
-        "Respondé con el número de la opción o escribime tu consulta. 🙂"
+        f"{lineas_menu}\n\n"
+        "Respondé con el número, escribí *asesor* para hablar con una persona, "
+        "o contame tu consulta. 🙂"
     )
     return str(respuesta)
 
@@ -44,8 +73,7 @@ def enviar_mensaje(numero_destino: str, numero_origen: str, cuerpo: str) -> str:
     """Envía un mensaje saliente por la API de Twilio (campañas, alertas, etc.).
 
     `numero_origen` es el número de WhatsApp de la marca; `numero_destino` el del
-    cliente. Devuelve el SID del mensaje creado. Requiere credenciales válidas
-    en el .env.
+    cliente. Devuelve el SID del mensaje creado. Requiere credenciales válidas.
     """
     from twilio.rest import Client
 

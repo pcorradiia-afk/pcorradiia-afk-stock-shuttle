@@ -12,9 +12,16 @@ responde con la identidad y las reglas correctas de cada empresa.
 ## Qué hace hoy
 
 - **Webhook `/webhook`** que captura `From`, `To`, `Body` y `MessageSid`.
-- **Enrutamiento por número (`To`)** → empresa, marca, plantillas y horario.
-- **System prompt de IA dinámico por marca** (Volkswagen/Pedro Corradi vs Toyota/Sapac).
-- **Botonera de derivación humana** que pausa el bot y avisa al vendedor.
+- **Enrutamiento en dos dimensiones: marca × línea de negocio**.
+  Cada número (`To`) es una *Cuenta* = una marca + las líneas que atiende
+  (Planes de ahorro, Venta de 0km, Posventa/Taller). Soporta el caso **mixto**:
+  - número **dedicado** a una línea → ruteo directo (sin preguntar);
+  - número **compartido** entre varias líneas → el bot muestra un menú de líneas
+    y **recuerda** la elección del cliente.
+- **System prompt de IA dinámico por marca Y por línea** (no es lo mismo el
+  asistente de Planes de Pedro Corradi que el de 0km de Sapac).
+- **Botonera de derivación humana** que pausa el bot y avisa al asesor de **esa
+  línea** (planes ≠ ventas ≠ posventa).
 - **Ventanas de horario** con respuesta empática fuera de hora.
 - **Rate limiting** de campañas (1 envío por número cada 24 hs, por empresa).
 - **Normalización de teléfonos** de LatAm a formato internacional `+549...`.
@@ -26,16 +33,18 @@ whatsapp/
   app/
     main.py              · servidor FastAPI + ruta /webhook
     config.py            · configuración desde .env (tokens, keys)
-    marcas.py            · REGISTRO multi-marca (número → empresa/marca/prompt)
+    marcas.py            · REGISTRO de cuentas (número → marca × líneas)
+                           Marca=identidad · ConfigLinea=comportamiento · Cuenta=número
     core/
       normalizacion.py   · números locales → +549 (E.164)
       horarios.py        · ¿la concesionaria está abierta?
       rate_limit.py      · prevención de duplicados (24 hs por empresa)
     services/
-      ia.py              · Agente de IA (prompt por marca) — simulado / Claude real
-      twilio_client.py   · TwiML (menú) + envío saliente
-      derivacion.py      · pausa del bot + alerta al vendedor
-      enrutador.py       · reglas de negocio: qué responder
+      enrutador.py       · resuelve la línea y aplica las reglas de negocio
+      sesion.py          · recuerda la línea elegida (números multi-línea)
+      ia.py              · Agente de IA (prompt por marca × línea) — simulado / Claude real
+      twilio_client.py   · TwiML (menú de líneas + menú por línea) + envío saliente
+      derivacion.py      · pausa del bot + alerta al asesor de la línea
   data/
     empresa_pedro_corradi/   · datos simulados de la Marca A
     empresa_sapac/           · datos simulados de la Marca B
@@ -74,32 +83,43 @@ whatsapp/
 Simulá un mensaje a cada marca con `curl` (asegurate de tener
 `TWILIO_VALIDAR_FIRMA=false` en el `.env`):
 
+Los tres números de la demo muestran el escenario **mixto**:
+
+| Número (`To`) | Empresa · Marca | Líneas que atiende |
+|---|---|---|
+| `+5493510000001` | Pedro Corradi · Volkswagen | **dedicado** a Planes de ahorro |
+| `+5493510000002` | Pedro Corradi · Volkswagen | Venta de 0km + Posventa (multi-línea) |
+| `+5493510000003` | Sapac · Toyota | Planes + Venta + Posventa (multi-línea) |
+
 ```bash
-# Mensaje libre a Pedro Corradi (Volkswagen) → activa la IA simulada
+# Número DEDICADO a Planes → ruteo directo, IA con contexto de planes
 curl -X POST http://localhost:8000/webhook \
-  -d "From=whatsapp:+5493515559999" \
-  -d "To=whatsapp:+5493510000001" \
-  -d "Body=Hola, quiero un Amarok y entrego mi usado" \
-  -d "MessageSid=SM_demo_1"
+  --data-urlencode "From=whatsapp:+5493515559999" \
+  --data-urlencode "To=whatsapp:+5493510000001" \
+  --data-urlencode "Body=cuando me adjudican el plan?" \
+  --data-urlencode "MessageSid=SM_demo_1"
 
-# Saludo a Sapac (Toyota) → devuelve el menú con la marca
+# Número MULTI-línea → primero el menú de líneas
 curl -X POST http://localhost:8000/webhook \
-  -d "From=whatsapp:+5493515558888" \
-  -d "To=whatsapp:+5493510000002" \
-  -d "Body=hola" \
-  -d "MessageSid=SM_demo_2"
+  --data-urlencode "From=whatsapp:+5493515551111" \
+  --data-urlencode "To=whatsapp:+5493510000002" \
+  --data-urlencode "Body=hola" \
+  --data-urlencode "MessageSid=SM_demo_2"
 
-# Pedir un asesor → pausa el bot y emite la alerta de derivación
+# El cliente elige una línea (ej. '2' = Posventa) → el bot la recuerda
 curl -X POST http://localhost:8000/webhook \
-  -d "From=whatsapp:+5493515559999" \
-  -d "To=whatsapp:+5493510000001" \
-  -d "Body=4" \
-  -d "MessageSid=SM_demo_3"
+  --data-urlencode "From=whatsapp:+5493515551111" \
+  --data-urlencode "To=whatsapp:+5493510000002" \
+  --data-urlencode "Body=2" \
+  --data-urlencode "MessageSid=SM_demo_3"
 ```
 
-Mirá la consola del servidor: vas a ver el log limpio del mensaje, la marca
-identificada y, en el caso de texto libre, el **system prompt que cambia según
-la marca**.
+> ⚠️ Usá `--data-urlencode` (no `-d`): con `-d`, curl interpreta el `+` del
+> número como un espacio. Twilio sí lo envía bien.
+
+Mirá la consola del servidor: vas a ver el log del mensaje, la cuenta y la línea
+identificadas y, en el texto libre, el **system prompt que cambia según la marca
+y la línea**.
 
 ## Próximos pasos (Fase 2)
 

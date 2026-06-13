@@ -1,23 +1,21 @@
-"""Agente de IA con contexto dinámico por marca.
+"""Agente de IA con contexto dinámico por marca Y por línea de negocio.
 
-El system prompt CAMBIA según la marca identificada en el webhook: si el cliente
-escribe al número de Pedro Corradi, la IA habla como especialista Volkswagen de
-Pedro Corradi; si escribe a Sapac, adopta la identidad Toyota de Sapac.
+El system prompt CAMBIA según la marca y la línea identificadas en el webhook:
+no es lo mismo el asistente de Planes de Ahorro de Pedro Corradi que el de
+Venta de 0km de Sapac. Cada uno tiene su propia identidad y su objetivo.
 
-En la Fase 1 la respuesta es SIMULADA (`procesar_con_ia`) para que puedas ver
-cómo se arma el prompt sin gastar tokens ni necesitar API key. Cuando quieras
-activar la IA real, poné ``IA_ACTIVA=true`` y completá ``ANTHROPIC_API_KEY`` en
-el .env: el flujo llamará a `_responder_con_claude`, que usa el SDK oficial de
-Anthropic.
+En la Fase 1 la respuesta es SIMULADA (`procesar_con_ia`). Cuando quieras
+activar la IA real, poné ``IA_ACTIVA=true`` y completá ``ANTHROPIC_API_KEY``:
+el flujo llamará a `_responder_con_claude`, que usa el SDK oficial de Anthropic.
 """
 
 from __future__ import annotations
 
 from ..config import obtener_config
-from ..marcas import Marca
+from ..marcas import Contexto
 
 
-def procesar_con_ia(marca: Marca, mensaje: str) -> str:
+def procesar_con_ia(ctx: Contexto, mensaje: str) -> str:
     """Punto de entrada del Agente de IA para un mensaje de texto libre.
 
     Decide entre la respuesta simulada (Fase 1) y Claude real (Fase 2) según la
@@ -25,27 +23,27 @@ def procesar_con_ia(marca: Marca, mensaje: str) -> str:
     """
     config = obtener_config()
 
-    # --- Demostración del cambio de contexto por marca (siempre visible en consola) ---
-    print("\n🧠 [IA] Construyendo contexto dinámico por marca")
-    print(f"   Empresa : {marca.empresa}")
-    print(f"   Marca   : {marca.marca}")
-    print(f"   System prompt activo:\n   «{marca.system_prompt}»")
+    # --- Demostración del cambio de contexto por marca × línea (visible en consola) ---
+    print("\n🧠 [IA] Construyendo contexto dinámico")
+    print(f"   Empresa : {ctx.empresa}")
+    print(f"   Marca   : {ctx.nombre_marca}")
+    print(f"   Línea   : {ctx.etiqueta_linea}")
+    print(f"   System prompt activo:\n   «{ctx.system_prompt}»")
     print(f"   Mensaje del cliente : «{mensaje}»")
 
     if config.ia_activa and config.anthropic_api_key:
-        return _responder_con_claude(marca, mensaje, config.ia_modelo, config.anthropic_api_key)
+        return _responder_con_claude(ctx, mensaje, config.ia_modelo, config.anthropic_api_key)
 
     # --- Respuesta SIMULADA de Fase 1 ---
     return (
-        f"[Simulación IA · {marca.marca}] ¡Hola! Soy el asistente de "
-        f"{marca.saludo}. Contame qué modelo {marca.marca} te interesa, si "
-        f"tenés un usado para entregar y cómo pensás la compra, así te ayudo "
-        f"mejor. 🚗"
+        f"[Simulación IA · {ctx.nombre_marca} · {ctx.etiqueta_linea}] ¡Hola! Soy "
+        f"el asistente de {ctx.saludo}. Contame en qué te puedo ayudar y te "
+        f"oriento. 🚗"
     )
 
 
-def _responder_con_claude(marca: Marca, mensaje: str, modelo: str, api_key: str) -> str:
-    """Llama a Claude usando el SDK oficial, con el system prompt de la marca.
+def _responder_con_claude(ctx: Contexto, mensaje: str, modelo: str, api_key: str) -> str:
+    """Llama a Claude usando el SDK oficial, con el system prompt del contexto.
 
     Se importa anthropic acá adentro para que la app arranque aunque la
     dependencia no esté instalada mientras la IA está apagada.
@@ -56,7 +54,7 @@ def _responder_con_claude(marca: Marca, mensaje: str, modelo: str, api_key: str)
     respuesta = cliente.messages.create(
         model=modelo,                       # claude-opus-4-8 por defecto
         max_tokens=1024,
-        system=marca.system_prompt,         # ← identidad dinámica por marca
+        system=ctx.system_prompt,           # ← identidad dinámica por marca × línea
         thinking={"type": "adaptive"},      # el modelo decide cuánto razonar
         messages=[{"role": "user", "content": mensaje}],
     )

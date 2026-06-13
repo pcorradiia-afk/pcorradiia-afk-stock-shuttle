@@ -6,10 +6,10 @@ escribe a uno de los números de las concesionarias. El flujo es:
     Cliente ──▶ WhatsApp ──▶ Twilio ──▶ POST /webhook (From, To, Body, MessageSid)
                                               │
                                               ▼
-                         buscar_marca(To)  →  identifica empresa/marca
+                         buscar_cuenta(To)  →  identifica marca + líneas del número
                                               │
                                               ▼
-                         decidir_respuesta(marca, Body, From)  →  TwiML
+                  decidir_respuesta(cuenta, Body, From)  →  resuelve línea + TwiML
                                               │
                                               ▼
                               Twilio entrega la respuesta al cliente
@@ -24,26 +24,31 @@ from fastapi import FastAPI, Form, Request, Response
 
 from .config import obtener_config
 from .core.normalizacion import normalizar_telefono
-from .marcas import buscar_marca, marcas_registradas
+from .marcas import ETIQUETA_LINEA, buscar_cuenta, cuentas_registradas
 from .services.enrutador import decidir_respuesta
 
 app = FastAPI(
     title="Puente WhatsApp Multi-Marca · Grupo Fiorasi",
     version="0.1.0",
-    description="Enrutamiento de WhatsApp por número de destino hacia la marca correcta.",
+    description="Enrutamiento de WhatsApp por número de destino hacia la marca y línea correctas.",
 )
 
 
 @app.get("/")
 def salud() -> dict[str, object]:
-    """Endpoint de salud: confirma que el servicio está vivo y qué marcas conoce."""
-    marcas = marcas_registradas()
+    """Endpoint de salud: confirma que el servicio está vivo y qué atiende cada número."""
+    cuentas = cuentas_registradas()
     return {
         "servicio": "puente-whatsapp-multimarca",
         "estado": "ok",
-        "marcas_configuradas": [
-            {"numero": numero, "empresa": m.empresa, "marca": m.marca}
-            for numero, m in marcas.items()
+        "cuentas_configuradas": [
+            {
+                "numero": numero,
+                "empresa": c.marca.empresa,
+                "marca": c.marca.marca,
+                "lineas": [ETIQUETA_LINEA.get(l, l) for l in c.lineas],
+            }
+            for numero, c in cuentas.items()
         ],
     }
 
@@ -56,7 +61,7 @@ async def webhook(
     Body: str = Form(default=""),        # Texto del mensaje
     MessageSid: str = Form(default=""),  # Identificador único del mensaje en Twilio
 ) -> Response:
-    """Recibe el mensaje de Twilio, identifica la marca y responde con TwiML."""
+    """Recibe el mensaje de Twilio, identifica la cuenta y responde con TwiML."""
     config = obtener_config()
 
     # (Opcional) Validación de firma de Twilio para rechazar peticiones falsas.
@@ -64,8 +69,8 @@ async def webhook(
         print("🚫 [SEGURIDAD] Firma de Twilio inválida; se rechaza la petición.")
         return Response(status_code=403)
 
-    # 1) Identificar la marca según el número de destino (To).
-    marca = buscar_marca(To)
+    # 1) Identificar la cuenta (marca + líneas) según el número de destino (To).
+    cuenta = buscar_cuenta(To)
     cliente = normalizar_telefono(From)
 
     # 2) Log limpio en consola (lo que pide la consigna de la Fase 1).
@@ -75,14 +80,15 @@ async def webhook(
     print(f"   De (cliente): {cliente}")
     print(f"   A (destino) : {normalizar_telefono(To)}")
     print(f"   Cuerpo      : «{Body}»")
-    if marca is not None:
-        print(f"   ✅ Marca identificada: {marca.empresa} — {marca.marca}")
+    if cuenta is not None:
+        lineas = ", ".join(ETIQUETA_LINEA.get(l, l) for l in cuenta.lineas)
+        print(f"   ✅ Cuenta: {cuenta.marca.empresa} — {cuenta.marca.marca}  [{lineas}]")
     else:
-        print("   ⚠️  Número de destino no registrado en ninguna marca.")
+        print("   ⚠️  Número de destino no registrado en ninguna cuenta.")
     print("=" * 64)
 
     # 3) Si el número no está mapeado, respondemos genérico (no rompemos el flujo).
-    if marca is None:
+    if cuenta is None:
         from .services.twilio_client import respuesta_texto
 
         return _twiml(
@@ -92,8 +98,8 @@ async def webhook(
             )
         )
 
-    # 4) Decidir la respuesta según las reglas de negocio de la marca.
-    twiml = decidir_respuesta(marca, Body, cliente)
+    # 4) Decidir la respuesta (resuelve la línea y aplica las reglas de la marca).
+    twiml = decidir_respuesta(cuenta, Body, cliente)
 
     # 5) Si la lógica decidió no responder (bot pausado), devolvemos 200 vacío.
     if twiml is None:
@@ -119,6 +125,4 @@ def _firma_valida(request: Request, auth_token: str) -> bool:
     validador = RequestValidator(auth_token)
     firma = request.headers.get("X-Twilio-Signature", "")
     url = str(request.url)
-    # El cuerpo form ya fue consumido por FastAPI; en producción conviene leer el
-    # form crudo acá. Para la Fase 1 basta con la presencia de la firma.
     return bool(firma) and validador.validate(url, {}, firma) is not False
