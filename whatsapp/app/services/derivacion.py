@@ -1,0 +1,45 @@
+"""Botonera de derivación humana y pausa del bot por número.
+
+Cuando un cliente pide "Hablar con un asesor", el sistema:
+  1) Pausa el bot/IA para ese número (no le sigue respondiendo automáticamente).
+  2) Emite una alerta indicando a qué marca y vendedor corresponde la derivación.
+
+La pausa vive en memoria en la Fase 1 (suficiente para probar el flujo). En
+producción se persiste en Supabase/Redis para que sobreviva reinicios.
+"""
+
+from __future__ import annotations
+
+from ..marcas import Marca
+
+# Conjunto de números (normalizados) con el bot en pausa por derivación humana.
+_BOT_EN_PAUSA: set[str] = set()
+
+
+def bot_pausado(telefono: str) -> bool:
+    """True si el bot está pausado para ese número (hay un humano a cargo)."""
+    return telefono in _BOT_EN_PAUSA
+
+
+def reactivar_bot(telefono: str) -> None:
+    """Reactiva el bot para ese número (lo llama el asesor al cerrar la charla)."""
+    _BOT_EN_PAUSA.discard(telefono)
+
+
+def derivar_a_humano(marca: Marca, telefono_cliente: str) -> str:
+    """Pausa el bot y emite la alerta de derivación. Devuelve el texto al cliente."""
+    _BOT_EN_PAUSA.add(telefono_cliente)
+
+    # En producción, esta alerta se manda al canal del vendedor (WhatsApp interno,
+    # email, Slack o una fila en el tablero de la empresa). En Fase 1 va a consola.
+    print("\n🔔 [DERIVACIÓN] Se solicita un asesor humano")
+    print(f"   Empresa : {marca.empresa}")
+    print(f"   Marca   : {marca.marca}")
+    print(f"   Asignar a: {marca.vendedor_derivacion}")
+    print(f"   Cliente : {telefono_cliente}")
+    print("   Estado  : bot PAUSADO para este número")
+
+    return (
+        f"¡Perfecto! Te estoy comunicando con un asesor de {marca.saludo}. "
+        f"En breve una persona del equipo te escribe por acá. 🙌"
+    )

@@ -1,0 +1,11 @@
+# --- Núcleo del servidor ---
+fastapi==0.115.6          # Framework web async
+uvicorn[standard]==0.34.0 # Servidor ASGI para correr FastAPI
+python-multipart==0.0.20  # Necesario para que FastAPI lea los POST de Twilio (form-urlencoded)
+pydantic-settings==2.7.1  # Carga de configuración desde variables de entorno (.env)
+
+# --- Mensajería ---
+twilio==9.4.1             # SDK oficial de Twilio (envío saliente + generación de TwiML)
+
+# --- IA (opcional en Fase 1, ya preparado para Fase 2) ---
+anthropic==0.49.0         # SDK oficial de Claude para el Agente de IA por marca
