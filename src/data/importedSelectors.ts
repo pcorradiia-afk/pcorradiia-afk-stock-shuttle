@@ -316,8 +316,14 @@ export interface GestionImportada {
  * Consolida los balances parciales importados (último por empresa) en una
  * matriz depto × período, base del cuadro de situación económica.
  */
-/** Reasignación manual de una cuenta: a qué depto y/o línea del cuadro va. */
-export type OverrideCuenta = { depto?: string; linea?: LineaCuenta };
+/** Reparto de una cuenta entre varios deptos (por % de ventas o % fijo). */
+export interface RepartoCuenta {
+  modo: "ventas" | "fijo";
+  deptos: string[];
+  pct?: Record<string, number>;
+}
+/** Reasignación manual de una cuenta: depto, línea y/o reparto entre deptos. */
+export type OverrideCuenta = { depto?: string; linea?: LineaCuenta; reparto?: RepartoCuenta };
 export type OverridesCuentas = Record<string, OverrideCuenta>;
 
 export function gestionImportada(
@@ -333,6 +339,31 @@ export function gestionImportada(
 
   const celdaDe = (depto: string, per: string) => (((porDepto[depto] ??= {})[per] ??= vacia()));
 
+  // Aplica el aporte (r = contribución al resultado, acreedor positivo) de una
+  // cuenta a un depto/línea, y alimenta el desglose de comunes de Unidades.
+  const aplicar = (depto: string, linea: LineaCuenta, per: string, r: number, codigo: string, nombre: string) => {
+    const cd = celdaDe(depto, per);
+    cd.resultado += r;
+    if (linea === "venta") cd.ingresos += r;
+    else if (linea === "costo") cd.costos += -r;
+    else if (linea === "otros") cd.otrosIng = (cd.otrosIng ?? 0) + r;
+    else {
+      cd.gastos += -r;
+      if (linea === "gvar") cd.gastosVar = (cd.gastosVar ?? 0) + -r;
+      if (depto === "unidades") {
+        const rub = codigo.slice(0, 6);
+        const dst = (comunes[per] ??= {});
+        const a = (dst[rub] ??= { gastos: 0, gastosVar: 0, nombre });
+        a.gastos += -r;
+        if (linea === "gvar") a.gastosVar += -r;
+      }
+    }
+  };
+
+  // Cuentas con reparto por % de ventas: se resuelven en una 2.ª pasada, cuando
+  // ya están calculadas las ventas por departamento.
+  const repartoVentas: { codigo: string; nombre: string; linea: LineaCuenta; per: string; r: number; deptos: string[] }[] = [];
+
   for (const imp of fuentes) {
     const p = imp.payload as BalanceParcial;
     for (const per of p.periodos ?? []) periodos.add(per);
@@ -341,27 +372,18 @@ export function gestionImportada(
       // Reconstruye el cuadro desde cada cuenta, aplicando la parametrización.
       for (const c of p.cuentas) {
         const ov = overrides[c.codigo] ?? {};
-        const depto = ov.depto ?? c.depto;
         const linea = ov.linea ?? c.linea;
-        cuentas.push({ ...c, depto, linea }); // efectivo (con overrides) para el drill-down
+        const rep = ov.reparto && ov.reparto.deptos.length > 0 ? ov.reparto : null;
+        const deptoVista = rep ? rep.deptos[0] : ov.depto ?? c.depto;
+        cuentas.push({ ...c, depto: deptoVista, linea });
         for (const [per, r] of Object.entries(c.valores)) {
-          // r = contribución al resultado (acreedor positivo).
-          const cd = celdaDe(depto, per);
-          cd.resultado += r;
-          if (linea === "venta") cd.ingresos += r;
-          else if (linea === "costo") cd.costos += -r;
-          else if (linea === "otros") cd.otrosIng = (cd.otrosIng ?? 0) + r;
-          else {
-            cd.gastos += -r;
-            if (linea === "gvar") cd.gastosVar = (cd.gastosVar ?? 0) + -r;
-            // Gastos comunes de Unidades → desglose por subrubro para prorratear.
-            if (depto === "unidades") {
-              const rub = c.codigo.slice(0, 6);
-              const dst = (comunes[per] ??= {});
-              const a = (dst[rub] ??= { gastos: 0, gastosVar: 0, nombre: c.nombre });
-              a.gastos += -r;
-              if (linea === "gvar") a.gastosVar += -r;
-            }
+          if (!rep) {
+            aplicar(ov.depto ?? c.depto, linea, per, r, c.codigo, c.nombre);
+          } else if (rep.modo === "fijo") {
+            const tot = rep.deptos.reduce((a, d) => a + (rep.pct?.[d] ?? 0), 0) || 1;
+            for (const d of rep.deptos) aplicar(d, linea, per, (r * (rep.pct?.[d] ?? 0)) / tot, c.codigo, c.nombre);
+          } else {
+            repartoVentas.push({ codigo: c.codigo, nombre: c.nombre, linea, per, r, deptos: rep.deptos });
           }
         }
       }
@@ -389,6 +411,16 @@ export function gestionImportada(
         }
       }
     }
+  }
+
+  // 2.ª pasada: reparto por % de ventas (usa las ventas por depto ya calculadas).
+  for (const item of repartoVentas) {
+    const vs = item.deptos.map((d) => Math.max(0, porDepto[d]?.[item.per]?.ingresos ?? 0));
+    const tot = vs.reduce((a, b) => a + b, 0);
+    item.deptos.forEach((d, i) => {
+      const w = tot ? vs[i] / tot : 1 / item.deptos.length;
+      aplicar(d, item.linea, item.per, item.r * w, item.codigo, item.nombre);
+    });
   }
 
   return {

@@ -6,9 +6,20 @@ import { pushConfig } from "./configSync";
 // puede reasignarse a un departamento y/o a una línea del cuadro distinta de la
 // que detecta el sistema por su código. Lo que no se toca, usa la automática.
 
+export interface RepartoCuenta {
+  /** "ventas": por % de ventas de cada depto en el mes · "fijo": % fijos. */
+  modo: "ventas" | "fijo";
+  /** Departamentos entre los que se reparte. */
+  deptos: string[];
+  /** % fijo por depto (clave = depto), solo en modo "fijo". Idealmente suman 100. */
+  pct?: Record<string, number>;
+}
+
 export interface OverrideCuenta {
   depto?: string;
   linea?: LineaCuenta;
+  /** Si está, la cuenta se reparte entre varios deptos (ignora `depto`). */
+  reparto?: RepartoCuenta;
 }
 
 export type MapaClasificacion = Record<string, OverrideCuenta>;
@@ -37,7 +48,7 @@ function leer(): MapaClasificacion {
 /** Define (o limpia) el override de una cuenta. */
 export function setClasificacion(codigo: string, ov: OverrideCuenta) {
   const m = leer();
-  if (!ov.depto && !ov.linea) delete m[codigo];
+  if (!ov.depto && !ov.linea && !ov.reparto) delete m[codigo];
   else m[codigo] = ov;
   localStorage.setItem(KEY, JSON.stringify(m));
   window.dispatchEvent(new Event(EVENTO));
