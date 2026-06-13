@@ -9,6 +9,10 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    // Permite el acceso desde el reenvío de puertos / preview del entorno
+    // remoto, que entra por un hostname generado (no localhost). Solo afecta
+    // al servidor de desarrollo.
+    allowedHosts: true,
   },
   plugins: [
     react(),
