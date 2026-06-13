@@ -37,7 +37,7 @@ export interface GuardarArgs {
 const LOCAL_KEY = "fiorasi.importaciones.v1";
 const EVENTO = "fiorasi:importaciones";
 
-function leerLocal(): Importacion[] {
+function leerLocalStorage(): Importacion[] {
   try {
     const raw = localStorage.getItem(LOCAL_KEY);
     return raw ? (JSON.parse(raw) as Importacion[]) : [];
@@ -46,8 +46,21 @@ function leerLocal(): Importacion[] {
   }
 }
 
+// Fuente de verdad en memoria: no depende de la cuota de localStorage (que con
+// payloads grandes puede llenarse). localStorage queda como cache offline.
+let memoria: Importacion[] | null = null;
+function leerLocal(): Importacion[] {
+  if (memoria === null) memoria = leerLocalStorage();
+  return memoria;
+}
+
 function escribirLocal(lista: Importacion[]) {
-  localStorage.setItem(LOCAL_KEY, JSON.stringify(lista));
+  memoria = lista;
+  try {
+    localStorage.setItem(LOCAL_KEY, JSON.stringify(lista));
+  } catch {
+    // Cuota llena: seguimos con la copia en memoria (y la nube como respaldo).
+  }
   window.dispatchEvent(new Event(EVENTO));
 }
 

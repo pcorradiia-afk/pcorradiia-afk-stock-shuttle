@@ -71,12 +71,20 @@ export function PlanCuentas() {
     });
   }
 
-  if (!auto.hayDatos) {
+  if (!auto.hayDatos || cuentas.length === 0) {
     return (
       <div>
         <PageHeader title="Plan de cuentas" description="Cómo se arma el estado de resultados, cuenta por cuenta." />
         <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">
-          Importá un balance parcial para ver y parametrizar las cuentas.
+          {!auto.hayDatos ? (
+            <>Importá un balance parcial para ver y parametrizar las cuentas.</>
+          ) : (
+            <>
+              El balance parcial cargado es anterior a esta función (no trae el detalle por cuenta).
+              <br />
+              Reimportalo desde <strong>Importar del DMS</strong> (mismo archivo, misma empresa) y volvé acá.
+            </>
+          )}
         </CardContent></Card>
       </div>
     );
