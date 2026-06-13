@@ -1,3 +1,4 @@
+import { toast } from "sonner";
 import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import {
   computarImportacion,
@@ -103,16 +104,27 @@ export async function guardarImportacion(args: GuardarArgs): Promise<Importacion
     creado_el: new Date().toISOString(),
   };
 
-  // Local-first: guardamos primero en el navegador.
+  // Local-first: guardamos en el navegador (instantáneo, no se cuelga).
   escribirLocal([fila, ...leerLocal()]);
 
-  // Sincronización con la nube (best-effort).
+  // Sincronización con la nube en segundo plano: no bloquea la UI. Si falla o
+  // tarda demasiado, avisa pero la importación ya quedó guardada localmente.
   const sb = getSupabase();
   if (sb) {
-    const { error } = await sb.from("importaciones").insert(fila);
-    if (error) {
-      throw new Error(`Guardado en este dispositivo, pero falló la sincronización con la nube: ${error.message}`);
-    }
+    void (async () => {
+      try {
+        const insert = sb.from("importaciones").insert(fila);
+        const timeout = new Promise<never>((_, rej) =>
+          setTimeout(() => rej(new Error("La nube no respondió (timeout). Reintentá más tarde.")), 25000),
+        );
+        const { error } = (await Promise.race([insert, timeout])) as { error: { message: string } | null };
+        if (error) throw new Error(error.message);
+      } catch (e) {
+        toast.error("No se pudo sincronizar con la nube", {
+          description: `${(e as Error).message}. La importación quedó guardada en este dispositivo.`,
+        });
+      }
+    })();
   }
   return fila;
 }
