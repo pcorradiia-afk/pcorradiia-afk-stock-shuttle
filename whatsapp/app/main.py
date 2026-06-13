@@ -20,11 +20,12 @@ y exponerlo con:         ngrok http 8000
 
 from __future__ import annotations
 
-from fastapi import FastAPI, Form, Request, Response
+from fastapi import FastAPI, Form, HTTPException, Request, Response
 
 from .config import obtener_config
 from .core.normalizacion import normalizar_telefono
 from .marcas import ETIQUETA_LINEA, buscar_cuenta, cuentas_registradas
+from .services.campanias import CampaniaError, ReporteCampania, correr_adjudicaciones
 from .services.enrutador import decidir_respuesta
 
 app = FastAPI(
@@ -106,6 +107,25 @@ async def webhook(
         return Response(status_code=200)
 
     return _twiml(twiml)
+
+
+@app.post("/campanias/adjudicaciones/{id_empresa}")
+def lanzar_adjudicaciones(id_empresa: str, dry_run: bool = True) -> ReporteCampania:
+    """Lanza la campaña de adjudicaciones de Planes de Ahorro para una empresa.
+
+    Por seguridad, ``dry_run=true`` por defecto: simula los envíos y muestra el
+    reporte sin mandar nada por WhatsApp. Para enviar de verdad, pasá
+    ``?dry_run=false`` (requiere credenciales de Twilio en el .env).
+
+    Ejemplos::
+
+        POST /campanias/adjudicaciones/empresa_pedro_corradi            (simula)
+        POST /campanias/adjudicaciones/empresa_pedro_corradi?dry_run=false  (envía)
+    """
+    try:
+        return correr_adjudicaciones(id_empresa, dry_run=dry_run)
+    except CampaniaError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def _twiml(contenido: str) -> Response:

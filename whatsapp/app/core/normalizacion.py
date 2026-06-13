@@ -48,10 +48,14 @@ def normalizar_telefono(crudo: str | None, codigo_pais: str = _CODIGO_PAIS_DEFEC
         # Ya estaba en formato internacional: confiamos en los dígitos tal cual.
         return _asegurar_nueve_argentino("+" + digitos, codigo_pais)
 
-    # 4) Número local: sacamos el 0 inicial de área y el 15 de celular.
-    #    Ej: 0351 15 5551234  ->  351 5551234
-    digitos = re.sub(r"^0", "", digitos)
-    digitos = re.sub(r"^(\d{2,4})15", r"\1", digitos, count=1)
+    # 4) Formato local con 0 inicial (ej: "0351 15 5551234"): sacamos el 0 de
+    #    área y el 15 de celular que aparece justo después del código de área.
+    #    El "15" SOLO se quita en este caso: si el número viene sin 0 inicial lo
+    #    tratamos como número nacional (área + número) ya limpio, para no comernos
+    #    dígitos de un número como "3515554321".
+    if digitos.startswith("0"):
+        digitos = digitos[1:]
+        digitos = re.sub(r"^(\d{2,4})15", r"\1", digitos, count=1)
 
     return _asegurar_nueve_argentino(f"+{codigo_pais}{digitos}", codigo_pais)
 

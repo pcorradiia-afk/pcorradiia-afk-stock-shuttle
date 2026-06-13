@@ -10,6 +10,8 @@ Y el envío saliente (`enviar_mensaje`) para campañas, plantillas y multimedia.
 
 from __future__ import annotations
 
+import json
+
 from twilio.twiml.messaging_response import MessagingResponse
 
 from ..config import obtener_config
@@ -70,18 +72,49 @@ def respuesta_texto(texto: str) -> str:
 
 
 def enviar_mensaje(numero_destino: str, numero_origen: str, cuerpo: str) -> str:
-    """Envía un mensaje saliente por la API de Twilio (campañas, alertas, etc.).
+    """Envía un mensaje de texto libre por la API de Twilio.
 
-    `numero_origen` es el número de WhatsApp de la marca; `numero_destino` el del
-    cliente. Devuelve el SID del mensaje creado. Requiere credenciales válidas.
+    Sólo sirve DENTRO de la ventana de 24 hs de sesión (cuando el cliente ya
+    escribió). Para iniciar conversación (campañas) se usa `enviar_plantilla`.
+    Devuelve el SID del mensaje creado. Requiere credenciales válidas.
     """
-    from twilio.rest import Client
-
-    config = obtener_config()
-    cliente = Client(config.twilio_account_sid, config.twilio_auth_token)
+    cliente = _cliente_rest()
     mensaje = cliente.messages.create(
         from_=f"whatsapp:{numero_origen}",
         to=f"whatsapp:{numero_destino}",
         body=cuerpo,
     )
     return mensaje.sid
+
+
+def enviar_plantilla(
+    numero_destino: str,
+    numero_origen: str,
+    content_sid: str,
+    variables: dict[str, str],
+) -> str:
+    """Envía una plantilla aprobada (HSM) por la API de Twilio.
+
+    Para iniciar conversación fuera de la ventana de 24 hs (avisos masivos,
+    adjudicaciones, etc.) WhatsApp EXIGE una plantilla aprobada. En Twilio se
+    referencia por su `content_sid` (HX...) y se completan sus variables
+    ({{1}}, {{2}}, ...) con `variables` (claves "1", "2", ...).
+
+    Devuelve el SID del mensaje creado. Requiere credenciales válidas.
+    """
+    cliente = _cliente_rest()
+    mensaje = cliente.messages.create(
+        from_=f"whatsapp:{numero_origen}",
+        to=f"whatsapp:{numero_destino}",
+        content_sid=content_sid,
+        content_variables=json.dumps(variables),
+    )
+    return mensaje.sid
+
+
+def _cliente_rest():
+    """Crea el cliente REST de Twilio con las credenciales del .env."""
+    from twilio.rest import Client
+
+    config = obtener_config()
+    return Client(config.twilio_account_sid, config.twilio_auth_token)

@@ -256,6 +256,19 @@ def contexto_de(cuenta: Cuenta, linea: str) -> Contexto | None:
     return Contexto(marca=cuenta.marca, cfg=cfg)
 
 
+def buscar_por_empresa(id_empresa: str, linea: str) -> tuple[str, Contexto] | None:
+    """Búsqueda inversa para el envío saliente: empresa + línea → (número, contexto).
+
+    El envío de campañas necesita el número de WhatsApp DESDE el cual mandar
+    (el `From`) y el contexto (para resolver la plantilla aprobada). Recorre el
+    registro buscando la cuenta de esa empresa que atienda esa línea.
+    """
+    for numero, cuenta in _REGISTRO.items():
+        if cuenta.marca.id_empresa == id_empresa and linea in cuenta.lineas:
+            return numero, Contexto(marca=cuenta.marca, cfg=cuenta.lineas[linea])
+    return None
+
+
 def cuentas_registradas() -> dict[str, Cuenta]:
     """Devuelve una copia del registro (útil para diagnósticos y tests)."""
     return dict(_REGISTRO)

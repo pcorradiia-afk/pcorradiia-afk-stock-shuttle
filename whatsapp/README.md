@@ -23,7 +23,9 @@ responde con la identidad y las reglas correctas de cada empresa.
 - **Botonera de derivación humana** que pausa el bot y avisa al asesor de **esa
   línea** (planes ≠ ventas ≠ posventa).
 - **Ventanas de horario** con respuesta empática fuera de hora.
-- **Rate limiting** de campañas (1 envío por número cada 24 hs, por empresa).
+- **Envío saliente de campañas** con plantilla aprobada (HSM): adjudicaciones de
+  Planes de Ahorro, con **rate limiting** (1 envío por número cada 24 hs, por
+  empresa) y **modo simulación (`dry_run`) por defecto** para probar sin gastar.
 - **Normalización de teléfonos** de LatAm a formato internacional `+549...`.
 
 ## Estructura
@@ -120,6 +122,27 @@ curl -X POST http://localhost:8000/webhook \
 Mirá la consola del servidor: vas a ver el log del mensaje, la cuenta y la línea
 identificadas y, en el texto libre, el **system prompt que cambia según la marca
 y la línea**.
+
+## Campañas salientes (adjudicaciones de Planes de Ahorro)
+
+Envío masivo con plantilla aprobada. Lee los destinatarios de
+`data/<empresa>/adjudicaciones.json`, normaliza los teléfonos, aplica el rate
+limiting y envía (o simula) la plantilla por Twilio.
+
+```bash
+# Simula la campaña (NO envía nada) y muestra el reporte. Seguro por defecto.
+curl -X POST "http://localhost:8000/campanias/adjudicaciones/empresa_pedro_corradi"
+
+# Corré el mismo comando otra vez: ahora salen todos como "duplicado"
+# (rate limiting de 24 hs). El rate limit es independiente por empresa.
+
+# Envío REAL (requiere credenciales de Twilio y la plantilla aprobada):
+curl -X POST "http://localhost:8000/campanias/adjudicaciones/empresa_pedro_corradi?dry_run=false"
+```
+
+El reporte indica, por cada número: `enviado` / `simulado` / `duplicado` / `error`.
+Las variables de la plantilla se completan desde los datos: `{{1}}` nombre,
+`{{2}}` modelo, `{{3}}` fecha del acto.
 
 ## Próximos pasos (Fase 2)
 
