@@ -10,7 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Download, FileText, Scale, ShieldCheck, TrendingUp, Wallet } from "lucide-react";
+import { Download, FileText, Scale, ShieldCheck, Sliders, TrendingUp, Wallet } from "lucide-react";
 import { useAuth } from "@/auth/AuthContext";
 import { DEPARTAMENTOS, EMPRESAS, PERIODOS } from "@/data/demo";
 import { resumenPorDepto, ultimoPeriodo } from "@/data/selectors";
@@ -18,6 +18,7 @@ import { useImportaciones } from "@/data/useImportaciones";
 import { gestionImportada, moraImportada, patrimonialImportada, ventasImportada } from "@/data/importedSelectors";
 import { useUnidadesPlanes, unidadesTotales } from "@/data/unidadesPlanes";
 import { useCriterioProrrateo } from "@/data/criteriosCuadro";
+import { useReglasProrrateo, reglaDe, guardarRegla, REGLAS, type ReglaProrrateo } from "@/data/prorrateoReglas";
 import { UnidadesPlanesEditor } from "@/components/UnidadesPlanesEditor";
 import { ConciliacionGestion } from "@/components/ConciliacionGestion";
 import type { CeldaPL } from "@/lib/oliauto";
@@ -115,6 +116,8 @@ export function Rentabilidad() {
   // Unidades de Planes de Ahorro (carga manual) para el período/modo mostrado.
   const mapaUnidades = useUnidadesPlanes();
   const criterio = useCriterioProrrateo();
+  const reglas = useReglasProrrateo();
+  const [verReglas, setVerReglas] = useState(false);
   const periodosView = esEspecial ? g.periodos : [periodo];
   const uPlanesRaw = unidadesTotales(mapaUnidades, empresaIdsActivos, periodosView);
   const uPlanes =
@@ -227,7 +230,8 @@ export function Rentabilidad() {
     return (per && g.porDepto[key]?.[per]) || vacia();
   };
 
-  // Pesos del prorrateo de los gastos comunes de Unidades hacia 0km/usados/planes.
+  // Pesos del prorrateo global (fallback cuando una importación no trae el
+  // desglose por subrubro): por % de ventas o porcentajes manuales.
   const pesos = (per: string | null): Record<string, number> => {
     if (criterio.modo === "manual") {
       const t = criterio.pct["0km"] + criterio.pct.usados + criterio.pct.planes || 1;
@@ -239,20 +243,74 @@ export function Rentabilidad() {
     return { "0km": v[0] / tot, usados: v[1] / tot, planes: v[2] / tot };
   };
 
+  // Gastos comunes de Unidades por subrubro para el período/modo mostrado.
+  const comunesDe = (per: string | null): Record<string, { nombre?: string; gastos: number; gastosVar: number }> => {
+    if (per === "acum" || per === "prom") {
+      const acc: Record<string, { nombre?: string; gastos: number; gastosVar: number }> = {};
+      for (const p of g.periodos)
+        for (const [rub, c] of Object.entries(g.comunes?.[p] ?? {})) {
+          const a = (acc[rub] ??= { nombre: c.nombre, gastos: 0, gastosVar: 0 });
+          a.gastos += c.gastos;
+          a.gastosVar += c.gastosVar;
+        }
+      if (per === "prom" && nMeses > 0)
+        for (const rub of Object.keys(acc)) {
+          acc[rub].gastos /= nMeses;
+          acc[rub].gastosVar /= nMeses;
+        }
+      return acc;
+    }
+    return (per && g.comunes?.[per]) || {};
+  };
+
+  // Reparto de los gastos comunes a 0km/usados/planes aplicando la regla de cada
+  // subrubro (solo 0km, solo usados, % ventas 0km+usados, % ventas las tres).
+  const prorrateoComunes = (per: string | null): Record<string, { gastos: number; gastosVar: number }> => {
+    const out: Record<string, { gastos: number; gastosVar: number }> = {
+      "0km": { gastos: 0, gastosVar: 0 }, usados: { gastos: 0, gastosVar: 0 }, planes: { gastos: 0, gastosVar: 0 },
+    };
+    const subs = comunesDe(per);
+    const ventasDest: Record<string, number> = {
+      "0km": Math.max(0, celda("0km", per).ingresos),
+      usados: Math.max(0, celda("usados", per).ingresos),
+      planes: Math.max(0, celda("planes", per).ingresos),
+    };
+    if (Object.keys(subs).length === 0) {
+      // Sin desglose: prorrateo global (importación vieja).
+      const w = pesos(per);
+      const comun = celda("unidades", per);
+      for (const d of DESTINOS_PRORRATEO) {
+        out[d].gastos += comun.gastos * (w[d] ?? 0);
+        out[d].gastosVar += (comun.gastosVar ?? 0) * (w[d] ?? 0);
+      }
+      return out;
+    }
+    for (const [rub, c] of Object.entries(subs)) {
+      const regla = reglaDe(reglas, rub, c.nombre ?? "");
+      const dests = REGLAS.find((r) => r.key === regla)?.destinos ?? ["0km"];
+      const totV = dests.reduce((a, d) => a + ventasDest[d], 0);
+      for (const d of dests) {
+        const w = dests.length === 1 ? 1 : totV ? ventasDest[d] / totV : 1 / dests.length;
+        out[d].gastos += c.gastos * w;
+        out[d].gastosVar += c.gastosVar * w;
+      }
+    }
+    return out;
+  };
+
   // Celda con el prorrateo aplicado: "unidades" (comunes) se reparte y queda en 0.
   const celdaAjustada = (key: string, per: string | null): CeldaPL => {
     const base = celda(key, per);
     if (key === "unidades") return vacia();
     if (key === "0km" || key === "usados" || key === "planes") {
-      const comun = celda("unidades", per);
-      const w = pesos(per)[key] ?? 0;
+      const add = prorrateoComunes(per)[key];
       return {
-        ingresos: base.ingresos + comun.ingresos * w,
-        costos: base.costos + comun.costos * w,
-        gastos: base.gastos + comun.gastos * w,
-        resultado: base.resultado + comun.resultado * w,
-        gastosVar: (base.gastosVar ?? 0) + (comun.gastosVar ?? 0) * w,
-        otrosIng: (base.otrosIng ?? 0) + (comun.otrosIng ?? 0) * w,
+        ingresos: base.ingresos,
+        costos: base.costos,
+        gastos: base.gastos + add.gastos,
+        resultado: base.resultado - add.gastos,
+        gastosVar: (base.gastosVar ?? 0) + add.gastosVar,
+        otrosIng: base.otrosIng ?? 0,
       };
     }
     return base;
@@ -460,9 +518,14 @@ export function Rentabilidad() {
 
       {/* Cuadro por centro de costo */}
       <Card className="mt-4">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Estado de Resultados de {empresaNombre}</CardTitle>
-          <p className="text-xs text-muted-foreground">valor · % sobre ventas del depto. · clic en un concepto para ver su composición</p>
+        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+          <div>
+            <CardTitle className="text-base">Estado de Resultados de {empresaNombre}</CardTitle>
+            <p className="text-xs text-muted-foreground">valor · % sobre ventas del depto. · clic en un concepto para ver su composición</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setVerReglas(true)}>
+            <Sliders className="mr-1.5 h-4 w-4" /> Reglas de prorrateo
+          </Button>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -655,6 +718,77 @@ export function Rentabilidad() {
             Cuentas contables que componen «{detalle?.linea}» en {etiqueta(periodo).toLowerCase()}, como figuran en el balance de Oliauto.
             Los gastos comunes de Unidades figuran con su cuenta original (antes del prorrateo).
           </p>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reglas de prorrateo por subrubro */}
+      <Dialog open={verReglas} onOpenChange={setVerReglas}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Reglas de prorrateo de gastos comunes de Unidades</DialogTitle>
+          </DialogHeader>
+          {(() => {
+            // Subrubros comunes detectados (sumados sobre todos los meses).
+            const subs: Record<string, { nombre: string; total: number }> = {};
+            for (const p of g.periodos)
+              for (const [rub, c] of Object.entries(g.comunes?.[p] ?? {})) {
+                const a = (subs[rub] ??= { nombre: c.nombre ?? rub, total: 0 });
+                a.total += c.gastos;
+              }
+            const lista = Object.entries(subs).sort((a, b) => Math.abs(b[1].total) - Math.abs(a[1].total));
+            if (lista.length === 0) {
+              return (
+                <p className="py-4 text-sm text-muted-foreground">
+                  No hay gastos comunes de Unidades en esta importación (o es una carga vieja). Reimportá el balance parcial para configurarlos.
+                </p>
+              );
+            }
+            return (
+              <>
+                <p className="text-xs text-muted-foreground">
+                  Cada gasto común se reparte a las líneas según su regla. Acum. {nMeses} meses.
+                </p>
+                <div className="max-h-[55vh] overflow-y-auto">
+                  <Table className="text-xs">
+                    <TableHeader className="sticky top-0 bg-background">
+                      <TableRow>
+                        <TableHead>Subrubro</TableHead>
+                        <TableHead className="text-right">Gasto acum.</TableHead>
+                        <TableHead className="w-[230px]">Regla</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {lista.map(([rub, info]) => (
+                        <TableRow key={rub}>
+                          <TableCell className="py-1">
+                            <div className="font-medium">{info.nombre}</div>
+                            <div className="font-mono text-[10px] text-muted-foreground">{rub}</div>
+                          </TableCell>
+                          <TableCell className="py-1 text-right tabular-nums">{money(info.total)}</TableCell>
+                          <TableCell className="py-1">
+                            <Select
+                              value={reglaDe(reglas, rub, info.nombre)}
+                              onValueChange={(v) => guardarRegla(rub, v as ReglaProrrateo)}
+                            >
+                              <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {REGLAS.map((r) => (
+                                  <SelectItem key={r.key} value={r.key}>{r.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Se guarda automáticamente y se comparte con el equipo. El cuadro se recalcula al instante.
+                </p>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
 
