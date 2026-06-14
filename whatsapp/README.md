@@ -28,6 +28,25 @@ responde con la identidad y las reglas correctas de cada empresa.
   empresa) y **modo simulación (`dry_run`) por defecto** para probar sin gastar.
 - **Normalización de teléfonos** de LatAm a formato internacional `+549...`.
 
+## Persistencia (Supabase, opcional)
+
+Por defecto el sistema guarda el estado **en memoria** (rate limit, sesiones,
+pausas de bot, encuestas y resultados): práctico para desarrollo, pero se pierde
+al reiniciar. Para que **sobreviva reinicios**, conectá Supabase:
+
+1. En Supabase → **SQL Editor** → pegá y corré
+   [`supabase/schema.sql`](./supabase/schema.sql) (crea las tablas `wsp_*`).
+2. En tu `.env` completá (es backend → **service_role**, no la anon):
+   ```
+   SUPABASE_URL=https://TU-PROYECTO.supabase.co
+   SUPABASE_SERVICE_ROLE_KEY=tu-service-role-key-secreta
+   ```
+3. Reiniciá el servidor. Listo: al arrancar verás
+   `🗄️ [PERSISTENCIA] Usando Supabase`.
+
+No cambia nada del uso: el código de negocio habla con un `Repositorio`
+abstracto (`app/persistencia/`) que elige memoria o Supabase según la config.
+
 ## Estructura
 
 ```
@@ -37,6 +56,10 @@ whatsapp/
     config.py            · configuración desde .env (tokens, keys)
     marcas.py            · REGISTRO de cuentas (número → marca × líneas)
                            Marca=identidad · ConfigLinea=comportamiento · Cuenta=número
+    persistencia/        · capa conmutable: memoria o Supabase (mismo contrato)
+      base.py            · interfaz Repositorio
+      memoria.py         · backend en memoria (por defecto)
+      supabase_repo.py   · backend Supabase (service_role)
     core/
       normalizacion.py   · números locales → +549 (E.164)
       horarios.py        · ¿la concesionaria está abierta?

@@ -9,3 +9,7 @@ twilio==9.4.1             # SDK oficial de Twilio (envío saliente + generación
 
 # --- IA (opcional en Fase 1, ya preparado para Fase 2) ---
 anthropic==0.49.0         # SDK oficial de Claude para el Agente de IA por marca
+
+# --- Persistencia (opcional: sólo si vas a usar Supabase) ---
+supabase==2.10.0          # SDK oficial de Supabase (persistencia server-side)
+

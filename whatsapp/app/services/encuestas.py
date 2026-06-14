@@ -28,6 +28,7 @@ from pathlib import Path
 from ..config import obtener_config
 from ..core.normalizacion import normalizar_telefono
 from ..marcas import LINEA_POSVENTA, buscar_por_empresa
+from ..persistencia import obtener_repo
 from . import sesion
 from .twilio_client import enviar_plantilla
 
@@ -99,15 +100,6 @@ class ReporteEncuestas:
     resultados: list[ResultadoEnvioEncuesta] = field(default_factory=list)
 
 
-# ── Estado en memoria ────────────────────────────────────────────────────────
-# (numero_cuenta, telefono) -> contexto de la encuesta abierta esperando respuesta.
-_ABIERTAS: dict[tuple[str, str], dict] = {}
-# Resultados guardados (el "tablero").
-_RESULTADOS: list[ResultadoEncuesta] = []
-# Dedupe de envíos: (id_empresa, telefono, fecha_evento).
-_ENVIADAS: set[tuple[str, str, str]] = set()
-
-
 def correr_encuestas_pendientes(
     id_empresa: str,
     ahora: datetime | None = None,
@@ -133,6 +125,7 @@ def correr_encuestas_pendientes(
 
     eventos = _cargar_datos(id_empresa, "encuestas_pendientes.json")
     momento = ahora or datetime.now()
+    repo = obtener_repo()
 
     config = obtener_config()
     usar_twilio = (not dry_run) and bool(
@@ -172,8 +165,7 @@ def correr_encuestas_pendientes(
             continue
 
         # Evitar reenviar la misma encuesta.
-        clave = (id_empresa, telefono, fecha_evento)
-        if clave in _ENVIADAS:
+        if repo.encuesta_enviada(id_empresa, telefono, fecha_evento):
             reporte.ya_enviadas += 1
             reporte.resultados.append(
                 ResultadoEnvioEncuesta(telefono, "ya_enviada", "encuesta ya enviada")
@@ -202,14 +194,14 @@ def correr_encuestas_pendientes(
                 )
                 print(f"   🧪 {telefono} · simulada\n        pregunta: {preview}")
 
-            _ENVIADAS.add(clave)
+            repo.marcar_encuesta_enviada(id_empresa, telefono, fecha_evento)
             # Abrimos la encuesta y cebamos la línea de Posventa para capturar la
             # respuesta del cliente (1-5) cuando conteste.
-            _ABIERTAS[(numero_origen, telefono)] = {
-                "id_empresa": id_empresa,
-                "tipo": tipo,
-                "referencia": referencia,
-            }
+            repo.abrir_encuesta(
+                numero_origen,
+                telefono,
+                {"id_empresa": id_empresa, "tipo": tipo, "referencia": referencia},
+            )
             sesion.elegir_linea(numero_origen, telefono, LINEA_POSVENTA)
         except Exception as exc:  # noqa: BLE001
             reporte.errores += 1
@@ -226,7 +218,7 @@ def correr_encuestas_pendientes(
 
 def hay_encuesta_abierta(numero_cuenta: str, telefono: str) -> bool:
     """True si hay una encuesta esperando la respuesta de ese cliente."""
-    return (numero_cuenta, telefono) in _ABIERTAS
+    return obtener_repo().encuesta_abierta(numero_cuenta, telefono) is not None
 
 
 def registrar_respuesta(numero_cuenta: str, telefono: str, texto: str) -> str | None:
@@ -236,7 +228,8 @@ def registrar_respuesta(numero_cuenta: str, telefono: str, texto: str) -> str | 
     (en ese caso el enrutador sigue con el flujo normal y la encuesta queda
     abierta para que el cliente la conteste).
     """
-    contexto = _ABIERTAS.get((numero_cuenta, telefono))
+    repo = obtener_repo()
+    contexto = repo.encuesta_abierta(numero_cuenta, telefono)
     if contexto is None:
         return None
 
@@ -244,17 +237,19 @@ def registrar_respuesta(numero_cuenta: str, telefono: str, texto: str) -> str | 
     if valor is None:
         return None  # no es 1-5: dejamos la encuesta abierta
 
-    _RESULTADOS.append(
-        ResultadoEncuesta(
-            id_empresa=contexto["id_empresa"],
-            telefono=telefono,
-            tipo=contexto["tipo"],
-            referencia=contexto["referencia"],
-            valor=valor,
-            fecha=datetime.now().isoformat(timespec="seconds"),
+    repo.guardar_resultado(
+        asdict(
+            ResultadoEncuesta(
+                id_empresa=contexto["id_empresa"],
+                telefono=telefono,
+                tipo=contexto["tipo"],
+                referencia=contexto["referencia"],
+                valor=valor,
+                fecha=datetime.now().isoformat(timespec="seconds"),
+            )
         )
     )
-    del _ABIERTAS[(numero_cuenta, telefono)]
+    repo.cerrar_encuesta(numero_cuenta, telefono)
     print(
         f"⭐ [ENCUESTA] {telefono} respondió {valor}/5 "
         f"({contexto['id_empresa']} · {contexto['tipo']})"
@@ -270,24 +265,22 @@ def registrar_respuesta(numero_cuenta: str, telefono: str, texto: str) -> str | 
 
 def tablero(id_empresa: str) -> dict:
     """Resumen de resultados de la empresa (el 'tablero')."""
-    items = [r for r in _RESULTADOS if r.id_empresa == id_empresa]
+    items = obtener_repo().resultados(id_empresa)
     total = len(items)
-    promedio = round(sum(r.valor for r in items) / total, 2) if total else None
-    distribucion = {str(n): sum(1 for r in items if r.valor == n) for n in range(1, 6)}
+    promedio = round(sum(r["valor"] for r in items) / total, 2) if total else None
+    distribucion = {str(n): sum(1 for r in items if r["valor"] == n) for n in range(1, 6)}
     return {
         "id_empresa": id_empresa,
         "respuestas": total,
         "promedio": promedio,
         "distribucion": distribucion,
-        "detalle": [asdict(r) for r in items],
+        "detalle": items,
     }
 
 
 def limpiar() -> None:
-    """Vacía el estado (sólo para tests)."""
-    _ABIERTAS.clear()
-    _RESULTADOS.clear()
-    _ENVIADAS.clear()
+    """Vacía el estado (sólo para tests, en backend de memoria)."""
+    obtener_repo().limpiar_todo()
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

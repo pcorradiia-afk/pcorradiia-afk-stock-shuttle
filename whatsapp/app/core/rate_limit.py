@@ -1,39 +1,27 @@
 """Prevención de duplicados (rate limiting) para campañas masivas.
 
 Regla de negocio: no enviar la misma campaña al mismo número más de una vez en
-24 horas, y de forma independiente por cada empresa (la Marca A y la Marca B
-pueden contactar al mismo cliente sin pisarse).
+24 horas, de forma independiente por cada empresa.
 
-La Fase 1 usa un diccionario en memoria, suficiente para probar la lógica. En
-producción esto se reemplaza por Redis o una tabla en Supabase con TTL, sin
-cambiar la interfaz pública (`ya_enviado` / `registrar_envio`).
+El estado se guarda en el repositorio de persistencia (memoria o Supabase según
+la configuración), así que la interfaz pública no cambia.
 """
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-
-# Clave compuesta: (id_empresa, campaña, telefono_normalizado) -> momento de envío.
-_REGISTRO_ENVIOS: dict[tuple[str, str, str], datetime] = {}
-
-_VENTANA = timedelta(hours=24)
+from ..persistencia import obtener_repo
 
 
 def ya_enviado(id_empresa: str, campania: str, telefono: str) -> bool:
     """True si ya se le envió esta campaña a ese número en las últimas 24 hs."""
-    clave = (id_empresa, campania, telefono)
-    momento = _REGISTRO_ENVIOS.get(clave)
-    if momento is None:
-        return False
-    return datetime.now(timezone.utc) - momento < _VENTANA
+    return obtener_repo().campania_ya_enviada(id_empresa, campania, telefono)
 
 
 def registrar_envio(id_empresa: str, campania: str, telefono: str) -> None:
     """Marca que se acaba de enviar la campaña a ese número."""
-    clave = (id_empresa, campania, telefono)
-    _REGISTRO_ENVIOS[clave] = datetime.now(timezone.utc)
+    obtener_repo().registrar_campania(id_empresa, campania, telefono)
 
 
 def limpiar_registro() -> None:
-    """Vacía el registro (sólo para tests)."""
-    _REGISTRO_ENVIOS.clear()
+    """Vacía el registro (sólo para tests, en backend de memoria)."""
+    obtener_repo().limpiar_todo()

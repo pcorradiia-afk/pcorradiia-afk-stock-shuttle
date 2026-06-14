@@ -32,8 +32,18 @@ class Configuracion(BaseSettings):
     anthropic_api_key: str = ""
     ia_modelo: str = "claude-opus-4-8"
 
+    # --- Persistencia (Supabase, opcional) ---
+    # Es backend: se usa la service_role key (secreta), NUNCA la anon del frontend.
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
+
     # --- Horarios ---
     tz_defecto: str = "America/Argentina/Buenos_Aires"
+
+    @property
+    def usar_supabase(self) -> bool:
+        """True si hay credenciales de Supabase para persistir los datos."""
+        return bool(self.supabase_url and self.supabase_service_role_key)
 
 
 @lru_cache

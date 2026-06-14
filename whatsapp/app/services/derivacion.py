@@ -5,31 +5,29 @@ Cuando un cliente pide "Hablar con un asesor", el sistema:
   2) Emite una alerta indicando a qué marca, LÍNEA y vendedor corresponde la
      derivación (no es lo mismo el asesor de planes que el de 0km).
 
-La pausa vive en memoria en la Fase 1. En producción se persiste en
-Supabase/Redis para que sobreviva reinicios.
+La pausa se guarda en el repositorio de persistencia (memoria o Supabase), así
+sobrevive reinicios cuando hay base configurada.
 """
 
 from __future__ import annotations
 
 from ..marcas import Contexto
-
-# Conjunto de números (normalizados) con el bot en pausa por derivación humana.
-_BOT_EN_PAUSA: set[str] = set()
+from ..persistencia import obtener_repo
 
 
 def bot_pausado(telefono: str) -> bool:
     """True si el bot está pausado para ese número (hay un humano a cargo)."""
-    return telefono in _BOT_EN_PAUSA
+    return obtener_repo().bot_pausado(telefono)
 
 
 def reactivar_bot(telefono: str) -> None:
     """Reactiva el bot para ese número (lo llama el asesor al cerrar la charla)."""
-    _BOT_EN_PAUSA.discard(telefono)
+    obtener_repo().reactivar_bot(telefono)
 
 
 def derivar_a_humano(ctx: Contexto, telefono_cliente: str) -> str:
     """Pausa el bot y emite la alerta de derivación. Devuelve el texto al cliente."""
-    _BOT_EN_PAUSA.add(telefono_cliente)
+    obtener_repo().pausar_bot(telefono_cliente)
 
     # En producción, esta alerta se manda al canal del vendedor (WhatsApp interno,
     # email, Slack o una fila en el tablero de la empresa). En Fase 1 va a consola.
