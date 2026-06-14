@@ -235,7 +235,12 @@ _REGISTRO: dict[str, Cuenta] = {
             LINEA_POSVENTA: _cfg(
                 LINEA_POSVENTA, "Volkswagen", "Pedro Corradi",
                 "Equipo de Posventa Pedro Corradi",
-                {"encuesta_calidad": Plantilla("HX11_pv_bbbb")},
+                {
+                    "encuesta_calidad": Plantilla(
+                        "HX11_pv_bbbb",
+                        opciones=("1", "2", "3", "4", "5"),
+                    ),
+                },
             ),
         },
     ),

@@ -20,7 +20,7 @@ from __future__ import annotations
 from ..config import obtener_config
 from ..core.horarios import esta_abierta, mensaje_fuera_de_horario
 from ..marcas import Contexto, Cuenta, contexto_de, lineas_de
-from . import derivacion, sesion
+from . import derivacion, encuestas, sesion
 from .ia import procesar_con_ia
 from .twilio_client import (
     OPCIONES_POR_LINEA,
@@ -48,6 +48,14 @@ def decidir_respuesta(
     """
     texto = (cuerpo or "").strip()
     lineas = lineas_de(cuenta)
+
+    # ── 0) RESPUESTA DE ENCUESTA ─────────────────────────────────────────────
+    # Tiene prioridad sobre todo: si hay una encuesta abierta y el cliente manda
+    # un 1-5, lo tomamos como puntaje (no como opción de menú).
+    if encuestas.hay_encuesta_abierta(numero_cuenta, telefono_cliente):
+        agradecimiento = encuestas.registrar_respuesta(numero_cuenta, telefono_cliente, texto)
+        if agradecimiento is not None:
+            return respuesta_texto(agradecimiento)
 
     # ── A) RESOLUCIÓN DE LÍNEA ───────────────────────────────────────────────
     if len(lineas) == 1:

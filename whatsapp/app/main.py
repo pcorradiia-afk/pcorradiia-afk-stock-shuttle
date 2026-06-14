@@ -31,6 +31,12 @@ from .services.campanias import (
     correr_adjudicaciones,
     correr_difusion_stock,
 )
+from .services.encuestas import (
+    EncuestaError,
+    ReporteEncuestas,
+    correr_encuestas_pendientes,
+    tablero,
+)
 from .services.enrutador import decidir_respuesta
 
 app = FastAPI(
@@ -149,6 +155,26 @@ def lanzar_difusion(id_empresa: str, dry_run: bool = True) -> ReporteCampania:
         return correr_difusion_stock(id_empresa, dry_run=dry_run)
     except CampaniaError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/encuestas/{id_empresa}/enviar")
+def enviar_encuestas(id_empresa: str, dry_run: bool = True) -> ReporteEncuestas:
+    """Envía las encuestas de calidad cuyo evento ya cumplió 48 hs.
+
+    Pensado para que un scheduler (cron/APScheduler) lo llame periódicamente.
+    ``dry_run=true`` por defecto (simula). Los eventos se leen de
+    ``data/<id_empresa>/encuestas_pendientes.json``.
+    """
+    try:
+        return correr_encuestas_pendientes(id_empresa, dry_run=dry_run)
+    except EncuestaError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.get("/encuestas/{id_empresa}/resultados")
+def resultados_encuestas(id_empresa: str) -> dict:
+    """Tablero de la empresa: cantidad de respuestas, promedio y distribución 1-5."""
+    return tablero(id_empresa)
 
 
 def _twiml(contenido: str) -> Response:

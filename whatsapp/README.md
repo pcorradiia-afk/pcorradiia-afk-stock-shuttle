@@ -163,6 +163,35 @@ la campaña fue por la línea de Ventas, el sistema deja esa línea **cebada**: 
 respuesta cae directo en Ventas sin volver a preguntar. Por ejemplo, tocar
 *"Hablar con asesor"* dispara la derivación al equipo comercial de esa marca.
 
+## Encuestas de calidad (48 hs · botones 1-5)
+
+Ciclo completo: **enviar → capturar respuesta → guardar en el tablero**.
+
+```bash
+# 1) Enviar las encuestas cuyo evento ya cumplió 48 hs (un cron llamaría esto).
+curl -X POST "http://localhost:8000/encuestas/empresa_pedro_corradi/enviar"
+
+# 2) El cliente responde con un número del 1 al 5 (lo capturamos como puntaje).
+curl -X POST "http://localhost:8000/webhook" \
+  --data-urlencode "From=whatsapp:+5493515551234" \
+  --data-urlencode "To=whatsapp:+5493510000002" \
+  --data-urlencode "Body=5" --data-urlencode "MessageSid=E1"
+
+# 3) Tablero de la empresa: respuestas, promedio y distribución 1-5.
+curl "http://localhost:8000/encuestas/empresa_pedro_corradi/resultados"
+```
+
+- Los eventos (retiros/services) se leen de
+  `data/<empresa>/encuestas_pendientes.json`; sólo se envían los que pasaron
+  48 hs (`HORAS_ESPERA` en `encuestas.py`).
+- Un puntaje **≤ 2** dispara un mensaje de seguimiento al cliente.
+- **Las preguntas son provisionales**: el texto está en el diccionario
+  `PREGUNTAS` (arriba de `app/services/encuestas.py`), separado de la lógica.
+  Cuando tengas las definitivas, se edita sólo ahí (y se carga el mismo texto en
+  la plantilla aprobada de WhatsApp).
+- El envío está pensado para un **scheduler** (cron del sistema o APScheduler)
+  que pegue al endpoint `/encuestas/{empresa}/enviar` cada cierto tiempo.
+
 ## Próximos pasos (Fase 2)
 
 - Reemplazar el registro de `marcas.py` y el `rate_limit` en memoria por Supabase.
