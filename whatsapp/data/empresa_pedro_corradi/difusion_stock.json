@@ -1,0 +1,16 @@
+[
+  {
+    "nombre": "Juan Pérez",
+    "telefono": "0351 15 555-1234",
+    "modelo": "Volkswagen Amarok Comfortline",
+    "precio": "42.500.000",
+    "imagen": "https://stock.fiorasi.com/pedro_corradi/amarok-comfortline.jpg"
+  },
+  {
+    "nombre": "María Gómez",
+    "telefono": "+54 9 351 555 6789",
+    "modelo": "Volkswagen Taos Highline",
+    "precio": "38.900.000",
+    "imagen": "https://stock.fiorasi.com/pedro_corradi/taos-highline.jpg"
+  }
+]

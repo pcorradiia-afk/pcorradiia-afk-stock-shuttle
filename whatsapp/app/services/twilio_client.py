@@ -112,6 +112,28 @@ def enviar_plantilla(
     return mensaje.sid
 
 
+def enviar_medios(
+    numero_destino: str,
+    numero_origen: str,
+    cuerpo: str,
+    media_urls: list[str],
+) -> str:
+    """Envía texto + imagen(es) en formato libre (cupones PDF, fotos de stock).
+
+    Sólo válido DENTRO de la ventana de 24 hs de sesión. Para campañas que
+    inician conversación, la imagen va en la plantilla (`enviar_plantilla`).
+    Devuelve el SID del mensaje creado.
+    """
+    cliente = _cliente_rest()
+    mensaje = cliente.messages.create(
+        from_=f"whatsapp:{numero_origen}",
+        to=f"whatsapp:{numero_destino}",
+        body=cuerpo,
+        media_url=media_urls,
+    )
+    return mensaje.sid
+
+
 def _cliente_rest():
     """Crea el cliente REST de Twilio con las credenciales del .env."""
     from twilio.rest import Client

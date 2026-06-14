@@ -35,8 +35,17 @@ _SALUDOS = {"hola", "buenas", "buenos dias", "buenas tardes", "menu", "menú", "
 _VOLVER = {"volver", "cambiar", "inicio", "menu", "menú"}
 
 
-def decidir_respuesta(cuenta: Cuenta, cuerpo: str, telefono_cliente: str) -> str | None:
-    """Resuelve la línea y aplica las reglas. Devuelve el TwiML a responder (o None)."""
+def decidir_respuesta(
+    cuenta: Cuenta,
+    cuerpo: str,
+    telefono_cliente: str,
+    numero_cuenta: str,
+) -> str | None:
+    """Resuelve la línea y aplica las reglas. Devuelve el TwiML a responder (o None).
+
+    `numero_cuenta` es el número de WhatsApp de la concesionaria (el `To`), que
+    junto con el teléfono del cliente identifica la sesión.
+    """
     texto = (cuerpo or "").strip()
     lineas = lineas_de(cuenta)
 
@@ -46,11 +55,12 @@ def decidir_respuesta(cuenta: Cuenta, cuerpo: str, telefono_cliente: str) -> str
         ctx = contexto_de(cuenta, lineas[0])
     else:
         # Número multi-línea: necesitamos saber/recordar qué línea quiere.
-        elegida = sesion.linea_elegida(telefono_cliente)
+        # (Una campaña pudo haber dejado la línea ya cebada en la sesión.)
+        elegida = sesion.linea_elegida(numero_cuenta, telefono_cliente)
 
         # Permitir volver al menú de líneas en cualquier momento.
         if texto.lower() in _VOLVER and elegida is not None:
-            sesion.reiniciar(telefono_cliente)
+            sesion.reiniciar(numero_cuenta, telefono_cliente)
             return menu_de_lineas(cuenta)
 
         if elegida is None:
@@ -58,7 +68,7 @@ def decidir_respuesta(cuenta: Cuenta, cuerpo: str, telefono_cliente: str) -> str
             if seleccion is None:
                 # Todavía no sabemos la línea → mostramos el menú de líneas.
                 return menu_de_lineas(cuenta)
-            sesion.elegir_linea(telefono_cliente, seleccion)
+            sesion.elegir_linea(numero_cuenta, telefono_cliente, seleccion)
             ctx = contexto_de(cuenta, seleccion)
             print(f"🧭 [LÍNEA] {telefono_cliente} eligió: {ctx.etiqueta_linea}")
             # Confirmamos mostrando el menú de esa línea.

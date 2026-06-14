@@ -144,6 +144,25 @@ El reporte indica, por cada número: `enviado` / `simulado` / `duplicado` / `err
 Las variables de la plantilla se completan desde los datos: `{{1}}` nombre,
 `{{2}}` modelo, `{{3}}` fecha del acto.
 
+### Difusión de stock (texto + imagen + botones)
+
+Campaña de fidelización (caso #2): manda una foto de la unidad, un texto y
+**botones de respuesta rápida**. Lee `data/<empresa>/difusion_stock.json`.
+
+```bash
+curl -X POST "http://localhost:8000/campanias/difusion/empresa_pedro_corradi"
+```
+
+El reporte incluye `con_imagen`, los `opciones` (botones) y una `vista_previa`
+de cómo se ve el mensaje para cada cliente. La imagen y los botones viven en la
+**plantilla aprobada**; el código la completa con la foto y los datos de cada
+unidad.
+
+Cuando el cliente **toca un botón**, su respuesta vuelve por el `/webhook`. Como
+la campaña fue por la línea de Ventas, el sistema deja esa línea **cebada**: la
+respuesta cae directo en Ventas sin volver a preguntar. Por ejemplo, tocar
+*"Hablar con asesor"* dispara la derivación al equipo comercial de esa marca.
+
 ## Próximos pasos (Fase 2)
 
 - Reemplazar el registro de `marcas.py` y el `rate_limit` en memoria por Supabase.

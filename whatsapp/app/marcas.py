@@ -61,13 +61,27 @@ class Marca:
 
 
 @dataclass(frozen=True)
+class Plantilla:
+    """Una plantilla aprobada (HSM) de WhatsApp.
+
+    La imagen del encabezado y los botones de respuesta rápida son parte de la
+    plantilla aprobada en Twilio/Meta; acá los declaramos para saber qué espera
+    y para poder mostrarlos en la simulación.
+    """
+
+    sid: str                            # content_sid real en Twilio (HX...)
+    opciones: tuple[str, ...] = ()       # botones de respuesta rápida del cliente
+    tiene_imagen: bool = False           # ¿la plantilla lleva imagen en el encabezado?
+
+
+@dataclass(frozen=True)
 class ConfigLinea:
     """Comportamiento de UNA línea de negocio dentro de una marca."""
 
     linea: str                 # LINEA_PLANES | LINEA_VENTAS | LINEA_POSVENTA
     system_prompt: str         # Identidad de la IA para esta marca + línea
     vendedor_derivacion: str   # A quién avisar cuando piden un asesor humano
-    plantillas: dict[str, str] = field(default_factory=dict)
+    plantillas: dict[str, "Plantilla"] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -122,7 +136,7 @@ class Contexto:
         return self.cfg.vendedor_derivacion
 
     @property
-    def plantillas(self) -> dict[str, str]:
+    def plantillas(self) -> dict[str, "Plantilla"]:
         return self.cfg.plantillas
 
 
@@ -155,7 +169,7 @@ def _prompt(linea: str, marca: str, saludo: str) -> str:
 
 
 def _cfg(linea: str, marca: str, saludo: str, vendedor: str,
-         plantillas: dict[str, str] | None = None) -> ConfigLinea:
+         plantillas: dict[str, Plantilla] | None = None) -> ConfigLinea:
     return ConfigLinea(
         linea=linea,
         system_prompt=_prompt(linea, marca, saludo),
@@ -196,7 +210,10 @@ _REGISTRO: dict[str, Cuenta] = {
             LINEA_PLANES: _cfg(
                 LINEA_PLANES, "Volkswagen", "Pedro Corradi",
                 "Equipo de Planes de Ahorro Pedro Corradi",
-                {"adjudicacion_plan": "HX11_planes_aaaa", "cupon_pago": "HX11_planes_cccc"},
+                {
+                    "adjudicacion_plan": Plantilla("HX11_planes_aaaa"),
+                    "cupon_pago": Plantilla("HX11_planes_cccc"),
+                },
             ),
         },
     ),
@@ -207,11 +224,18 @@ _REGISTRO: dict[str, Cuenta] = {
             LINEA_VENTAS: _cfg(
                 LINEA_VENTAS, "Volkswagen", "Pedro Corradi",
                 "Equipo comercial 0km Pedro Corradi",
+                {
+                    "difusion_stock": Plantilla(
+                        "HX11_v_difu",
+                        opciones=("Me interesa", "Ver financiación", "Hablar con asesor"),
+                        tiene_imagen=True,
+                    ),
+                },
             ),
             LINEA_POSVENTA: _cfg(
                 LINEA_POSVENTA, "Volkswagen", "Pedro Corradi",
                 "Equipo de Posventa Pedro Corradi",
-                {"encuesta_calidad": "HX11_pv_bbbb"},
+                {"encuesta_calidad": Plantilla("HX11_pv_bbbb")},
             ),
         },
     ),
@@ -222,16 +246,23 @@ _REGISTRO: dict[str, Cuenta] = {
             LINEA_PLANES: _cfg(
                 LINEA_PLANES, "Toyota", "Sapac",
                 "Equipo de Planes de Ahorro Sapac",
-                {"adjudicacion_plan": "HX22_planes_aaaa"},
+                {"adjudicacion_plan": Plantilla("HX22_planes_aaaa")},
             ),
             LINEA_VENTAS: _cfg(
                 LINEA_VENTAS, "Toyota", "Sapac",
                 "Equipo comercial 0km Sapac",
+                {
+                    "difusion_stock": Plantilla(
+                        "HX22_v_difu",
+                        opciones=("Me interesa", "Ver financiación", "Hablar con asesor"),
+                        tiene_imagen=True,
+                    ),
+                },
             ),
             LINEA_POSVENTA: _cfg(
                 LINEA_POSVENTA, "Toyota", "Sapac",
                 "Equipo de Posventa Sapac",
-                {"encuesta_calidad": "HX22_pv_bbbb"},
+                {"encuesta_calidad": Plantilla("HX22_pv_bbbb")},
             ),
         },
     ),

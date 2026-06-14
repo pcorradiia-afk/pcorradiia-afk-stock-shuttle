@@ -25,7 +25,12 @@ from fastapi import FastAPI, Form, HTTPException, Request, Response
 from .config import obtener_config
 from .core.normalizacion import normalizar_telefono
 from .marcas import ETIQUETA_LINEA, buscar_cuenta, cuentas_registradas
-from .services.campanias import CampaniaError, ReporteCampania, correr_adjudicaciones
+from .services.campanias import (
+    CampaniaError,
+    ReporteCampania,
+    correr_adjudicaciones,
+    correr_difusion_stock,
+)
 from .services.enrutador import decidir_respuesta
 
 app = FastAPI(
@@ -100,7 +105,7 @@ async def webhook(
         )
 
     # 4) Decidir la respuesta (resuelve la línea y aplica las reglas de la marca).
-    twiml = decidir_respuesta(cuenta, Body, cliente)
+    twiml = decidir_respuesta(cuenta, Body, cliente, normalizar_telefono(To))
 
     # 5) Si la lógica decidió no responder (bot pausado), devolvemos 200 vacío.
     if twiml is None:
@@ -124,6 +129,24 @@ def lanzar_adjudicaciones(id_empresa: str, dry_run: bool = True) -> ReporteCampa
     """
     try:
         return correr_adjudicaciones(id_empresa, dry_run=dry_run)
+    except CampaniaError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/campanias/difusion/{id_empresa}")
+def lanzar_difusion(id_empresa: str, dry_run: bool = True) -> ReporteCampania:
+    """Lanza la campaña de fidelización: difusión de stock con texto + imagen + botones.
+
+    Igual que adjudicaciones, ``dry_run=true`` por defecto (simula). El mensaje
+    lleva la foto de cada unidad y botones de respuesta ("Me interesa",
+    "Ver financiación", "Hablar con asesor") que el cliente toca para contestar.
+
+    Ejemplo::
+
+        POST /campanias/difusion/empresa_pedro_corradi
+    """
+    try:
+        return correr_difusion_stock(id_empresa, dry_run=dry_run)
     except CampaniaError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
