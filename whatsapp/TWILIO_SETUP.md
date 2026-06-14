@@ -143,6 +143,19 @@ hay dos opciones:
 > 📝 El texto que pongas acá debe coincidir con el del diccionario `PREGUNTAS`
 > en `app/services/encuestas.py` (eso es solo para la vista previa interna).
 
+### 4.4 · Cupón de pago (PDF adjunto)
+
+- **Content type**: *Media* / documento (permite adjuntar un PDF en el encabezado).
+- **Header / Media**: documento, usando la variable `{{1}}` (la URL del PDF la
+  pone el sistema).
+- **Variables del cuerpo**: `{{2}}` = nombre, `{{3}}` = período.
+- **Ejemplo de cuerpo**:
+  > ¡Hola {{2}}! 📄 Te enviamos tu cupón de pago de {{3}}. ¡Gracias!
+- Sin botones.
+
+> Los **contratos** individuales no necesitan plantilla: se mandan como multimedia
+> libre cuando el cliente ya está en conversación (dentro de las 24 hs).
+
 ---
 
 ## Paso 5 · Pegar los códigos y los números en `marcas.py`
@@ -168,6 +181,7 @@ Esta es la correspondencia actual:
 | Pedro Corradi · Ventas | `difusion_stock` | `HX11_v_difu` |
 | Pedro Corradi · Posventa | `encuesta_calidad` | `HX11_pv_bbbb` |
 | Sapac · Planes | `adjudicacion_plan` | `HX22_planes_aaaa` |
+| Sapac · Planes | `cupon_pago` | `HX22_planes_cccc` |
 | Sapac · Ventas | `difusion_stock` | `HX22_v_difu` |
 | Sapac · Posventa | `encuesta_calidad` | `HX22_pv_bbbb` |
 

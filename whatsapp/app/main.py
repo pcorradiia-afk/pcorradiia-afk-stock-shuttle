@@ -34,6 +34,13 @@ from .services.campanias import (
     correr_adjudicaciones,
     correr_difusion_stock,
 )
+from .services.documentos import (
+    DocumentoError,
+    ReporteDocumentos,
+    ResultadoDocumento,
+    correr_cupones,
+    enviar_documento,
+)
 from .services.encuestas import (
     EncuestaError,
     ReporteEncuestas,
@@ -187,6 +194,40 @@ def enviar_encuestas(id_empresa: str, dry_run: bool = True) -> ReporteEncuestas:
 def resultados_encuestas(id_empresa: str) -> dict:
     """Tablero de la empresa: cantidad de respuestas, promedio y distribución 1-5."""
     return tablero(id_empresa)
+
+
+@app.post("/documentos/cupones/{id_empresa}")
+def lanzar_cupones(id_empresa: str, dry_run: bool = True) -> ReporteDocumentos:
+    """Lanza la campaña de cupones de pago en PDF (caso #4) para una empresa.
+
+    ``dry_run=true`` por defecto (simula). Lee ``data/<id_empresa>/cupones.json``.
+    """
+    try:
+        return correr_cupones(id_empresa, dry_run=dry_run)
+    except DocumentoError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/documentos/enviar/{id_empresa}/{linea}")
+def enviar_documento_individual(
+    id_empresa: str,
+    linea: str,
+    telefono: str,
+    url: str,
+    cuerpo: str = "Te enviamos el documento solicitado.",
+    dry_run: bool = True,
+) -> ResultadoDocumento:
+    """Envía un documento (contrato/PDF) a un cliente en conversación.
+
+    Ejemplo::
+
+        POST /documentos/enviar/empresa_pedro_corradi/ventas
+             ?telefono=+5493515551234&url=https://.../contrato.pdf&cuerpo=Tu+contrato
+    """
+    try:
+        return enviar_documento(id_empresa, linea, telefono, url, cuerpo, dry_run=dry_run)
+    except DocumentoError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get("/scheduler")

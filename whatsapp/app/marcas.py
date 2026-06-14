@@ -72,6 +72,7 @@ class Plantilla:
     sid: str                            # content_sid real en Twilio (HX...)
     opciones: tuple[str, ...] = ()       # botones de respuesta rápida del cliente
     tiene_imagen: bool = False           # ¿la plantilla lleva imagen en el encabezado?
+    tiene_documento: bool = False        # ¿la plantilla lleva un PDF/documento adjunto?
 
 
 @dataclass(frozen=True)
@@ -212,7 +213,7 @@ _REGISTRO: dict[str, Cuenta] = {
                 "Equipo de Planes de Ahorro Pedro Corradi",
                 {
                     "adjudicacion_plan": Plantilla("HX11_planes_aaaa"),
-                    "cupon_pago": Plantilla("HX11_planes_cccc"),
+                    "cupon_pago": Plantilla("HX11_planes_cccc", tiene_documento=True),
                 },
             ),
         },
@@ -251,7 +252,10 @@ _REGISTRO: dict[str, Cuenta] = {
             LINEA_PLANES: _cfg(
                 LINEA_PLANES, "Toyota", "Sapac",
                 "Equipo de Planes de Ahorro Sapac",
-                {"adjudicacion_plan": Plantilla("HX22_planes_aaaa")},
+                {
+                    "adjudicacion_plan": Plantilla("HX22_planes_aaaa"),
+                    "cupon_pago": Plantilla("HX22_planes_cccc", tiene_documento=True),
+                },
             ),
             LINEA_VENTAS: _cfg(
                 LINEA_VENTAS, "Toyota", "Sapac",

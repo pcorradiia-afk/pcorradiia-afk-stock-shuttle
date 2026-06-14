@@ -71,6 +71,7 @@ whatsapp/
       twilio_client.py   · TwiML (menú de líneas + menú por línea) + envío saliente
       derivacion.py      · pausa del bot + alerta al asesor de la línea
       campanias.py       · campañas salientes (adjudicaciones, difusión stock)
+      documentos.py      · multimedia: cupones de pago PDF + contratos por URL
       encuestas.py       · encuestas de calidad 48hs (enviar/capturar/tablero)
       scheduler.py       · envíos automáticos (APScheduler) sin cron externo
   data/
@@ -217,6 +218,23 @@ curl "http://localhost:8000/encuestas/empresa_pedro_corradi/resultados"
   la plantilla aprobada de WhatsApp).
 - El envío lo dispara automáticamente el **scheduler** (ver abajo); igual podés
   forzarlo a mano con el endpoint `/encuestas/{empresa}/enviar`.
+
+## Multimedia: cupones de pago (PDF) y contratos
+
+Dos formas de mandar documentos, según la regla de las 24 hs de WhatsApp:
+
+```bash
+# Campaña de cupones de pago en PDF (inicia conversación → plantilla aprobada).
+# Lee data/<empresa>/cupones.json. Con rate limiting (no reenvía en 24 hs).
+curl -X POST "http://localhost:8000/documentos/cupones/empresa_pedro_corradi"
+
+# Envío individual de un contrato a un cliente YA en conversación (multimedia libre).
+curl -X POST "http://localhost:8000/documentos/enviar/empresa_pedro_corradi/ventas\
+?telefono=+5493515551234&url=https://.../contrato.pdf&cuerpo=Tu+contrato"
+```
+
+En la plantilla del cupón, el PDF es la variable `{{1}}`, `{{2}}`=nombre,
+`{{3}}`=período.
 
 ## Scheduler (envíos automáticos)
 
