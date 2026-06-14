@@ -243,7 +243,8 @@ para capturar la respuesta, así podés probar todo el circuito.
 
 ## Próximos pasos (Fase 2)
 
-- Reemplazar el registro de `marcas.py` y el `rate_limit` en memoria por Supabase.
-- Conectar los datos reales por empresa (Excel/Sheets) en `data/`.
-- Activar Claude (`IA_ACTIVA=true`) para la calificación real de leads.
-- Cargar las plantillas HSM aprobadas y el envío de multimedia (PDF/imágenes).
+- **Conectar Twilio + WhatsApp**: ver la guía paso a paso en
+  [`TWILIO_SETUP.md`](./TWILIO_SETUP.md) (crear plantillas, pegar los `HX...` y
+  los números reales, encender los envíos).
+- Reemplazar el registro de `marcas.py` y la persistencia por Supabase (ver
+  [`supabase/schema.sql`](./supabase/schema.sql)).
