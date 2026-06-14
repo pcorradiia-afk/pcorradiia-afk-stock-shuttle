@@ -70,6 +70,9 @@ whatsapp/
       ia.py              · Agente de IA (prompt por marca × línea) — simulado / Claude real
       twilio_client.py   · TwiML (menú de líneas + menú por línea) + envío saliente
       derivacion.py      · pausa del bot + alerta al asesor de la línea
+      campanias.py       · campañas salientes (adjudicaciones, difusión stock)
+      encuestas.py       · encuestas de calidad 48hs (enviar/capturar/tablero)
+      scheduler.py       · envíos automáticos (APScheduler) sin cron externo
   data/
     empresa_pedro_corradi/   · datos simulados de la Marca A
     empresa_sapac/           · datos simulados de la Marca B
@@ -212,8 +215,31 @@ curl "http://localhost:8000/encuestas/empresa_pedro_corradi/resultados"
   `PREGUNTAS` (arriba de `app/services/encuestas.py`), separado de la lógica.
   Cuando tengas las definitivas, se edita sólo ahí (y se carga el mismo texto en
   la plantilla aprobada de WhatsApp).
-- El envío está pensado para un **scheduler** (cron del sistema o APScheduler)
-  que pegue al endpoint `/encuestas/{empresa}/enviar` cada cierto tiempo.
+- El envío lo dispara automáticamente el **scheduler** (ver abajo); igual podés
+  forzarlo a mano con el endpoint `/encuestas/{empresa}/enviar`.
+
+## Scheduler (envíos automáticos)
+
+El sistema trae un scheduler integrado (APScheduler) que corre **dentro de la
+app**, sin depender del cron del sistema operativo. Cada cierto intervalo
+recorre las empresas con Posventa y manda las encuestas que ya cumplieron 48 hs
+(la dedupe evita reenviar). Así el flujo funciona solo.
+
+```bash
+curl "http://localhost:8000/scheduler"   # estado: activo, intervalo, próxima corrida
+```
+
+Se configura en el `.env`:
+
+```
+SCHEDULER_ACTIVO=true            # encender/apagar el scheduler
+SCHEDULER_INTERVALO_MIN=60       # cada cuántos minutos revisa
+ENCUESTAS_DRY_RUN=true           # true = simula (seguro); false = envía de verdad
+```
+
+Arranca apenas levantás el server (corre una vez al instante y después cada
+intervalo). En modo `dry_run` simula los envíos pero igual deja la encuesta lista
+para capturar la respuesta, así podés probar todo el circuito.
 
 ## Próximos pasos (Fase 2)
 

@@ -20,11 +20,14 @@ y exponerlo con:         ngrok http 8000
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Form, HTTPException, Request, Response
 
 from .config import obtener_config
 from .core.normalizacion import normalizar_telefono
 from .marcas import ETIQUETA_LINEA, buscar_cuenta, cuentas_registradas
+from .services.scheduler import detener_scheduler, iniciar_scheduler
 from .services.campanias import (
     CampaniaError,
     ReporteCampania,
@@ -39,10 +42,19 @@ from .services.encuestas import (
 )
 from .services.enrutador import decidir_respuesta
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Enciende el scheduler al arrancar y lo apaga al cerrar."""
+    iniciar_scheduler()
+    yield
+    detener_scheduler()
+
+
 app = FastAPI(
     title="Puente WhatsApp Multi-Marca · Grupo Fiorasi",
     version="0.1.0",
     description="Enrutamiento de WhatsApp por número de destino hacia la marca y línea correctas.",
+    lifespan=lifespan,
 )
 
 
@@ -175,6 +187,23 @@ def enviar_encuestas(id_empresa: str, dry_run: bool = True) -> ReporteEncuestas:
 def resultados_encuestas(id_empresa: str) -> dict:
     """Tablero de la empresa: cantidad de respuestas, promedio y distribución 1-5."""
     return tablero(id_empresa)
+
+
+@app.get("/scheduler")
+def estado_scheduler() -> dict:
+    """Estado del scheduler: jobs activos y próxima ejecución."""
+    from .services.scheduler import _scheduler
+
+    config = obtener_config()
+    return {
+        "activo": _scheduler.running,
+        "intervalo_min": config.scheduler_intervalo_min,
+        "modo": "simula" if config.encuestas_dry_run else "envía",
+        "jobs": [
+            {"id": j.id, "proxima_ejecucion": str(j.next_run_time)}
+            for j in _scheduler.get_jobs()
+        ],
+    }
 
 
 def _twiml(contenido: str) -> Response:

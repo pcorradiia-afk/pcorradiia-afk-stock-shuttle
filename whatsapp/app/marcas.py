@@ -308,3 +308,16 @@ def buscar_por_empresa(id_empresa: str, linea: str) -> tuple[str, Contexto] | No
 def cuentas_registradas() -> dict[str, Cuenta]:
     """Devuelve una copia del registro (útil para diagnósticos y tests)."""
     return dict(_REGISTRO)
+
+
+def empresas_con_linea(linea: str) -> list[str]:
+    """Lista (sin repetir) de empresas que atienden una línea dada.
+
+    Lo usa el scheduler para saber a qué empresas enviarles encuestas.
+    """
+    empresas: list[str] = []
+    for cuenta in _REGISTRO.values():
+        id_empresa = cuenta.marca.id_empresa
+        if linea in cuenta.lineas and id_empresa not in empresas:
+            empresas.append(id_empresa)
+    return empresas

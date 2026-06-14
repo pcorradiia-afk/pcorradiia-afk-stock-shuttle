@@ -37,6 +37,13 @@ class Configuracion(BaseSettings):
     supabase_url: str = ""
     supabase_service_role_key: str = ""
 
+    # --- Scheduler (envíos automáticos) ---
+    scheduler_activo: bool = True        # arrancar el scheduler con la app
+    scheduler_intervalo_min: int = 60    # cada cuántos minutos revisar encuestas
+    # Si está en True, el scheduler SIMULA los envíos (seguro). Poné False en
+    # producción para que mande de verdad.
+    encuestas_dry_run: bool = True
+
     # --- Horarios ---
     tz_defecto: str = "America/Argentina/Buenos_Aires"
 
