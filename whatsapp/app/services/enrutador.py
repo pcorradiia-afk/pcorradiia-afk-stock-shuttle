@@ -123,8 +123,15 @@ def _responder_en_contexto(ctx: Contexto, texto: str, telefono_cliente: str) -> 
                 "enseguida; o contame los detalles por acá y te orientamos. 🙌"
             )
 
-    # 5) Saludo → menú de la línea.
-    if texto_norm in _SALUDOS or texto == "":
+    # 5) Saludo o pedido de volver → menú de bienvenida.
+    if (
+        texto_norm in _SALUDOS
+        or texto == ""
+        or "menu" in texto_norm
+        or "menú" in texto_norm
+        or "volver" in texto_norm
+        or "inicio" in texto_norm
+    ):
         return menu_bienvenida(ctx)
 
     # 6) Texto libre → Agente de IA con el contexto (marca × línea).
