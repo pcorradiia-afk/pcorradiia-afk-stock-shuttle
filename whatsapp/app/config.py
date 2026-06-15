@@ -44,6 +44,12 @@ class Configuracion(BaseSettings):
     # producción para que mande de verdad.
     encuestas_dry_run: bool = True
 
+    # --- Sandbox de Twilio (para la primera prueba real) ---
+    # Mapeá el número del Sandbox a una marca/línea sin tocar el código.
+    sandbox_numero: str = ""             # ej: +14155238886 (te lo da Twilio)
+    sandbox_empresa: str = ""            # ej: empresa_pedro_corradi
+    sandbox_linea: str = "ventas"        # planes | ventas | posventa
+
     # --- Horarios ---
     tz_defecto: str = "America/Argentina/Buenos_Aires"
 

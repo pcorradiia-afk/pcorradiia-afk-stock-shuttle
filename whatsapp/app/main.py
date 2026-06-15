@@ -52,9 +52,29 @@ from .services.enrutador import decidir_respuesta
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Enciende el scheduler al arrancar y lo apaga al cerrar."""
+    _configurar_sandbox()
     iniciar_scheduler()
     yield
     detener_scheduler()
+
+
+def _configurar_sandbox() -> None:
+    """Si hay un Sandbox de Twilio en el .env, lo mapea a una marca para probar."""
+    from .marcas import registrar_numero_prueba
+
+    config = obtener_config()
+    if not (config.sandbox_numero and config.sandbox_empresa):
+        return
+    try:
+        cuenta = registrar_numero_prueba(
+            config.sandbox_numero, config.sandbox_empresa, config.sandbox_linea
+        )
+        print(
+            f"🧪 [SANDBOX] {normalizar_telefono(config.sandbox_numero)} → "
+            f"{cuenta.marca.empresa} · {config.sandbox_linea}"
+        )
+    except ValueError as exc:
+        print(f"🧪 [SANDBOX] No se pudo configurar: {exc}")
 
 
 app = FastAPI(

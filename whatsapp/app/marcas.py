@@ -319,6 +319,26 @@ def cuentas_registradas() -> dict[str, Cuenta]:
     return dict(_REGISTRO)
 
 
+def registrar_numero_prueba(numero: str, id_empresa: str, linea: str) -> Cuenta:
+    """Mapea un número de prueba (ej. el Sandbox de Twilio) a una marca/línea.
+
+    Reutiliza la identidad y la configuración de línea de una empresa ya
+    registrada, sin tocar el código. Lo llama main.py al arrancar si hay un
+    Sandbox configurado en el .env.
+    """
+    encontrado = buscar_por_empresa(id_empresa, linea)
+    if encontrado is None:
+        raise ValueError(
+            f"No puedo mapear el número de prueba: la empresa '{id_empresa}' no "
+            f"atiende la línea '{linea}'."
+        )
+    _, ctx = encontrado
+    clave = normalizar_telefono(numero)
+    cuenta = Cuenta(marca=ctx.marca, lineas={linea: ctx.cfg})
+    _REGISTRO[clave] = cuenta
+    return cuenta
+
+
 def empresas_con_linea(linea: str) -> list[str]:
     """Lista (sin repetir) de empresas que atienden una línea dada.
 
