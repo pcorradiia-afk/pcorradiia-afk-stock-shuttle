@@ -58,6 +58,8 @@ class Marca:
     marca: str                 # Marca comercial que representa
     saludo: str                # Nombre con el que el bot se presenta
     horario: HorarioAtencion = field(default_factory=HorarioAtencion)
+    anio_desde: int | None = None        # Año de fundación (para el saludo de marca)
+    menu_opciones: tuple[str, ...] = ()  # Menú de bienvenida personalizado (con emoji)
 
 
 @dataclass(frozen=True)
@@ -185,7 +187,17 @@ _PEDRO = Marca(
     empresa="Pedro Corradi S.A.",
     marca="Ford",
     saludo="Pedro Corradi",
-    horario=HorarioAtencion(apertura=9, cierre=18),
+    # Horario AMPLIO para pruebas (siempre "abierto"). Ajustar al real por
+    # sucursal cuando salgamos a producción, p. ej. HorarioAtencion(9, 18).
+    horario=HorarioAtencion(apertura=0, cierre=24, dias_laborables=(0, 1, 2, 3, 4, 5, 6)),
+    anio_desde=1925,
+    menu_opciones=(
+        "🚙 Comprar un 0km",
+        "💳 Plan Óvalo",
+        "🔁 Consultar por usados",
+        "⚙️ Repuestos",
+        "🔧 Taller",
+    ),
 )
 _SAPAC = Marca(
     id_empresa="empresa_sapac",

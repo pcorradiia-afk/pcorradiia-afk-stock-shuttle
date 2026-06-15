@@ -108,16 +108,16 @@ def _responder_en_contexto(ctx: Contexto, texto: str, telefono_cliente: str) -> 
     if not esta_abierta(ctx, config.tz_defecto):
         return respuesta_texto(mensaje_fuera_de_horario(ctx))
 
-    # 4) Opción numérica del menú de la línea.
-    opciones = OPCIONES_POR_LINEA.get(ctx.linea, [])
+    # 4) Opción numérica: usa el menú principal de la marca si lo tiene,
+    #    o el menú de la línea en su defecto.
+    opciones = list(ctx.marca.menu_opciones) or OPCIONES_POR_LINEA.get(ctx.linea, [])
     if texto.isdigit():
         idx = int(texto)
         if 1 <= idx <= len(opciones):
             etiqueta = opciones[idx - 1]
             return respuesta_texto(
-                f"✅ {etiqueta} — {ctx.saludo} ({ctx.etiqueta_linea}). "
-                "Un asesor lo gestiona; o contame los detalles por acá. "
-                "(En la Fase 2 se conecta al dato real por empresa.)"
+                f"✅ {etiqueta} — {ctx.saludo}. Un asesor te ayuda con esto "
+                "enseguida; o contame los detalles por acá y te orientamos. 🙌"
             )
 
     # 5) Saludo → menú de la línea.

@@ -50,8 +50,25 @@ def menu_de_lineas(cuenta: Cuenta) -> str:
 
 
 def menu_bienvenida(ctx: Contexto) -> str:
-    """TwiML con el menú de opciones de una línea ya resuelta, con la marca."""
+    """TwiML con el menú de bienvenida, personalizado por marca si está definido."""
     respuesta = MessagingResponse()
+
+    # Menú principal de la marca (ej. Pedro Corradi con sus 5 áreas).
+    if ctx.marca.menu_opciones:
+        desde = f" en la Patagonia desde {ctx.marca.anio_desde}" if ctx.marca.anio_desde else ""
+        opciones = "\n".join(
+            f"{i}️⃣ {txt}" for i, txt in enumerate(ctx.marca.menu_opciones, start=1)
+        )
+        respuesta.message(
+            f"👋 ¡Hola! Bienvenido/a a *{ctx.saludo}* — Concesionario Oficial "
+            f"{ctx.nombre_marca}{desde}. 🚙\n\n"
+            f"¿En qué te damos una mano hoy?\n{opciones}\n\n"
+            "Respondé con el número, escribí *asesor* para hablar con una persona, "
+            "o contame tu consulta. 🙌"
+        )
+        return str(respuesta)
+
+    # Menú por línea (cuando la marca no tiene menú principal propio).
     opciones = OPCIONES_POR_LINEA.get(ctx.linea, [])
     lineas_menu = "\n".join(f"{i}️⃣ {txt}" for i, txt in enumerate(opciones, start=1))
     respuesta.message(
