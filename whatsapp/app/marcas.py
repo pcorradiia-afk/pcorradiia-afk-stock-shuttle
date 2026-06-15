@@ -2,7 +2,7 @@
 
 Hay DOS dimensiones de enrutamiento:
 
-  1) Marca / empresa  (Volkswagen·Pedro Corradi, Toyota·Sapac, ...)
+  1) Marca / empresa  (Ford·Pedro Corradi, Toyota·Sapac, ...)
   2) Línea de negocio (Planes de ahorro, Venta de 0km, Posventa/Taller)
 
 Cada número de WhatsApp de Twilio (el parámetro `To` del webhook) representa una
@@ -183,7 +183,7 @@ def _cfg(linea: str, marca: str, saludo: str, vendedor: str,
 _PEDRO = Marca(
     id_empresa="empresa_pedro_corradi",
     empresa="Pedro Corradi S.A.",
-    marca="Volkswagen",
+    marca="Ford",
     saludo="Pedro Corradi",
     horario=HorarioAtencion(apertura=9, cierre=18),
 )
@@ -209,7 +209,7 @@ _REGISTRO: dict[str, Cuenta] = {
         marca=_PEDRO,
         lineas={
             LINEA_PLANES: _cfg(
-                LINEA_PLANES, "Volkswagen", "Pedro Corradi",
+                LINEA_PLANES, "Ford", "Pedro Corradi",
                 "Equipo de Planes de Ahorro Pedro Corradi",
                 {
                     "adjudicacion_plan": Plantilla("HX11_planes_aaaa"),
@@ -223,7 +223,7 @@ _REGISTRO: dict[str, Cuenta] = {
         marca=_PEDRO,
         lineas={
             LINEA_VENTAS: _cfg(
-                LINEA_VENTAS, "Volkswagen", "Pedro Corradi",
+                LINEA_VENTAS, "Ford", "Pedro Corradi",
                 "Equipo comercial 0km Pedro Corradi",
                 {
                     "difusion_stock": Plantilla(
@@ -234,7 +234,7 @@ _REGISTRO: dict[str, Cuenta] = {
                 },
             ),
             LINEA_POSVENTA: _cfg(
-                LINEA_POSVENTA, "Volkswagen", "Pedro Corradi",
+                LINEA_POSVENTA, "Ford", "Pedro Corradi",
                 "Equipo de Posventa Pedro Corradi",
                 {
                     "encuesta_calidad": Plantilla(
