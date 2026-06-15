@@ -57,7 +57,8 @@ def menu_bienvenida(ctx: Contexto) -> str:
     if ctx.marca.menu_opciones:
         desde = f" en la Patagonia desde {ctx.marca.anio_desde}" if ctx.marca.anio_desde else ""
         opciones = "\n".join(
-            f"{i}️⃣ {txt}" for i, txt in enumerate(ctx.marca.menu_opciones, start=1)
+            f"{texto} {emoji} {i}️⃣"
+            for i, (texto, emoji) in enumerate(ctx.marca.menu_opciones, start=1)
         )
         respuesta.message(
             f"👋 ¡Hola! Bienvenido/a a *{ctx.saludo}* — Concesionario Oficial "

@@ -110,7 +110,10 @@ def _responder_en_contexto(ctx: Contexto, texto: str, telefono_cliente: str) -> 
 
     # 4) Opción numérica: usa el menú principal de la marca si lo tiene,
     #    o el menú de la línea en su defecto.
-    opciones = list(ctx.marca.menu_opciones) or OPCIONES_POR_LINEA.get(ctx.linea, [])
+    if ctx.marca.menu_opciones:
+        opciones = [f"{texto} {emoji}".strip() for texto, emoji in ctx.marca.menu_opciones]
+    else:
+        opciones = OPCIONES_POR_LINEA.get(ctx.linea, [])
     if texto.isdigit():
         idx = int(texto)
         if 1 <= idx <= len(opciones):
