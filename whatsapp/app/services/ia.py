@@ -52,10 +52,9 @@ def _responder_con_claude(ctx: Contexto, mensaje: str, modelo: str, api_key: str
 
     cliente = Anthropic(api_key=api_key)
     respuesta = cliente.messages.create(
-        model=modelo,                       # claude-opus-4-8 por defecto
-        max_tokens=1024,
+        model=modelo,                       # configurable con IA_MODELO (Sonnet recomendado)
+        max_tokens=600,                     # respuestas breves, estilo WhatsApp
         system=ctx.system_prompt,           # ← identidad dinámica por marca × línea
-        thinking={"type": "adaptive"},      # el modelo decide cuánto razonar
         messages=[{"role": "user", "content": mensaje}],
     )
 
