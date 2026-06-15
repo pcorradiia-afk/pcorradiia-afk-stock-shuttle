@@ -32,9 +32,19 @@ def procesar_con_ia(ctx: Contexto, mensaje: str) -> str:
     print(f"   Mensaje del cliente : «{mensaje}»")
 
     if config.ia_activa and config.anthropic_api_key:
-        return _responder_con_claude(ctx, mensaje, config.ia_modelo, config.anthropic_api_key)
+        try:
+            return _responder_con_claude(
+                ctx, mensaje, config.ia_modelo, config.anthropic_api_key
+            )
+        except Exception as exc:  # noqa: BLE001
+            # No dejamos al cliente sin respuesta: logueamos el error y caemos
+            # al modo simulado. El log deja claro qué falló (key, modelo, saldo...).
+            print(
+                f"❌ [IA] Error al llamar a Claude (modelo={config.ia_modelo}): "
+                f"{type(exc).__name__}: {exc}"
+            )
 
-    # --- Respuesta SIMULADA de Fase 1 ---
+    # --- Respuesta SIMULADA (Fase 1 / fallback si la IA falla) ---
     return (
         f"[Simulación IA · {ctx.nombre_marca} · {ctx.etiqueta_linea}] ¡Hola! Soy "
         f"el asistente de {ctx.saludo}. Contame en qué te puedo ayudar y te "
