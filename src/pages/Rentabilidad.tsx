@@ -109,7 +109,7 @@ export function Rentabilidad() {
   const ultimo = g.periodos[g.periodos.length - 1] ?? "";
   const nMeses = g.periodos.length;
   const [vista, setVista] = useState<string>("");
-  const [detalle, setDetalle] = useState<{ linea: string; get: (f: FilaCuadro) => number; lineas: string[] } | null>(null);
+  const [detalle, setDetalle] = useState<{ linea: string; get: (f: FilaCuadro) => number; lineas: string[]; depto?: string } | null>(null);
   const modo = vista === "acum" || vista === "prom" || g.periodos.includes(vista) ? vista : ultimo;
   const esEspecial = modo === "acum" || modo === "prom";
   const periodo = modo;
@@ -443,8 +443,8 @@ export function Rentabilidad() {
   }
 
   /** Celda compacta: valor y % s/ventas del depto. Solo el beneficio se pinta en rojo si es negativo. */
-  const Cel = ({ v, base, strong, total, rojoSiNeg }: { v: number; base: number; strong?: boolean; total?: boolean; rojoSiNeg?: boolean }) => (
-    <TableCell className={cn("whitespace-nowrap px-1.5 py-1 text-right text-xs tabular-nums", total && "bg-muted/40 font-bold", strong && "font-semibold", rojoSiNeg && v < 0 && "text-destructive")}>
+  const Cel = ({ v, base, strong, total, rojoSiNeg, onClick }: { v: number; base: number; strong?: boolean; total?: boolean; rojoSiNeg?: boolean; onClick?: () => void }) => (
+    <TableCell onClick={onClick} className={cn("whitespace-nowrap px-1.5 py-1 text-right text-xs tabular-nums", onClick && "cursor-pointer hover:bg-primary/10", total && "bg-muted/40 font-bold", strong && "font-semibold", rojoSiNeg && v < 0 && "text-destructive")}>
       {money(v)}
       <span className="ml-1 inline-block w-8 text-left text-[9px] font-normal text-muted-foreground">{base ? pct((v / base) * 100, 0) : ""}</span>
     </TableCell>
@@ -462,13 +462,14 @@ export function Rentabilidad() {
   ];
 
   // Cuentas contables de las líneas seleccionadas, valuadas según el modo (mes/acum/prom).
-  const cuentasDe = (lineas: string[]) => {
+  const cuentasDe = (lineas: string[], depto?: string) => {
     const sumar = (vals: Record<string, number>) => {
       const t = periodosView.reduce((a, per) => a + (vals[per] ?? 0), 0);
       return modo === "prom" && nMeses > 0 ? t / nMeses : t;
     };
     return g.cuentas
       .filter((c) => lineas.includes(c.linea))
+      .filter((c) => !depto || c.depto === depto)
       .map((c) => ({ ...c, saldo: sumar(c.valores) }))
       .filter((c) => Math.abs(c.saldo) > 0.5)
       .sort((a, b) => Math.abs(b.saldo) - Math.abs(a.saldo));
@@ -555,18 +556,35 @@ export function Rentabilidad() {
                     <TableRow
                       key={rd.lbl}
                       className={cn(
-                        "cursor-pointer",
                         rd.sub && "bg-muted/30",
                         rd.benef && "bg-primary/5",
                         linea && "border-t-2 border-double border-primary/30",
                       )}
-                      onClick={() => setDetalle({ linea: rd.lbl, get: rd.get, lineas: rd.lineas })}
                     >
-                      <TableCell className={cn("whitespace-nowrap px-1.5 py-1 font-medium underline-offset-2 hover:underline", linea && "font-bold")}>{rd.lbl}</TableCell>
+                      <TableCell
+                        className={cn("cursor-pointer whitespace-nowrap px-1.5 py-1 font-medium underline-offset-2 hover:underline", linea && "font-bold")}
+                        onClick={() => setDetalle({ linea: rd.lbl, get: rd.get, lineas: rd.lineas })}
+                      >
+                        {rd.lbl}
+                      </TableCell>
                       {filas.map((f) => (
-                        <Cel key={f.key} v={rd.get(f)} base={f.ventas} strong={linea} rojoSiNeg={rd.benef} />
+                        <Cel
+                          key={f.key}
+                          v={rd.get(f)}
+                          base={f.ventas}
+                          strong={linea}
+                          rojoSiNeg={rd.benef}
+                          onClick={() => setDetalle({ linea: rd.lbl, get: rd.get, lineas: rd.lineas, depto: f.key })}
+                        />
                       ))}
-                      <Cel v={rd.tot} base={T.ventas} total strong={linea} rojoSiNeg={rd.benef} />
+                      <Cel
+                        v={rd.tot}
+                        base={T.ventas}
+                        total
+                        strong={linea}
+                        rojoSiNeg={rd.benef}
+                        onClick={() => setDetalle({ linea: rd.lbl, get: rd.get, lineas: rd.lineas })}
+                      />
                     </TableRow>
                   );
                 })}
@@ -668,10 +686,14 @@ export function Rentabilidad() {
       <Dialog open={!!detalle} onOpenChange={(o) => !o && setDetalle(null)}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>Composición · {detalle?.linea} · {etiqueta(periodo)}</DialogTitle>
+            <DialogTitle>
+              Composición · {detalle?.linea}
+              {detalle?.depto ? ` · ${OPERATIVOS.find((d) => d.key === detalle.depto)?.label ?? detalle.depto}` : ""}
+              {" · "}{etiqueta(periodo)}
+            </DialogTitle>
           </DialogHeader>
           {detalle && (() => {
-            const cuentas = cuentasDe(detalle.lineas);
+            const cuentas = cuentasDe(detalle.lineas, detalle.depto);
             const totalCtas = cuentas.reduce((a, c) => a + c.saldo, 0);
             if (cuentas.length === 0) {
               return (
@@ -717,8 +739,14 @@ export function Rentabilidad() {
             );
           })()}
           <p className="text-xs text-muted-foreground">
-            Cuentas contables que componen «{detalle?.linea}» en {etiqueta(periodo).toLowerCase()}, como figuran en el balance de Oliauto.
-            Los gastos comunes de Unidades figuran con su cuenta original (antes del prorrateo).
+            Cuentas contables que componen «{detalle?.linea}»
+            {detalle?.depto ? ` del departamento ${OPERATIVOS.find((d) => d.key === detalle.depto)?.label ?? detalle.depto}` : ""}
+            {" "}en {etiqueta(periodo).toLowerCase()}, como figuran en el balance de Oliauto.
+            {detalle?.depto && (DESTINOS_PRORRATEO as readonly string[]).includes(detalle.depto) && detalle.lineas.some((l) => l === "gvar" || l === "gfijo")
+              ? " No incluye los gastos comunes de Unidades prorrateados a este departamento (figuran aparte en «Unidades · g. comunes»)."
+              : !detalle?.depto
+                ? " Los gastos comunes de Unidades figuran con su cuenta original (antes del prorrateo)."
+                : ""}
           </p>
         </DialogContent>
       </Dialog>
