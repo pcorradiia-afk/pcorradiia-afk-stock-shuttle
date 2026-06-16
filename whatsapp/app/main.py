@@ -21,8 +21,10 @@ y exponerlo con:         ngrok http 8000
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, Request, Response
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi.responses import HTMLResponse
 
 from .config import obtener_config
 from .core.normalizacion import normalizar_telefono
@@ -275,6 +277,50 @@ def estado_scheduler() -> dict:
             for j in _scheduler.get_jobs()
         ],
     }
+
+
+@app.get("/panel", response_class=HTMLResponse)
+def panel_campanias() -> str:
+    """Panel web para lanzar campañas del Óvalo (subir CSV, elegir a quién, enviar)."""
+    return (Path(__file__).parent / "panel.html").read_text(encoding="utf-8")
+
+
+@app.post("/ovalo/analizar")
+async def ovalo_analizar(archivo: UploadFile = File(...)) -> dict:
+    """Lee el CSV del Óvalo y devuelve el resumen para armar el selector."""
+    from .services.ovalo import analizar, parsear_csv
+
+    clientes = parsear_csv(await archivo.read())
+    return analizar(clientes)
+
+
+@app.post("/ovalo/enviar")
+async def ovalo_enviar(
+    archivo: UploadFile = File(...),
+    cuerpo: str = Form(...),
+    id_empresa: str = Form("empresa_pedro_corradi"),
+    campania: str = Form("ovalo"),
+    modelos: str = Form(""),       # seleccionados, separados por "||" (vacío = todos)
+    situaciones: str = Form(""),   # seleccionadas, separadas por "||" (vacío = todas)
+    imagen_url: str = Form(""),
+    dry_run: bool = Form(True),
+):
+    """Filtra por modelo/situación y envía (o simula) la campaña a la selección."""
+    from .services.ovalo import correr, filtrar, parsear_csv
+
+    clientes = parsear_csv(await archivo.read())
+    seleccion = filtrar(
+        clientes,
+        modelos=[m for m in modelos.split("||") if m] or None,
+        situaciones=[s for s in situaciones.split("||") if s] or None,
+    )
+    try:
+        return correr(
+            id_empresa, campania, seleccion, cuerpo,
+            imagen_url=imagen_url or None, dry_run=dry_run,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 def _twiml(contenido: str) -> Response:
