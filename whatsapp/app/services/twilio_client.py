@@ -152,6 +152,24 @@ def enviar_medios(
     return mensaje.sid
 
 
+def enviar_typing(message_sid: str) -> None:
+    """Muestra el indicador "escribiendo..." en WhatsApp mientras preparamos la respuesta.
+
+    Twilio referencia el mensaje entrante (su SID), lo marca como leído y muestra
+    el "escribiendo..." por hasta 25 segundos (o hasta que llega la respuesta).
+    Ideal para tapar los segundos que tarda la IA en pensar.
+    (API en Beta pública de Twilio.)
+    """
+    if not message_sid:
+        return
+    cliente = _cliente_rest()
+    cliente.request(
+        "POST",
+        "https://messaging.twilio.com/v2/Indicators/Typing.json",
+        data={"messageId": message_sid, "channel": "whatsapp"},
+    )
+
+
 def _cliente_rest():
     """Crea el cliente REST de Twilio con las credenciales del .env."""
     from twilio.rest import Client

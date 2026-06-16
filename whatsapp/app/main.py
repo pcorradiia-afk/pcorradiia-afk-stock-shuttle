@@ -138,6 +138,16 @@ async def webhook(
         print("   ⚠️  Número de destino no registrado en ninguna cuenta.")
     print("=" * 64)
 
+    # 2.b) Mostrar "escribiendo..." mientras preparamos la respuesta (también
+    #      marca el mensaje como leído). Sólo si hay credenciales de Twilio.
+    if config.twilio_account_sid and config.twilio_auth_token and MessageSid:
+        from .services.twilio_client import enviar_typing
+
+        try:
+            enviar_typing(MessageSid)
+        except Exception as exc:  # noqa: BLE001 — el typing es "lindo de tener", no crítico
+            print(f"⚠️  [TYPING] No se pudo enviar el indicador: {exc}")
+
     # 3) Si el número no está mapeado, respondemos genérico (no rompemos el flujo).
     if cuenta is None:
         from .services.twilio_client import respuesta_texto
