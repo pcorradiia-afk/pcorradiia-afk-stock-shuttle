@@ -139,7 +139,7 @@ export function Rentabilidad() {
   };
 
   const etiqueta = (p: string) =>
-    p === "acum" ? `Acumulado · ${nMeses} meses` : p === "prom" ? "Promedio mensual" : periodoLabel(p);
+    p === "acum" ? `Acumulado · ${nMeses} meses` : p === "prom" ? `Promedio mensual · ${nMeses} meses` : periodoLabel(p);
   const sufijo = modo === "acum" ? "acumulada" : modo === "prom" ? "prom. mensual" : "del mes";
 
   // ---- Vista demo si todavía no hay importaciones ----
@@ -493,7 +493,7 @@ export function Rentabilidad() {
               <SelectTrigger className="w-[180px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {nMeses > 1 && <SelectItem value="acum">Acumulado · {nMeses} meses</SelectItem>}
-                {nMeses > 1 && <SelectItem value="prom">Promedio mensual</SelectItem>}
+                {nMeses > 1 && <SelectItem value="prom">Promedio mensual · {nMeses} meses</SelectItem>}
                 {[...g.periodos].reverse().map((p) => (
                   <SelectItem key={p} value={p}>{periodoLabel(p)}</SelectItem>
                 ))}
