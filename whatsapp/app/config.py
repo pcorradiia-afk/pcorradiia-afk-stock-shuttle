@@ -50,6 +50,12 @@ class Configuracion(BaseSettings):
     sandbox_empresa: str = ""            # ej: empresa_pedro_corradi
     sandbox_linea: str = "ventas"        # planes | ventas | posventa
 
+    # --- Acceso al panel (clave simple) ---
+    # Si quedan vacíos, el panel está abierto (modo prueba). Completalos para
+    # exigir usuario + contraseña al entrar.
+    panel_usuario: str = ""
+    panel_clave: str = ""
+
     # --- Horarios ---
     tz_defecto: str = "America/Argentina/Buenos_Aires"
 

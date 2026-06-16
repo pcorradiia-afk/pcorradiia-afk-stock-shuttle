@@ -20,11 +20,13 @@ y exponerlo con:         ngrok http 8000
 
 from __future__ import annotations
 
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from .config import obtener_config
 from .core.normalizacion import normalizar_telefono
@@ -85,6 +87,28 @@ app = FastAPI(
     description="Enrutamiento de WhatsApp por número de destino hacia la marca y línea correctas.",
     lifespan=lifespan,
 )
+
+# --- Acceso al panel: clave simple (HTTP Basic) ---
+# Si PANEL_USUARIO y PANEL_CLAVE están vacíos, el panel queda abierto (modo prueba).
+# Cuando los completes en el .env / Render, pide usuario y contraseña para entrar.
+_seguridad = HTTPBasic(auto_error=False)
+
+
+def requiere_clave(cred: HTTPBasicCredentials | None = Depends(_seguridad)) -> None:
+    config = obtener_config()
+    if not (config.panel_usuario and config.panel_clave):
+        return  # sin clave configurada → abierto (sirve para probar)
+    valido = (
+        cred is not None
+        and secrets.compare_digest(cred.username, config.panel_usuario)
+        and secrets.compare_digest(cred.password, config.panel_clave)
+    )
+    if not valido:
+        raise HTTPException(
+            status_code=401,
+            detail="Acceso restringido",
+            headers={"WWW-Authenticate": "Basic"},
+        )
 
 
 @app.get("/")
@@ -171,7 +195,7 @@ async def webhook(
     return _twiml(twiml)
 
 
-@app.post("/campanias/adjudicaciones/{id_empresa}")
+@app.post("/campanias/adjudicaciones/{id_empresa}", dependencies=[Depends(requiere_clave)])
 def lanzar_adjudicaciones(id_empresa: str, dry_run: bool = True) -> ReporteCampania:
     """Lanza la campaña de adjudicaciones de Planes de Ahorro para una empresa.
 
@@ -190,7 +214,7 @@ def lanzar_adjudicaciones(id_empresa: str, dry_run: bool = True) -> ReporteCampa
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/campanias/difusion/{id_empresa}")
+@app.post("/campanias/difusion/{id_empresa}", dependencies=[Depends(requiere_clave)])
 def lanzar_difusion(id_empresa: str, dry_run: bool = True) -> ReporteCampania:
     """Lanza la campaña de fidelización: difusión de stock con texto + imagen + botones.
 
@@ -208,7 +232,7 @@ def lanzar_difusion(id_empresa: str, dry_run: bool = True) -> ReporteCampania:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/encuestas/{id_empresa}/enviar")
+@app.post("/encuestas/{id_empresa}/enviar", dependencies=[Depends(requiere_clave)])
 def enviar_encuestas(id_empresa: str, dry_run: bool = True) -> ReporteEncuestas:
     """Envía las encuestas de calidad cuyo evento ya cumplió 48 hs.
 
@@ -222,7 +246,7 @@ def enviar_encuestas(id_empresa: str, dry_run: bool = True) -> ReporteEncuestas:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.get("/encuestas/{id_empresa}/resultados")
+@app.get("/encuestas/{id_empresa}/resultados", dependencies=[Depends(requiere_clave)])
 def resultados_encuestas(id_empresa: str) -> dict:
     """Tablero de la empresa: cantidad de respuestas, promedio y distribución 1-5."""
     return tablero(id_empresa)
@@ -262,7 +286,7 @@ def enviar_documento_individual(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.get("/scheduler")
+@app.get("/scheduler", dependencies=[Depends(requiere_clave)])
 def estado_scheduler() -> dict:
     """Estado del scheduler: jobs activos y próxima ejecución."""
     from .services.scheduler import _scheduler
@@ -279,13 +303,13 @@ def estado_scheduler() -> dict:
     }
 
 
-@app.get("/panel", response_class=HTMLResponse)
+@app.get("/panel", response_class=HTMLResponse, dependencies=[Depends(requiere_clave)])
 def panel_campanias() -> str:
     """Panel web para lanzar campañas del Óvalo (subir CSV, elegir a quién, enviar)."""
     return (Path(__file__).parent / "panel.html").read_text(encoding="utf-8")
 
 
-@app.post("/ovalo/analizar")
+@app.post("/ovalo/analizar", dependencies=[Depends(requiere_clave)])
 async def ovalo_analizar(archivo: UploadFile = File(...)) -> dict:
     """Lee el CSV del Óvalo y devuelve el resumen para armar el selector."""
     from .services.ovalo import analizar, parsear_csv
@@ -294,7 +318,7 @@ async def ovalo_analizar(archivo: UploadFile = File(...)) -> dict:
     return analizar(clientes)
 
 
-@app.post("/ovalo/enviar")
+@app.post("/ovalo/enviar", dependencies=[Depends(requiere_clave)])
 async def ovalo_enviar(
     archivo: UploadFile = File(...),
     cuerpo: str = Form(...),
@@ -323,7 +347,7 @@ async def ovalo_enviar(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@app.post("/ovalo/prueba")
+@app.post("/ovalo/prueba", dependencies=[Depends(requiere_clave)])
 async def ovalo_prueba(
     telefono: str = Form(...),
     cuerpo: str = Form(...),
