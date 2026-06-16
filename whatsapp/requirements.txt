@@ -16,3 +16,6 @@ supabase==2.10.0          # SDK oficial de Supabase (persistencia server-side)
 
 # --- Scheduler (envios automaticos) ---
 APScheduler==3.10.4       # Tareas programadas dentro de la app (encuestas a 48hs)
+
+# --- HTTP (para la Content API de Twilio: botones) ---
+requests==2.32.3        # Crear plantillas de respuesta rapida (botones) via API

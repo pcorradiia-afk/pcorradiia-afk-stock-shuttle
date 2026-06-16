@@ -328,11 +328,13 @@ async def ovalo_prueba(
     telefono: str = Form(...),
     cuerpo: str = Form(...),
     imagen_url: str = Form(""),
+    botones: str = Form(""),   # botones separados por coma (máx 3)
 ) -> dict:
-    """Envía un mensaje de PRUEBA (texto + imagen) a un número del Sandbox."""
+    """Envía un mensaje de PRUEBA (texto + imagen o botones) a un número del Sandbox."""
     from .services.ovalo import enviar_prueba
 
-    return enviar_prueba(telefono, cuerpo, imagen_url or None)
+    lista_botones = [b.strip() for b in botones.split(",") if b.strip()]
+    return enviar_prueba(telefono, cuerpo, imagen_url or None, lista_botones or None)
 
 
 def _twiml(contenido: str) -> Response:

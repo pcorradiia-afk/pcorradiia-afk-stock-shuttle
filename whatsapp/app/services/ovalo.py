@@ -17,6 +17,9 @@ import csv
 import io
 from dataclasses import dataclass, field
 
+# Caché de plantillas de botones creadas (evita recrearlas en cada prueba).
+_CACHE_BOTONES: dict = {}
+
 from ..core import rate_limit
 from ..core.normalizacion import normalizar_telefono
 from ..marcas import LINEA_PLANES, buscar_por_empresa
@@ -204,12 +207,58 @@ def correr(
     return reporte
 
 
-def enviar_prueba(telefono: str, cuerpo: str, imagen_url: str | None = None) -> dict:
-    """Envío de PRUEBA (formato libre, texto + imagen) a un número del Sandbox.
+def _content_sid_botones(body: str, botones: list[str]) -> str:
+    """Crea (o reutiliza) una plantilla de respuesta rápida con hasta 3 botones.
 
-    Sirve para ver cómo queda el mensaje en el teléfono antes de tener las
-    plantillas aprobadas. El número tiene que haber unido el Sandbox. NO sirve
-    para el masivo real (ahí va plantilla aprobada).
+    Usa la Content API de Twilio. Para mensajes DENTRO de la conversación (ventana
+    de 24 hs) no requiere aprobación de Meta. Devuelve el ContentSid (HX...).
+    """
+    import requests
+
+    from ..config import obtener_config
+
+    config = obtener_config()
+    botones = [b.strip() for b in botones if b.strip()][:3]
+    clave = (body, tuple(botones))
+    if clave in _CACHE_BOTONES:
+        return _CACHE_BOTONES[clave]
+
+    payload = {
+        "friendly_name": f"ovalo_botones_{abs(hash(clave)) % 10**9}",
+        "language": "es",
+        "types": {
+            "twilio/quick-reply": {
+                "body": body,
+                "actions": [
+                    {"title": b[:24], "id": f"op{i + 1}"} for i, b in enumerate(botones)
+                ],
+            }
+        },
+    }
+    r = requests.post(
+        "https://content.twilio.com/v1/Content",
+        auth=(config.twilio_account_sid, config.twilio_auth_token),
+        json=payload,
+        timeout=20,
+    )
+    r.raise_for_status()
+    sid = r.json()["sid"]
+    _CACHE_BOTONES[clave] = sid
+    return sid
+
+
+def enviar_prueba(
+    telefono: str,
+    cuerpo: str,
+    imagen_url: str | None = None,
+    botones: list[str] | None = None,
+) -> dict:
+    """Envío de PRUEBA a un número del Sandbox para ver cómo queda el mensaje.
+
+    - Con `botones`: manda una plantilla de respuesta rápida (texto + hasta 3
+      botones), válida dentro de la conversación sin aprobación de Meta.
+    - Sin botones: manda texto (+ imagen si hay) en formato libre.
+    NO sirve para el masivo real (ahí va plantilla aprobada con imagen y botones).
     """
     from ..config import obtener_config
     from .twilio_client import enviar_medios, enviar_mensaje
@@ -229,7 +278,19 @@ def enviar_prueba(telefono: str, cuerpo: str, imagen_url: str | None = None) -> 
 
     ejemplo = {"nombre": "Fernando", "modelo": "Ranger", "grupo": "A1", "orden": "10"}
     texto = cuerpo.format_map(_Defecto(ejemplo))
+
+    botones = [b for b in (botones or []) if b.strip()]
     try:
+        if botones:
+            from .twilio_client import _cliente_rest
+
+            sid_plantilla = _content_sid_botones(texto, botones)
+            msj = _cliente_rest().messages.create(
+                from_=f"whatsapp:{origen}",
+                to=f"whatsapp:{destino}",
+                content_sid=sid_plantilla,
+            )
+            return {"estado": "enviado", "sid": msj.sid, "destino": destino, "con_botones": True}
         if imagen_url:
             sid = enviar_medios(destino, origen, texto, [imagen_url])
         else:

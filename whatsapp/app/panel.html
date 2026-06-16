@@ -159,6 +159,8 @@
         <textarea id="cuerpo">¡Hola {nombre}! 👋 Desde *Pedro Corradi* (Plan Óvalo) te contamos que se viene la próxima licitación de tu grupo. Es tu oportunidad de adelantar la entrega de tu {modelo} 🚙. ¿Querés que te asesore un ejecutivo? Respondé este mensaje.</textarea>
         <label>URL de la imagen (opcional)</label>
         <input type="text" id="imagen" placeholder="https://..." />
+        <label>Botones de respuesta (separados por coma, máx. 3)</label>
+        <input type="text" id="botones" value="Quiero asesorarme, Más info, No me interesa" />
         <label class="check"><input type="checkbox" id="dryrun" checked /> Modo simulación (no envía, solo muestra a quién llegaría)</label>
         <div style="margin-top:16px;"><button id="btnEnviar">Ver / Enviar</button></div>
         <p class="nota">En simulación ves a cuántos llega y ejemplos del mensaje. Para enviar de verdad, destildá la simulación (requiere la plantilla aprobada cargada).</p>
@@ -265,6 +267,7 @@
       fd.append("telefono", num);
       fd.append("cuerpo", $("cuerpo").value);
       fd.append("imagen_url", $("imagen").value);
+      fd.append("botones", $("botones").value);
       const r = await fetch("/ovalo/prueba", { method: "POST", body: fd });
       const res = await r.json();
       $("pruebaMsg").textContent = res.estado === "enviado"
