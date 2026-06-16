@@ -13,13 +13,15 @@ from __future__ import annotations
 
 from ..config import obtener_config
 from ..marcas import Contexto
+from ..persistencia import obtener_repo
 
 
-def procesar_con_ia(ctx: Contexto, mensaje: str) -> str:
+def procesar_con_ia(ctx: Contexto, mensaje: str, numero_cuenta: str, telefono: str) -> str:
     """Punto de entrada del Agente de IA para un mensaje de texto libre.
 
     Decide entre la respuesta simulada (Fase 1) y Claude real (Fase 2) según la
-    configuración. Devuelve siempre un texto breve y amable listo para enviar.
+    configuración. Usa el historial de la conversación (memoria) para no repetir
+    el saludo ni re-preguntar lo que el cliente ya respondió.
     """
     config = obtener_config()
 
@@ -34,7 +36,7 @@ def procesar_con_ia(ctx: Contexto, mensaje: str) -> str:
     if config.ia_activa and config.anthropic_api_key:
         try:
             return _responder_con_claude(
-                ctx, mensaje, config.ia_modelo, config.anthropic_api_key
+                ctx, mensaje, numero_cuenta, telefono, config.ia_modelo, config.anthropic_api_key
             )
         except Exception as exc:  # noqa: BLE001
             # No dejamos al cliente sin respuesta: logueamos el error y caemos
@@ -52,24 +54,42 @@ def procesar_con_ia(ctx: Contexto, mensaje: str) -> str:
     )
 
 
-def _responder_con_claude(ctx: Contexto, mensaje: str, modelo: str, api_key: str) -> str:
-    """Llama a Claude usando el SDK oficial, con el system prompt del contexto.
+def _responder_con_claude(
+    ctx: Contexto,
+    mensaje: str,
+    numero_cuenta: str,
+    telefono: str,
+    modelo: str,
+    api_key: str,
+) -> str:
+    """Llama a Claude con el system prompt del contexto Y el historial de la charla.
 
-    Se importa anthropic acá adentro para que la app arranque aunque la
-    dependencia no esté instalada mientras la IA está apagada.
+    Pasar el historial (memoria) es lo que evita que el bot vuelva a saludar y
+    re-pregunte: Claude ve toda la conversación y la continúa con naturalidad.
     """
     from anthropic import Anthropic
+
+    repo = obtener_repo()
+    historial = repo.historial(numero_cuenta, telefono)
 
     cliente = Anthropic(api_key=api_key)
     respuesta = cliente.messages.create(
         model=modelo.strip().lower(),       # los IDs de modelo van en minúscula
         max_tokens=600,                     # respuestas breves, estilo WhatsApp
         system=ctx.system_prompt,           # ← identidad dinámica por marca × línea
-        messages=[{"role": "user", "content": mensaje}],
+        messages=historial + [{"role": "user", "content": mensaje}],
     )
 
-    # Tomamos el primer bloque de texto de la respuesta.
+    texto = ""
     for bloque in respuesta.content:
         if bloque.type == "text":
-            return bloque.text.strip()
-    return ""  # Sin texto (p. ej. una negativa de seguridad): el caller decide qué hacer.
+            texto = bloque.text.strip()
+            break
+
+    # Guardamos la ida y vuelta en el historial (sólo si hubo respuesta), para
+    # que el historial quede consistente (user → assistant → user → ...).
+    if texto:
+        repo.agregar_historial(numero_cuenta, telefono, "user", mensaje)
+        repo.agregar_historial(numero_cuenta, telefono, "assistant", texto)
+
+    return texto

@@ -168,6 +168,32 @@ class RepositorioSupabase(Repositorio):
         )
         return res.data or []
 
+    # --- Memoria conversacional ---
+    def historial(self, numero_cuenta: str, telefono: str) -> list[dict]:
+        res = (
+            self._db.table("wsp_historial")
+            .select("rol,contenido")
+            .eq("numero_cuenta", numero_cuenta)
+            .eq("telefono", telefono)
+            .order("id", desc=True)
+            .limit(16)
+            .execute()
+        )
+        filas = list(reversed(res.data or []))  # de más viejo a más nuevo
+        return [{"role": f["rol"], "content": f["contenido"]} for f in filas]
+
+    def agregar_historial(
+        self, numero_cuenta: str, telefono: str, rol: str, contenido: str
+    ) -> None:
+        self._db.table("wsp_historial").insert(
+            {
+                "numero_cuenta": numero_cuenta,
+                "telefono": telefono,
+                "rol": rol,
+                "contenido": contenido,
+            }
+        ).execute()
+
     # --- Tests ---
     def limpiar_todo(self) -> None:
         # No se borra la base real desde el código de la app a propósito.

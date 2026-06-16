@@ -12,6 +12,8 @@ from datetime import datetime, timedelta, timezone
 from .base import Repositorio
 
 _VENTANA = timedelta(hours=24)
+# Cuántos mensajes del historial se recuerdan (idas y vueltas con la IA).
+_MAX_HISTORIAL = 16
 
 
 class RepositorioMemoria(Repositorio):
@@ -22,6 +24,7 @@ class RepositorioMemoria(Repositorio):
         self._encuestas_enviadas: set[tuple[str, str, str]] = set()
         self._encuestas_abiertas: dict[tuple[str, str], dict] = {}
         self._resultados: list[dict] = []
+        self._historiales: dict[tuple[str, str], list[dict]] = {}
 
     # --- Rate limit ---
     def campania_ya_enviada(self, id_empresa: str, campania: str, telefono: str) -> bool:
@@ -77,6 +80,18 @@ class RepositorioMemoria(Repositorio):
     def resultados(self, id_empresa: str) -> list[dict]:
         return [r for r in self._resultados if r.get("id_empresa") == id_empresa]
 
+    # --- Memoria conversacional ---
+    def historial(self, numero_cuenta: str, telefono: str) -> list[dict]:
+        return list(self._historiales.get((numero_cuenta, telefono), []))
+
+    def agregar_historial(
+        self, numero_cuenta: str, telefono: str, rol: str, contenido: str
+    ) -> None:
+        hist = self._historiales.setdefault((numero_cuenta, telefono), [])
+        hist.append({"role": rol, "content": contenido})
+        if len(hist) > _MAX_HISTORIAL:
+            del hist[: len(hist) - _MAX_HISTORIAL]
+
     # --- Tests ---
     def limpiar_todo(self) -> None:
         self._campanias.clear()
@@ -85,3 +100,4 @@ class RepositorioMemoria(Repositorio):
         self._encuestas_enviadas.clear()
         self._encuestas_abiertas.clear()
         self._resultados.clear()
+        self._historiales.clear()

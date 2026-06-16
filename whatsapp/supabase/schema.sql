@@ -71,7 +71,20 @@ create table if not exists wsp_encuesta_resultados (
 create index if not exists wsp_encuesta_resultados_empresa
     on wsp_encuesta_resultados (id_empresa);
 
+-- Memoria conversacional: historial de la charla con la IA por cliente.
+create table if not exists wsp_historial (
+    id            bigint generated always as identity primary key,
+    numero_cuenta text        not null,
+    telefono      text        not null,
+    rol           text        not null,  -- 'user' | 'assistant'
+    contenido     text        not null,
+    creado_at     timestamptz not null default now()
+);
+create index if not exists wsp_historial_lookup
+    on wsp_historial (numero_cuenta, telefono, id);
+
 -- RLS activado sin políticas públicas: sólo el backend (service_role) accede.
+alter table wsp_historial           enable row level security;
 alter table wsp_campania_envios     enable row level security;
 alter table wsp_sesiones            enable row level security;
 alter table wsp_bot_pausado         enable row level security;

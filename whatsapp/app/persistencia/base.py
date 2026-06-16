@@ -66,6 +66,15 @@ class Repositorio(ABC):
     @abstractmethod
     def resultados(self, id_empresa: str) -> list[dict]: ...
 
+    # --- Memoria conversacional (historial de la charla con la IA) ---
+    @abstractmethod
+    def historial(self, numero_cuenta: str, telefono: str) -> list[dict]: ...
+
+    @abstractmethod
+    def agregar_historial(
+        self, numero_cuenta: str, telefono: str, rol: str, contenido: str
+    ) -> None: ...
+
     # --- Utilitario para tests ---
     @abstractmethod
     def limpiar_todo(self) -> None: ...

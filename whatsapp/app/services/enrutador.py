@@ -87,10 +87,12 @@ def decidir_respuesta(
     assert ctx is not None  # garantizado por la resolución anterior
 
     # ── B) REGLAS DENTRO DEL CONTEXTO ────────────────────────────────────────
-    return _responder_en_contexto(ctx, texto, telefono_cliente)
+    return _responder_en_contexto(ctx, texto, telefono_cliente, numero_cuenta)
 
 
-def _responder_en_contexto(ctx: Contexto, texto: str, telefono_cliente: str) -> str | None:
+def _responder_en_contexto(
+    ctx: Contexto, texto: str, telefono_cliente: str, numero_cuenta: str
+) -> str | None:
     """Aplica las reglas de negocio con la línea ya resuelta."""
     config = obtener_config()
     texto_norm = texto.lower()
@@ -134,8 +136,8 @@ def _responder_en_contexto(ctx: Contexto, texto: str, telefono_cliente: str) -> 
     ):
         return menu_bienvenida(ctx)
 
-    # 6) Texto libre → Agente de IA con el contexto (marca × línea).
-    return respuesta_texto(procesar_con_ia(ctx, texto))
+    # 6) Texto libre → Agente de IA con el contexto (marca × línea) y memoria.
+    return respuesta_texto(procesar_con_ia(ctx, texto, numero_cuenta, telefono_cliente))
 
 
 def _interpretar_linea(texto: str, lineas: list[str]) -> str | None:
