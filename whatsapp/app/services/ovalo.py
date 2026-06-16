@@ -26,14 +26,29 @@ from ..marcas import LINEA_PLANES, buscar_por_empresa
 from . import sesion
 from .twilio_client import enviar_plantilla
 
-# Mapeo de códigos de MODELO del Óvalo → nombre comercial (se completa con el
-# cliente; lo que no esté acá se muestra con su código tal cual).
-MODELOS: dict[str, str] = {
-    # "R120F": "Ranger",
-    # "R120G": "Ranger",
-    # "MAV02": "Maverick",
-    # ...
-}
+# Modelo comercial según el PREFIJO del código de MODELO del Óvalo.
+# Se evalúa en orden; el primero que coincide gana. Fácil de ajustar.
+REGLAS_MODELO: list[tuple[tuple[str, ...], str]] = [
+    (("R120", "RAFI", "RANG", "RANFI", "RAN", "RXLT", "PRXL"), "Ranger"),
+    (("TEFI", "TFI", "TRY", "PRTY"), "Territory"),
+    (("MAFI", "MAV", "M120"), "Maverick"),
+    (("PRFT",), "Transit"),
+    (("ECO", "EC1", "EC0"), "EcoSport"),
+    (("KMAS", "KAS"), "Kuga"),       # ← por confirmar
+    (("FS", "FPLUS"), "F-150"),      # ← por confirmar
+    (("TRA", "PRGR"), "Transit"),    # ← por confirmar
+]
+
+
+def familia_modelo(codigo: str) -> str:
+    """Devuelve el modelo comercial a partir del código (por prefijo)."""
+    c = (codigo or "").upper().strip()
+    if not c:
+        return "Sin modelo"
+    for prefijos, nombre in REGLAS_MODELO:
+        if c.startswith(prefijos):
+            return nombre
+    return c  # si no matchea ninguna regla, mostramos el código
 
 
 @dataclass
@@ -64,7 +79,7 @@ def parsear_csv(contenido: bytes) -> list[ClienteOvalo]:
                 grupo=(fila.get("NRO_GRUPO") or "").strip(),
                 orden=(fila.get("NRO_ORDEN") or "").strip(),
                 modelo_codigo=codigo,
-                modelo=MODELOS.get(codigo, codigo),
+                modelo=familia_modelo(codigo),
                 status=(fila.get("STATUS_DESC") or "").strip() or "Sin estado",
             )
         )
