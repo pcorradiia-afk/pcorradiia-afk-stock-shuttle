@@ -130,11 +130,139 @@ function celdaVacia(): CeldaPL {
   return { ingresos: 0, costos: 0, gastos: 0, resultado: 0, gastosVar: 0, otrosIng: 0 };
 }
 
+/** Una celda con pinta de número ("0.00", "-1,244,762.94", 1234.5…). */
+const RE_NUMERICA = /^-?[\d.,]+$/;
+function esCeldaNumerica(v: unknown): boolean {
+  const s = String(v ?? "").trim();
+  return s !== "" && RE_NUMERICA.test(s);
+}
+
+/** Columna de descripción (texto) a la derecha de las 12 columnas mensuales. */
+function columnaDescripcion(aoa: unknown[][]): number {
+  for (let r = 0; r < Math.min(aoa.length, 80); r++) {
+    const row = aoa[r];
+    if (!Array.isArray(row)) continue;
+    if (!deptoDeCuenta(String(row[0] ?? "").trim())) continue;
+    for (let c = row.length - 1; c > 12; c--) {
+      const s = String(row[c] ?? "").trim();
+      if (s && !RE_NUMERICA.test(s)) return c;
+    }
+  }
+  return 14;
+}
+
+/**
+ * ¿El archivo parece un balance parcial de Oliauto SIN rótulos de mes?
+ * Es el export "BalanceParcial_NN.rpt" → Excel: código de cuenta en la col. A,
+ * los 12 meses (ene–dic) en B–M por posición, el total en N y la descripción en
+ * O, sin ninguna fila de encabezado con los períodos. Lo reconocemos por el
+ * cuerpo: filas con código de cuenta de resultado y ~12 columnas numéricas.
+ */
+export function pareceBalanceParcialSinRotulos(aoa: unknown[][]): boolean {
+  let ok = 0;
+  for (let r = 0; r < Math.min(aoa.length, 120); r++) {
+    const row = aoa[r];
+    if (!Array.isArray(row)) continue;
+    if (!deptoDeCuenta(String(row[0] ?? "").trim())) continue;
+    let numericas = 0;
+    for (let c = 1; c <= 12; c++) if (esCeldaNumerica(row[c])) numericas++;
+    if (numericas >= 10 && ++ok >= 5) return true;
+  }
+  return false;
+}
+
+const MES_NUM: Record<string, number> = {
+  enero: 1, febrero: 2, marzo: 3, abril: 4, mayo: 5, junio: 6, julio: 7,
+  agosto: 8, septiembre: 9, setiembre: 9, octubre: 10, noviembre: 11, diciembre: 12,
+};
+
+/** Fecha de emisión del pie del reporte ("Emitido el … de junio de 2026"). null si no aparece. */
+export function emisionDeReporte(aoa: unknown[][]): { anio: number; mes: number } | null {
+  for (let r = aoa.length - 1; r >= Math.max(0, aoa.length - 8); r--) {
+    const row = aoa[r];
+    if (!Array.isArray(row)) continue;
+    const txt = row.map((c) => String(c ?? "")).join(" ").toLowerCase();
+    const m = txt.match(
+      /de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\s+de\s+(20\d{2})/,
+    );
+    if (m) return { anio: Number(m[2]), mes: MES_NUM[m[1]] };
+  }
+  return null;
+}
+
+/** Año del pie del reporte de Oliauto. null si no aparece. */
+export function anioDeReporte(aoa: unknown[][]): number | null {
+  const e = emisionDeReporte(aoa);
+  if (e) return e.anio;
+  for (let r = aoa.length - 1; r >= Math.max(0, aoa.length - 8); r--) {
+    const row = aoa[r];
+    if (!Array.isArray(row)) continue;
+    const txt = row.map((c) => String(c ?? "")).join(" ");
+    const m = txt.match(/\b(20\d{2})\b/);
+    if (m) {
+      const y = Number(m[1]);
+      if (y >= 2000 && y <= 2100) return y;
+    }
+  }
+  return null;
+}
+
+/** Meses (1–12) con movimiento en un balance parcial sin rótulos. */
+export function mesesConDatosBalanceParcial(aoa: unknown[][]): number[] {
+  const cuentas = aoa.filter((row): row is unknown[] => Array.isArray(row) && !!deptoDeCuenta(String(row[0] ?? "").trim()));
+  const meses: number[] = [];
+  for (let m = 1; m <= 12; m++) if (cuentas.some((row) => num(row[m]) !== 0)) meses.push(m);
+  return meses;
+}
+
+/**
+ * Normaliza un balance parcial SIN rótulos al layout canónico que entienden los
+ * parsers: encabezado [Código, Descripción, m1…mN] con los meses rotulados al
+ * estilo Oliauto ("2/aaaa" = enero, "3/aaaa" = febrero, …). Incluye solo los meses
+ * con datos hasta `mesCorte`; por default corta en el último mes COMPLETO, que es
+ * el mes de emisión menos uno (un balance emitido el 15/jun cierra en mayo).
+ * Devuelve null si el archivo no tiene ese layout.
+ */
+export function normalizarBalanceParcialSinRotulos(
+  aoa: unknown[][],
+  anio: number,
+  mesCorte?: number,
+): unknown[][] | null {
+  if (!pareceBalanceParcialSinRotulos(aoa)) return null;
+  const iDesc = columnaDescripcion(aoa);
+  const cuentas = aoa.filter((row): row is unknown[] => Array.isArray(row) && !!deptoDeCuenta(String(row[0] ?? "").trim()));
+  const emision = emisionDeReporte(aoa);
+  const corte = mesCorte ?? (emision ? Math.max(1, emision.mes - 1) : 12);
+  const conDatos = (m: number) => cuentas.some((row) => num(row[m]) !== 0);
+  const meses: number[] = [];
+  for (let m = 1; m <= Math.min(12, corte); m++) if (conDatos(m)) meses.push(m);
+  // Si el corte dejó todo afuera, caemos a todos los meses con datos.
+  if (meses.length === 0) for (let m = 1; m <= 12; m++) if (conDatos(m)) meses.push(m);
+  // Oliauto rotula las columnas corridas +1: la columna de enero se rotula "2/aaaa".
+  const header: unknown[] = ["Código", "Descripción", ...meses.map((m) => `${m + 1}/${anio}`)];
+  const filas: unknown[][] = [header];
+  for (const row of cuentas) {
+    filas.push([String(row[0] ?? "").trim(), String(row[iDesc] ?? "").trim(), ...meses.map((m) => row[m] ?? 0)]);
+  }
+  return filas;
+}
+
 /**
  * Procesa un "balance parcial" de Oliauto (código + descripción + columnas mensuales).
  * Las ventas figuran con saldo acreedor (negativo), por eso el resultado se invierte.
  */
 export function parseBalanceParcial(aoa: unknown[][], headerRow: number): BalanceParcial {
+  // Si el archivo no trae rótulos de mes pero tiene el layout posicional de
+  // Oliauto, lo normalizamos (año del pie del reporte) para reusar la misma
+  // lógica de siempre. Si ya viene normalizado/rotulado, esto no hace nada.
+  const hdr0 = (aoa[headerRow - 1] ?? []) as unknown[];
+  if (!hdr0.some((h) => parsePeriodo(String(h)))) {
+    const norm = normalizarBalanceParcialSinRotulos(aoa, anioDeReporte(aoa) ?? new Date().getUTCFullYear());
+    if (norm) {
+      aoa = norm;
+      headerRow = 1;
+    }
+  }
   const header = (aoa[headerRow - 1] ?? []) as unknown[];
 
   // Detectar columnas mensuales y la de código/descripción.

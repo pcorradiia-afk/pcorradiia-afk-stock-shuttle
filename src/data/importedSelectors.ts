@@ -1,4 +1,5 @@
 import type { Importacion } from "./importsStore";
+import { clasificarGasto } from "./clasificacionGastos";
 import { DEPTOS_OLIAUTO } from "@/lib/oliauto";
 import type { BalanceParcial, BalanceGeneral, Composicion, CeldaPL, ComunRubro, CuentaBP, LineaCuenta, Mayor, Ventas0km } from "@/lib/oliauto";
 
@@ -371,7 +372,12 @@ export function gestionImportada(
     if (p.cuentas && p.cuentas.length > 0) {
       // Reconstruye el cuadro desde cada cuenta, aplicando la parametrización.
       for (const c of p.cuentas) {
-        const ov = overrides[c.codigo] ?? {};
+        // Default de grupo: las cuentas marcadas "costo directo" (hoja CTO. SER.
+        // del EEFF) van a Costos, aunque por su código caerían en gastos. El
+        // ajuste manual en Plan de cuentas tiene prioridad sobre este default.
+        const ov =
+          overrides[c.codigo] ??
+          (clasificarGasto(c.codigo) === "costo_directo" ? { linea: "costo" as LineaCuenta } : {});
         const linea = ov.linea ?? c.linea;
         const rep = ov.reparto && ov.reparto.deptos.length > 0 ? ov.reparto : null;
         const deptoVista = rep ? rep.deptos[0] : ov.depto ?? c.depto;
