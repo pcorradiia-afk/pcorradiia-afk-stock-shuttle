@@ -323,6 +323,18 @@ async def ovalo_enviar(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.post("/ovalo/prueba")
+async def ovalo_prueba(
+    telefono: str = Form(...),
+    cuerpo: str = Form(...),
+    imagen_url: str = Form(""),
+) -> dict:
+    """Envía un mensaje de PRUEBA (texto + imagen) a un número del Sandbox."""
+    from .services.ovalo import enviar_prueba
+
+    return enviar_prueba(telefono, cuerpo, imagen_url or None)
+
+
 def _twiml(contenido: str) -> Response:
     """Arma una respuesta HTTP con el content-type que Twilio espera (XML)."""
     return Response(content=contenido, media_type="application/xml")

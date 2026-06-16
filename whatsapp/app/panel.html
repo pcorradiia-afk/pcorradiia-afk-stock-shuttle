@@ -75,6 +75,15 @@
     <p class="nota">En simulación ves a cuántos llega y ejemplos del mensaje. Para enviar de verdad, destildá la simulación (requiere la plantilla aprobada cargada).</p>
   </div>
 
+  <div class="card oculto" id="cardPrueba">
+    <h2>📱 Probar en mi WhatsApp</h2>
+    <p class="nota">Te manda el mensaje (con imagen) a tu número, para ver cómo queda antes de tener las plantillas. Tu número tiene que estar unido al Sandbox. Usa el texto y la imagen de arriba.</p>
+    <label>Mi número (formato +549...)</label>
+    <input type="text" id="miNumero" placeholder="+5492804418307" />
+    <div style="margin-top:12px;"><button class="sec" id="btnPrueba">Enviar prueba a mi WhatsApp</button></div>
+    <div id="pruebaMsg" class="nota"></div>
+  </div>
+
   <div class="card oculto" id="cardReporte">
     <h2>Resultado</h2>
     <div id="reporteResumen"></div>
@@ -111,6 +120,7 @@
       analisis.situaciones.forEach(s => cs.appendChild(chip("situacion", s.valor, s.cantidad)));
       $("cardFiltros").classList.remove("oculto");
       $("cardMensaje").classList.remove("oculto");
+      $("cardPrueba").classList.remove("oculto");
     } catch (e) { alert("No pude analizar el archivo: " + e); }
     $("btnAnalizar").disabled = false; $("btnAnalizar").textContent = "Analizar base";
   });
@@ -151,6 +161,25 @@
       }
     } catch (e) { alert("Error: " + e); }
     $("btnEnviar").disabled = false; $("btnEnviar").textContent = "Ver / Enviar";
+  });
+
+  $("btnPrueba").addEventListener("click", async () => {
+    const num = $("miNumero").value.trim();
+    if (!num) { alert("Poné tu número (ej. +5492804418307)."); return; }
+    $("btnPrueba").disabled = true; $("btnPrueba").textContent = "Enviando...";
+    $("pruebaMsg").textContent = "";
+    try {
+      const fd = new FormData();
+      fd.append("telefono", num);
+      fd.append("cuerpo", $("cuerpo").value);
+      fd.append("imagen_url", $("imagen").value);
+      const r = await fetch("/ovalo/prueba", { method: "POST", body: fd });
+      const res = await r.json();
+      $("pruebaMsg").textContent = res.estado === "enviado"
+        ? "✅ Enviado a " + res.destino + " — revisá tu WhatsApp."
+        : "⚠️ " + (res.detalle || res.estado);
+    } catch (e) { $("pruebaMsg").textContent = "Error: " + e; }
+    $("btnPrueba").disabled = false; $("btnPrueba").textContent = "Enviar prueba a mi WhatsApp";
   });
 </script>
 </body>

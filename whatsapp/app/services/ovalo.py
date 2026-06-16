@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 from ..core import rate_limit
 from ..core.normalizacion import normalizar_telefono
 from ..marcas import LINEA_PLANES, buscar_por_empresa
+from . import sesion
 from .twilio_client import enviar_plantilla
 
 # Mapeo de códigos de MODELO del Óvalo → nombre comercial (se completa con el
@@ -191,6 +192,9 @@ def correr(
                     ResultadoOvalo(c.telefono, c.nombre, "simulado", "dry-run", preview)
                 )
             rate_limit.registrar_envio(id_empresa, campania, c.telefono)
+            # "Cebamos" la línea de Planes: si el cliente responde (toca un botón
+            # o escribe), su mensaje cae en el contexto del Óvalo.
+            sesion.elegir_linea(numero_origen, c.telefono, LINEA_PLANES)
         except Exception as exc:  # noqa: BLE001
             reporte.errores += 1
             reporte.resultados.append(
@@ -198,6 +202,41 @@ def correr(
             )
 
     return reporte
+
+
+def enviar_prueba(telefono: str, cuerpo: str, imagen_url: str | None = None) -> dict:
+    """Envío de PRUEBA (formato libre, texto + imagen) a un número del Sandbox.
+
+    Sirve para ver cómo queda el mensaje en el teléfono antes de tener las
+    plantillas aprobadas. El número tiene que haber unido el Sandbox. NO sirve
+    para el masivo real (ahí va plantilla aprobada).
+    """
+    from ..config import obtener_config
+    from .twilio_client import enviar_medios, enviar_mensaje
+
+    config = obtener_config()
+    destino = normalizar_telefono(telefono)
+    if not destino:
+        return {"estado": "error", "detalle": "teléfono inválido"}
+    if not (config.twilio_account_sid and config.twilio_auth_token):
+        return {"estado": "error", "detalle": "faltan credenciales de Twilio en el .env"}
+
+    # From: el número del Sandbox si está configurado; si no, el de Planes.
+    origen = normalizar_telefono(config.sandbox_numero) if config.sandbox_numero else ""
+    if not origen:
+        enc = buscar_por_empresa("empresa_pedro_corradi", LINEA_PLANES)
+        origen = enc[0] if enc else ""
+
+    ejemplo = {"nombre": "Fernando", "modelo": "Ranger", "grupo": "A1", "orden": "10"}
+    texto = cuerpo.format_map(_Defecto(ejemplo))
+    try:
+        if imagen_url:
+            sid = enviar_medios(destino, origen, texto, [imagen_url])
+        else:
+            sid = enviar_mensaje(destino, origen, texto)
+        return {"estado": "enviado", "sid": sid, "destino": destino}
+    except Exception as exc:  # noqa: BLE001
+        return {"estado": "error", "detalle": str(exc)}
 
 
 # --- Helpers ---
