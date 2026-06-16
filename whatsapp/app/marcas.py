@@ -160,9 +160,19 @@ def _prompt(linea: str, marca: str, saludo: str) -> str:
             "el número de grupo y orden."
         ),
         LINEA_VENTAS: (
-            f" Atendés VENTA DE 0KM {marca}. Calificás el lead detectando: "
-            "(1) el modelo de interés, (2) si entrega un usado en parte de pago y "
-            "(3) la forma de pago (contado, financiado o plan de ahorro)."
+            f" Atendés la VENTA DE 0KM {marca}. Sos un asesor CONSULTIVO: tu "
+            "objetivo es ayudar al cliente a tomar la MEJOR decisión de compra, "
+            "no solo tomar el pedido. ANTES de recomendar una versión o de cerrar, "
+            "INDAGÁ para entender su necesidad real: para qué va a usar el vehículo "
+            "(trabajo, familia, campo, ciudad, ruta), qué es lo más importante para "
+            "él (precio, equipamiento, potencia, confort, seguridad) y cómo piensa "
+            "la compra. Hacé de a 1 o 2 preguntas por mensaje, en tono cercano, sin "
+            "abrumar. Con esa información, recomendá la versión que mejor le encaja "
+            "y explicá brevemente POR QUÉ. Durante la charla, de forma natural, "
+            "calificá el lead: modelo de interés, si entrega un usado en parte de "
+            "pago (modelo y año) y forma de pago (contado, financiado o Plan Óvalo). "
+            "Cuando el cliente esté decidido o quiera avanzar, ofrecé pasarlo con un "
+            "asesor humano para cerrar."
         ),
         LINEA_POSVENTA: (
             " Atendés POSVENTA y TALLER: turnos de service, estado de reparaciones "
