@@ -20,9 +20,14 @@ import { guardarImportacion } from "@/data/importsStore";
 import { useImportaciones } from "@/data/useImportaciones";
 import { computarImportacion, type TipoImportacion } from "@/lib/importCompute";
 import {
+  anioDeReporte,
   detectarEmpresa,
+  emisionDeReporte,
+  mesesConDatosBalanceParcial,
+  normalizarBalanceParcialSinRotulos,
   pareceBalanceGeneral,
   pareceBalanceParcial,
+  pareceBalanceParcialSinRotulos,
   pareceComposicion,
   pareceMayor,
   pareceVentas0km,
@@ -68,13 +73,30 @@ const TIPO_LABEL: Record<TipoImportacion, string> = {
 interface ItemCola {
   id: string;
   fileName: string;
-  aoa: unknown[][];
+  aoa: unknown[][]; // datos a guardar (ya normalizados si el archivo no traía rótulos)
   tipo: TipoImportacion | "";
   metrica: string;
   ref: string; // periodo o corte, para detectar reemplazos
   detectada: string | null; // empresa sugerida por el contenido
   estado: "pendiente" | "guardando" | "guardado" | "error";
   error?: string;
+  // Solo para balance parcial de Oliauto SIN rótulos de mes: el usuario elige el
+  // año y el último mes, y re-normalizamos `aoa` a partir de `aoaOrig`.
+  aoaOrig?: unknown[][];
+  anio?: number;
+  mesCorte?: number;
+  mesesDisponibles?: number[];
+}
+
+const MESES_ES = ["", "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/** Años para el selector: una ventana alrededor del actual, incluyendo el detectado. */
+function ANIOS_OPC(anio?: number): number[] {
+  const actual = new Date().getFullYear();
+  const set = new Set<number>();
+  for (let y = actual + 1; y >= actual - 4; y--) set.add(y);
+  if (anio) set.add(anio);
+  return [...set].sort((a, b) => b - a);
 }
 
 function detectarTipo(header: unknown[]): TipoImportacion | "" {
@@ -188,19 +210,38 @@ export function Importar() {
           blankrows: false,
           defval: "",
         });
-        const tipo = detectarTipo(aoa[0] ?? []);
-        const det = detectarEmpresa(aoa, hints);
+        // Balance parcial de Oliauto SIN rótulos de mes (export .rpt → Excel): lo
+        // normalizamos al layout canónico tomando el año del pie del reporte y
+        // cortando en el último mes completo (mes de emisión − 1). El usuario
+        // puede ajustar año y último mes en la cola.
+        let workAoa = aoa;
+        let extra: Partial<ItemCola> = {};
+        if (!detectarTipo(aoa[0] ?? []) && pareceBalanceParcialSinRotulos(aoa)) {
+          const emision = emisionDeReporte(aoa);
+          const anio = emision?.anio ?? anioDeReporte(aoa) ?? new Date().getFullYear();
+          const disponibles = mesesConDatosBalanceParcial(aoa);
+          const corteDefault = emision ? Math.max(1, emision.mes - 1) : disponibles[disponibles.length - 1] ?? 12;
+          const mesCorte = Math.min(corteDefault, disponibles[disponibles.length - 1] ?? corteDefault);
+          const norm = normalizarBalanceParcialSinRotulos(aoa, anio, mesCorte);
+          if (norm) {
+            workAoa = norm;
+            extra = { aoaOrig: aoa, anio, mesCorte, mesesDisponibles: disponibles };
+          }
+        }
+        const tipo = detectarTipo(workAoa[0] ?? []);
+        const det = detectarEmpresa(aoa, hints); // la empresa se detecta sobre el archivo original (tiene el pie con la razón social)
         if (det.empresaId && det.confianza !== "baja") sugeridas.push(det.empresaId);
-        const { metrica, ref } = tipo ? resumenItem(tipo, aoa) : { metrica: "", ref: "" };
+        const { metrica, ref } = tipo ? resumenItem(tipo, workAoa) : { metrica: "", ref: "" };
         nuevos.push({
           id: crypto.randomUUID(),
           fileName: file.name,
-          aoa,
+          aoa: workAoa,
           tipo,
           metrica,
           ref,
           detectada: det.empresaId,
           estado: "pendiente",
+          ...extra,
         });
       } catch {
         nuevos.push({
@@ -249,6 +290,17 @@ export function Importar() {
     const it = items.find((x) => x.id === id);
     const { metrica, ref } = it ? resumenItem(tipo, it.aoa) : { metrica: "", ref: "" };
     actualizar(id, { tipo, metrica, ref });
+  }
+  // Balance parcial sin rótulos: re-normaliza `aoa` con el año/mes elegidos.
+  function cambiarPeriodoBP(id: string, patch: { anio?: number; mesCorte?: number }) {
+    const it = items.find((x) => x.id === id);
+    if (!it?.aoaOrig) return;
+    const anio = patch.anio ?? it.anio ?? new Date().getFullYear();
+    const mesCorte = patch.mesCorte ?? it.mesCorte;
+    const norm = normalizarBalanceParcialSinRotulos(it.aoaOrig, anio, mesCorte);
+    if (!norm) return;
+    const { metrica, ref } = resumenItem("balance_parcial", norm);
+    actualizar(id, { aoa: norm, anio, mesCorte, metrica, ref });
   }
 
   const pendientes = items.filter((it) => it.estado !== "guardado" && it.tipo).length;
@@ -412,6 +464,27 @@ export function Importar() {
                             <Badge variant="outline" className="ml-2 border-amber-500/40 text-amber-600">
                               <RefreshCw className="mr-1 h-3 w-3" /> Reemplaza
                             </Badge>
+                          )}
+                          {it.aoaOrig && it.estado !== "guardado" && (
+                            <div className="mt-1.5 flex items-center gap-1.5">
+                              <span className="text-xs text-muted-foreground">Período:</span>
+                              <Select value={String(it.mesCorte ?? "")} onValueChange={(v) => cambiarPeriodoBP(it.id, { mesCorte: Number(v) })}>
+                                <SelectTrigger className="h-7 w-[110px] text-xs"><SelectValue placeholder="mes" /></SelectTrigger>
+                                <SelectContent>
+                                  {(it.mesesDisponibles ?? []).map((m) => (
+                                    <SelectItem key={m} value={String(m)} className="capitalize">hasta {MESES_ES[m]}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Select value={String(it.anio ?? "")} onValueChange={(v) => cambiarPeriodoBP(it.id, { anio: Number(v) })}>
+                                <SelectTrigger className="h-7 w-[80px] text-xs"><SelectValue placeholder="año" /></SelectTrigger>
+                                <SelectContent>
+                                  {ANIOS_OPC(it.anio).map((y) => (
+                                    <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           )}
                         </TableCell>
                         <TableCell>
