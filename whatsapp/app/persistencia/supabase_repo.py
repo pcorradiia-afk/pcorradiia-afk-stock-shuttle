@@ -11,6 +11,7 @@ credenciales, la app usa el RepositorioMemoria y este módulo ni se importa.
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 
 from .base import Repositorio
@@ -120,7 +121,7 @@ class RepositorioSupabase(Repositorio):
             {"id_empresa": id_empresa, "telefono": telefono, "fecha_evento": fecha_evento}
         ).execute()
 
-    # --- Encuestas: abierta ---
+    # --- Encuestas: abierta (con progreso del cuestionario) ---
     def abrir_encuesta(self, numero_cuenta: str, telefono: str, contexto: dict) -> None:
         self._db.table("wsp_encuestas_abiertas").upsert(
             {
@@ -129,6 +130,9 @@ class RepositorioSupabase(Repositorio):
                 "id_empresa": contexto.get("id_empresa"),
                 "tipo": contexto.get("tipo"),
                 "referencia": contexto.get("referencia"),
+                "nombre": contexto.get("nombre", ""),
+                "paso": int(contexto.get("paso", 0) or 0),
+                "respuestas": json.dumps(contexto.get("respuestas") or {}),
                 "abierta_at": datetime.now(timezone.utc).isoformat(),
             },
             on_conflict="numero_cuenta,telefono",
@@ -137,13 +141,25 @@ class RepositorioSupabase(Repositorio):
     def encuesta_abierta(self, numero_cuenta: str, telefono: str) -> dict | None:
         res = (
             self._db.table("wsp_encuestas_abiertas")
-            .select("id_empresa,tipo,referencia")
+            .select("id_empresa,tipo,referencia,nombre,paso,respuestas")
             .eq("numero_cuenta", numero_cuenta)
             .eq("telefono", telefono)
             .limit(1)
             .execute()
         )
-        return res.data[0] if res.data else None
+        if not res.data:
+            return None
+        fila = dict(res.data[0])
+        # `respuestas` puede venir como texto (json) o ya como dict (jsonb).
+        crudo = fila.get("respuestas")
+        if isinstance(crudo, str):
+            try:
+                fila["respuestas"] = json.loads(crudo) if crudo else {}
+            except ValueError:
+                fila["respuestas"] = {}
+        elif crudo is None:
+            fila["respuestas"] = {}
+        return fila
 
     def cerrar_encuesta(self, numero_cuenta: str, telefono: str) -> None:
         (

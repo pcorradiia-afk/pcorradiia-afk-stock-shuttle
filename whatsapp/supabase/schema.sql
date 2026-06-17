@@ -47,27 +47,43 @@ create table if not exists wsp_encuesta_envios (
     unique (id_empresa, telefono, fecha_evento)
 );
 
--- Encuestas: encuesta abierta esperando la respuesta (1-5) del cliente.
+-- Encuestas: encuesta abierta esperando las respuestas del cliente.
+-- Guarda el PROGRESO del cuestionario: en qué pregunta va (paso) y los puntajes
+-- acumulados (respuestas, como JSON) para encuestas de varias preguntas.
 create table if not exists wsp_encuestas_abiertas (
     numero_cuenta text        not null,
     telefono      text        not null,
     id_empresa    text        not null,
     tipo          text        not null,
     referencia    text,
+    nombre        text,
+    paso          int         not null default 0,
+    respuestas    jsonb       not null default '{}'::jsonb,
     abierta_at    timestamptz not null default now(),
     primary key (numero_cuenta, telefono)
 );
+-- Columnas nuevas (por si la tabla ya existía de una versión anterior).
+alter table wsp_encuestas_abiertas add column if not exists nombre     text;
+alter table wsp_encuestas_abiertas add column if not exists paso       int   not null default 0;
+alter table wsp_encuestas_abiertas add column if not exists respuestas jsonb not null default '{}'::jsonb;
 
--- Encuestas: resultados (el tablero por empresa).
+-- Encuestas: resultados (el tablero por empresa). Una fila por pregunta
+-- respondida (con su clave en `pregunta`), más una fila por comentario final
+-- (pregunta = 'comentario', valor = 0, texto en `comentario`).
 create table if not exists wsp_encuesta_resultados (
     id         bigint generated always as identity primary key,
     id_empresa text not null,
     telefono   text not null,
     tipo       text not null,
     referencia text,
-    valor      int  not null check (valor between 1 and 5),
+    pregunta   text,
+    valor      int  not null check (valor between 0 and 5),
+    comentario text,
     fecha      text not null
 );
+-- Columnas nuevas (por si la tabla ya existía de una versión anterior).
+alter table wsp_encuesta_resultados add column if not exists pregunta   text;
+alter table wsp_encuesta_resultados add column if not exists comentario text;
 create index if not exists wsp_encuesta_resultados_empresa
     on wsp_encuesta_resultados (id_empresa);
 

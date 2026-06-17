@@ -2,20 +2,22 @@
 
 Cierra el ciclo completo:
   1) ENVIAR: a las 48 hs de un retiro de ventas o de un service, manda la
-     pregunta con botones del 1 al 5 (plantilla aprobada).
-  2) CAPTURAR: cuando el cliente responde 1-5, lo tomamos en el /webhook.
-  3) GUARDAR: el resultado queda en el tablero de la empresa que prestó el
-     servicio.
+     PRIMERA pregunta con una plantilla aprobada (inicia la conversación).
+  2) CONVERSAR: una vez que el cliente contesta, seguimos pregunta por pregunta
+     DENTRO de la ventana de 24 hs (texto libre, sin plantilla). Cada respuesta
+     es un puntaje del 1 al 5.
+  3) GUARDAR: cada puntaje (y el comentario final opcional) queda en el tablero
+     de la empresa que prestó el servicio, con desglose por pregunta.
 
 ╔══════════════════════════════════════════════════════════════════════════╗
-║  PREGUNTAS PROVISIONALES                                                    ║
-║  El texto de abajo (PREGUNTAS) es un borrador. Cuando tengas las preguntas  ║
-║  definitivas, editá SOLO ese diccionario — la lógica no cambia. (El texto   ║
-║  real también debe cargarse en la plantilla aprobada de WhatsApp.)          ║
+║  PREGUNTAS REALES DE CALIDAD                                                ║
+║  Editá el diccionario PREGUNTAS (y el texto de _INTRO, que es la 1ª         ║
+║  pregunta) cuando calidad ajuste el cuestionario. El texto de _INTRO        ║
+║  también debe coincidir con la plantilla aprobada en WhatsApp/Twilio.       ║
 ╚══════════════════════════════════════════════════════════════════════════╝
 
-Fase 1: todo en memoria (pendientes, resultados). Producción: Supabase, sin
-cambiar esta interfaz.
+Fase 1: todo en memoria (pendientes, progreso, resultados). Producción:
+Supabase, sin cambiar esta interfaz.
 """
 
 from __future__ import annotations
@@ -37,25 +39,55 @@ _DIR_DATOS = Path(__file__).resolve().parents[2] / "data"
 # Horas a esperar después del evento antes de mandar la encuesta.
 HORAS_ESPERA = 48
 
-# Plantilla aprobada que se usa para la encuesta (vive en la línea de Posventa).
+# Plantilla aprobada que se usa para INICIAR la encuesta (vive en Posventa).
 PLANTILLA_ENCUESTA = "encuesta_calidad"
 
-# ── PREGUNTAS PROVISIONALES (editá acá cuando tengas las definitivas) ─────────
-PREGUNTAS: dict[str, str] = {
-    "ventas": (
-        "Hola {nombre} 👋 En {empresa} queremos mejorar. Del 1 al 5, ¿cómo fue tu "
-        "experiencia comprando tu {referencia}? (1 = muy mala, 5 = excelente)"
-    ),
+# Clave que usamos para guardar el comentario final (no es un puntaje 1-5).
+PREGUNTA_COMENTARIO = "comentario"
+
+# ── CUESTIONARIO REAL (editá acá cuando calidad lo ajuste) ────────────────────
+# Cada pregunta es (clave_interna, texto). La clave se usa en el tablero para el
+# desglose por pregunta; el texto es lo que ve el cliente.
+PREGUNTAS: dict[str, tuple[tuple[str, str], ...]] = {
     "taller": (
-        "Hola {nombre} 👋 En {empresa} queremos mejorar. Del 1 al 5, ¿qué tan "
-        "conforme quedaste con el service de tu {referencia}? (1 = muy malo, "
-        "5 = excelente)"
+        ("atencion", "¿Cómo te sentiste con la *atención en el taller*?"),
+        ("calidad_trabajo", "¿Cómo evaluás la *calidad del trabajo* realizado?"),
+        ("claridad", "¿La *explicación de los trabajos* fue clara?"),
+        ("recomendacion", "¿*Recomendarías* la marca y nuestro taller?"),
+    ),
+    "ventas": (
+        ("atencion", "¿Cómo fue la *atención* que recibiste?"),
+        ("asesoramiento", "¿Qué tan conforme quedaste con el *asesoramiento* en la compra?"),
+        ("entrega", "¿Cómo fue la *entrega* de tu vehículo?"),
+        ("recomendacion", "¿*Recomendarías* Pedro Corradi a un amigo o familiar?"),
     ),
 }
-_PREGUNTA_DEFECTO = (
-    "Hola {nombre} 👋 Del 1 al 5, ¿cómo calificás la atención de {empresa}? "
-    "(1 = muy mala, 5 = excelente)"
-)
+
+# Texto de la PRIMERA pregunta (= cuerpo de la plantilla aprobada). Variables:
+# {{1}} = nombre, {{2}} = referencia (modelo / service). Debe terminar con la
+# pregunta 1) del cuestionario de arriba.
+_INTRO: dict[str, str] = {
+    "taller": (
+        "¡Hola {nombre}! 👋 Soy Valentino, de {empresa}. Tu opinión nos ayuda a "
+        "mejorar 💪🚗\n\n"
+        "Sobre tu paso por el taller con tu {referencia}, del 1 al 5 (5 = excelente):\n"
+        "1) ¿Cómo te sentiste con la *atención en el taller*?\n\n"
+        "Respondé con un número del 1 al 5. 🙏"
+    ),
+    "ventas": (
+        "¡Hola {nombre}! 👋 Soy Valentino, de {empresa}. Tu opinión nos ayuda a "
+        "mejorar 💪🚗\n\n"
+        "Sobre la compra de tu {referencia}, del 1 al 5 (5 = excelente):\n"
+        "1) ¿Cómo fue la *atención* que recibiste?\n\n"
+        "Respondé con un número del 1 al 5. 🙏"
+    ),
+}
+_TIPO_DEFECTO = "taller"
+
+# Palabras con las que el cliente abandona la encuesta o pide una persona.
+_ESCAPE = ("asesor", "humano", "cancelar", "salir", "basta")
+# Palabras con las que el cliente cierra sin dejar comentario.
+_SIN_COMENTARIO = ("listo", "no", "nada", "gracias", "ninguno", "ok")
 
 
 class EncuestaError(Exception):
@@ -64,14 +96,16 @@ class EncuestaError(Exception):
 
 @dataclass
 class ResultadoEncuesta:
-    """Una respuesta de encuesta guardada en el tablero de la empresa."""
+    """Una respuesta guardada en el tablero (un puntaje por pregunta, o un comentario)."""
 
     id_empresa: str
     telefono: str
     tipo: str          # "ventas" | "taller"
     referencia: str    # modelo comprado o service realizado
-    valor: int         # 1..5
-    fecha: str         # ISO de cuando respondió
+    pregunta: str      # clave de la pregunta, o "comentario"
+    valor: int         # 1..5 (0 cuando es un comentario)
+    comentario: str = ""
+    fecha: str = ""    # ISO de cuando respondió
 
 
 @dataclass
@@ -144,7 +178,7 @@ def correr_encuestas_pendientes(
 
     for evento in eventos:
         telefono = normalizar_telefono(evento.get("telefono"))
-        tipo = evento.get("tipo", "taller")
+        tipo = evento.get("tipo", _TIPO_DEFECTO)
         referencia = evento.get("referencia", "")
         fecha_evento = evento.get("fecha_evento", "")
 
@@ -173,8 +207,8 @@ def correr_encuestas_pendientes(
             print(f"   ⏭️  {telefono} · ya enviada")
             continue
 
-        # Texto (provisional) y variables de la plantilla: {{1}}=nombre, {{2}}=referencia.
-        preview = _texto_pregunta(tipo).format_map(
+        # Texto de la 1ª pregunta y variables: {{1}}=nombre, {{2}}=referencia.
+        preview = _texto_intro(tipo).format_map(
             _DefaultDict({**evento, "empresa": ctx.empresa})
         )
         variables = {"1": str(evento.get("nombre", "")), "2": str(referencia)}
@@ -195,12 +229,19 @@ def correr_encuestas_pendientes(
                 print(f"   🧪 {telefono} · simulada\n        pregunta: {preview}")
 
             repo.marcar_encuesta_enviada(id_empresa, telefono, fecha_evento)
-            # Abrimos la encuesta y cebamos la línea de Posventa para capturar la
-            # respuesta del cliente (1-5) cuando conteste.
+            # Abrimos la encuesta (paso 0, sin respuestas) y cebamos la línea de
+            # Posventa para capturar las respuestas del cliente cuando conteste.
             repo.abrir_encuesta(
                 numero_origen,
                 telefono,
-                {"id_empresa": id_empresa, "tipo": tipo, "referencia": referencia},
+                {
+                    "id_empresa": id_empresa,
+                    "tipo": tipo,
+                    "referencia": referencia,
+                    "nombre": str(evento.get("nombre", "")),
+                    "paso": 0,
+                    "respuestas": {},
+                },
             )
             sesion.elegir_linea(numero_origen, telefono, LINEA_POSVENTA)
         except Exception as exc:  # noqa: BLE001
@@ -217,63 +258,118 @@ def correr_encuestas_pendientes(
 
 
 def hay_encuesta_abierta(numero_cuenta: str, telefono: str) -> bool:
-    """True si hay una encuesta esperando la respuesta de ese cliente."""
+    """True si hay una encuesta esperando respuestas de ese cliente."""
     return obtener_repo().encuesta_abierta(numero_cuenta, telefono) is not None
 
 
 def registrar_respuesta(numero_cuenta: str, telefono: str, texto: str) -> str | None:
-    """Si hay encuesta abierta y `texto` es un 1-5 válido, guarda y agradece.
+    """Avanza la encuesta con la respuesta del cliente y devuelve el próximo mensaje.
 
-    Devuelve el texto de agradecimiento, o None si la respuesta no es un 1-5
-    (en ese caso el enrutador sigue con el flujo normal y la encuesta queda
-    abierta para que el cliente la conteste).
+    Mientras la encuesta está abierta, esta función maneja TODO el diálogo:
+      - puntaje 1-5 válido  → lo guarda y pasa a la pregunta siguiente;
+      - puntaje inválido    → vuelve a preguntar lo mismo;
+      - última pregunta     → pide un comentario opcional (y avisa si fue negativa);
+      - comentario / "listo" → cierra y agradece;
+      - "asesor"/"cancelar" → cierra la encuesta y devuelve None (sigue el flujo
+        normal del enrutador, que deriva a un humano).
+
+    Devuelve None sólo si NO hay encuesta abierta (o si el cliente la abandona),
+    para que el enrutador siga con su lógica habitual.
     """
     repo = obtener_repo()
     contexto = repo.encuesta_abierta(numero_cuenta, telefono)
     if contexto is None:
         return None
 
-    valor = _parsear_valor(texto)
-    if valor is None:
-        return None  # no es 1-5: dejamos la encuesta abierta
+    tipo = contexto.get("tipo", _TIPO_DEFECTO)
+    preguntas = PREGUNTAS.get(tipo, PREGUNTAS[_TIPO_DEFECTO])
+    paso = int(contexto.get("paso", 0) or 0)
+    respuestas: dict[str, int] = dict(contexto.get("respuestas") or {})
+    nombre = contexto.get("nombre", "")
+    id_empresa = contexto.get("id_empresa", "")
+    referencia = contexto.get("referencia", "")
+    limpio = (texto or "").strip()
 
-    repo.guardar_resultado(
-        asdict(
-            ResultadoEncuesta(
-                id_empresa=contexto["id_empresa"],
-                telefono=telefono,
-                tipo=contexto["tipo"],
-                referencia=contexto["referencia"],
-                valor=valor,
-                fecha=datetime.now().isoformat(timespec="seconds"),
+    # Salida: pidió un asesor o quiere cortar → cerramos y dejamos el flujo normal.
+    if any(p in limpio.lower() for p in _ESCAPE):
+        repo.cerrar_encuesta(numero_cuenta, telefono)
+        return None
+
+    # Paso del COMENTARIO final (ya respondió todas las preguntas).
+    if paso >= len(preguntas):
+        if limpio and limpio.lower() not in _SIN_COMENTARIO:
+            _guardar(
+                repo, id_empresa, telefono, tipo, referencia,
+                pregunta=PREGUNTA_COMENTARIO, valor=0, comentario=limpio,
             )
-        )
-    )
-    repo.cerrar_encuesta(numero_cuenta, telefono)
-    print(
-        f"⭐ [ENCUESTA] {telefono} respondió {valor}/5 "
-        f"({contexto['id_empresa']} · {contexto['tipo']})"
+            print(f"💬 [ENCUESTA] {telefono} dejó un comentario ({id_empresa})")
+        repo.cerrar_encuesta(numero_cuenta, telefono)
+        return "¡Gracias de nuevo! 🙏 Tu opinión nos ayuda muchísimo a seguir mejorando."
+
+    # Paso de una PREGUNTA: esperamos un puntaje 1-5.
+    valor = _parsear_valor(limpio)
+    if valor is None:
+        return _texto_pregunta(paso, preguntas)  # no entendimos: re-preguntamos
+
+    clave = preguntas[paso][0]
+    respuestas[clave] = valor
+    _guardar(repo, id_empresa, telefono, tipo, referencia, pregunta=clave, valor=valor)
+    print(f"⭐ [ENCUESTA] {telefono} {clave}={valor}/5 ({id_empresa} · {tipo})")
+
+    paso += 1
+    repo.abrir_encuesta(
+        numero_cuenta,
+        telefono,
+        {**contexto, "paso": paso, "respuestas": respuestas},
     )
 
-    if valor <= 2:
-        return (
-            "¡Gracias por tu respuesta! 🙏 Lamentamos que la experiencia no haya "
-            "sido la mejor. Un responsable se va a contactar para ayudarte."
+    # ¿Quedan preguntas?
+    if paso < len(preguntas):
+        return "¡Gracias! 🙌\n\n" + _texto_pregunta(paso, preguntas)
+
+    # Respondió todo → pedimos comentario y avisamos a calidad si fue negativa.
+    if _es_negativa(respuestas):
+        print(
+            f"🚨 [CALIDAD] {telefono} dejó puntaje BAJO en {id_empresa}. "
+            "Avisar al responsable de calidad."
         )
-    return "¡Gracias por tu respuesta! 🙌 Nos ayuda muchísimo a seguir mejorando."
+    return _cierre_preguntas(nombre, respuestas)
 
 
 def tablero(id_empresa: str) -> dict:
-    """Resumen de resultados de la empresa (el 'tablero')."""
+    """Resumen de resultados de la empresa (el 'tablero'), con desglose por pregunta."""
     items = obtener_repo().resultados(id_empresa)
-    total = len(items)
-    promedio = round(sum(r["valor"] for r in items) / total, 2) if total else None
-    distribucion = {str(n): sum(1 for r in items if r["valor"] == n) for n in range(1, 6)}
+    puntajes = [r for r in items if 1 <= int(r.get("valor", 0)) <= 5]
+    comentarios = [r for r in items if r.get("pregunta") == PREGUNTA_COMENTARIO]
+
+    total = len(puntajes)
+    promedio = round(sum(int(r["valor"]) for r in puntajes) / total, 2) if total else None
+    distribucion = {
+        str(n): sum(1 for r in puntajes if int(r["valor"]) == n) for n in range(1, 6)
+    }
+
+    # Promedio por pregunta (atención, calidad del trabajo, claridad, recomendación...).
+    por_pregunta: dict[str, list[int]] = {}
+    for r in puntajes:
+        por_pregunta.setdefault(r.get("pregunta", ""), []).append(int(r["valor"]))
+    promedio_pregunta = {
+        clave: round(sum(vals) / len(vals), 2) for clave, vals in por_pregunta.items()
+    }
+
     return {
         "id_empresa": id_empresa,
         "respuestas": total,
         "promedio": promedio,
         "distribucion": distribucion,
+        "por_pregunta": promedio_pregunta,
+        "comentarios": [
+            {
+                "telefono": c.get("telefono"),
+                "texto": c.get("comentario", ""),
+                "fecha": c.get("fecha"),
+            }
+            for c in comentarios
+        ],
         "detalle": items,
     }
 
@@ -284,8 +380,65 @@ def limpiar() -> None:
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
-def _texto_pregunta(tipo: str) -> str:
-    return PREGUNTAS.get(tipo, _PREGUNTA_DEFECTO)
+def _texto_intro(tipo: str) -> str:
+    return _INTRO.get(tipo, _INTRO[_TIPO_DEFECTO])
+
+
+def _texto_pregunta(paso: int, preguntas: tuple[tuple[str, str], ...]) -> str:
+    """Texto de la pregunta `paso` (0-based), numerada y con la escala."""
+    numero = paso + 1
+    _, etiqueta = preguntas[paso]
+    return f"{numero}) {etiqueta}\n_Respondé del 1 al 5 (5 = excelente)._"
+
+
+def _cierre_preguntas(nombre: str, respuestas: dict[str, int]) -> str:
+    """Mensaje tras la última pregunta: pide comentario (tono según el puntaje)."""
+    saludo = f" {nombre}" if nombre else ""
+    if _es_negativa(respuestas):
+        return (
+            f"Gracias por tomarte el tiempo{saludo} 🙏 Lamentamos que la experiencia "
+            "no haya sido la mejor. Un responsable de calidad se va a contactar para "
+            "ayudarte.\n\nSi querés contarnos qué pasó, escribilo acá (o *listo* para "
+            "terminar)."
+        )
+    return (
+        f"¡Excelente{saludo}! 🙌 Muchas gracias por tu tiempo.\n\nSi querés, dejanos "
+        "un *comentario* para seguir mejorando (o escribí *listo*). ✨"
+    )
+
+
+def _es_negativa(respuestas: dict[str, int]) -> bool:
+    """True si el cliente quedó insatisfecho (recomendación baja o promedio bajo)."""
+    if respuestas.get("recomendacion", 5) <= 2:
+        return True
+    valores = list(respuestas.values())
+    return bool(valores) and (sum(valores) / len(valores)) <= 2
+
+
+def _guardar(
+    repo,
+    id_empresa: str,
+    telefono: str,
+    tipo: str,
+    referencia: str,
+    pregunta: str,
+    valor: int,
+    comentario: str = "",
+) -> None:
+    repo.guardar_resultado(
+        asdict(
+            ResultadoEncuesta(
+                id_empresa=id_empresa,
+                telefono=telefono,
+                tipo=tipo,
+                referencia=referencia,
+                pregunta=pregunta,
+                valor=valor,
+                comentario=comentario,
+                fecha=datetime.now().isoformat(timespec="seconds"),
+            )
+        )
+    )
 
 
 def _corresponde_enviar(fecha_evento: str, ahora: datetime) -> bool:
