@@ -50,6 +50,8 @@ export function PlanCuentas() {
   const cuentas = useMemo<FilaCuenta[]>(() => {
     const map = new Map<string, FilaCuenta>();
     for (const c of auto.cuentas) {
+      // Saltea asientos sintéticos (traspasos calculados, código no numérico).
+      if (!/^\d/.test(c.codigo)) continue;
       const f = map.get(c.codigo) ?? { codigo: c.codigo, nombre: c.nombre, deptoAuto: c.depto, lineaAuto: c.linea, total: 0 };
       f.total += Object.values(c.valores).reduce((a, b) => a + b, 0);
       map.set(c.codigo, f);

@@ -327,6 +327,24 @@ export interface RepartoCuenta {
 export type OverrideCuenta = { depto?: string; linea?: LineaCuenta; reparto?: RepartoCuenta };
 export type OverridesCuentas = Record<string, OverrideCuenta>;
 
+// Regla de grupo: el 50% de la utilidad (margen bruto = ventas − costo) de los
+// repuestos vendidos POR TALLER se reconoce como "otros ing./egr." de
+// Servicios/Taller, y se descuenta el mismo importe de Repuestos. Es un traspaso
+// interno entre departamentos: el resultado total de la empresa no cambia. Las
+// cuentas son las del plan Oliauto (las mismas en todo el grupo); se matchean por
+// prefijo de código, así también toma las subcuentas.
+const VENTA_RPTOS_TALLER = [
+  "52113", "52114", "52115", "52123", "52125",
+  "52141", "52143", "52161", "52162", "52163",
+];
+const COSTO_RPTOS_TALLER = ["52213", "52233", "52263"];
+const PCT_UTILIDAD_RPTOS_TALLER = 0.5;
+/** Código sintético del asiento de traspaso (no es una cuenta real del plan). */
+const AJUSTE_RPTOS_TALLER = "AJUSTE-RPTOS-TALLER";
+const esRptoTaller = (codigo: string) =>
+  VENTA_RPTOS_TALLER.some((p) => codigo.startsWith(p)) ||
+  COSTO_RPTOS_TALLER.some((p) => codigo.startsWith(p));
+
 export function gestionImportada(
   importaciones: Importacion[],
   empresaIds: string[],
@@ -428,6 +446,29 @@ export function gestionImportada(
       aplicar(d, item.linea, item.per, item.r * w, item.codigo, item.nombre);
     });
   }
+
+  // Traspaso del 50% de la utilidad de repuestos por taller: +X en "otros" de
+  // Servicios/Taller y −X en "otros" de Repuestos (neto cero para la empresa).
+  const margenTallerPorPer: Record<string, number> = {};
+  for (const c of cuentas) {
+    if (!esRptoTaller(c.codigo)) continue;
+    // valores = aporte al resultado (venta acreedora +, costo deudor −) ⇒ la suma
+    // de ventas y costos de taller es directamente el margen bruto.
+    for (const [per, r] of Object.entries(c.valores)) {
+      margenTallerPorPer[per] = (margenTallerPorPer[per] ?? 0) + r;
+    }
+  }
+  const aTaller: CuentaBP = { codigo: AJUSTE_RPTOS_TALLER, nombre: "50% utilidad repuestos por taller", depto: "posventa", linea: "otros", valores: {} };
+  const aRepuestos: CuentaBP = { codigo: AJUSTE_RPTOS_TALLER, nombre: "50% utilidad repuestos por taller (a Taller)", depto: "repuestos", linea: "otros", valores: {} };
+  for (const [per, margen] of Object.entries(margenTallerPorPer)) {
+    const x = margen * PCT_UTILIDAD_RPTOS_TALLER;
+    if (Math.abs(x) < 0.005) continue;
+    aplicar("posventa", "otros", per, x, AJUSTE_RPTOS_TALLER, aTaller.nombre);
+    aplicar("repuestos", "otros", per, -x, AJUSTE_RPTOS_TALLER, aRepuestos.nombre);
+    aTaller.valores[per] = x;
+    aRepuestos.valores[per] = -x;
+  }
+  if (Object.keys(aTaller.valores).length > 0) cuentas.push(aTaller, aRepuestos);
 
   return {
     hayDatos: fuentes.length > 0,
