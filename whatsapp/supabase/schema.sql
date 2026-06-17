@@ -59,6 +59,8 @@ create table if not exists wsp_encuestas_abiertas (
     nombre        text,
     paso          int         not null default 0,
     respuestas    jsonb       not null default '{}'::jsonb,
+    id_externo    text,
+    sucursal      text,
     abierta_at    timestamptz not null default now(),
     primary key (numero_cuenta, telefono)
 );
@@ -66,6 +68,8 @@ create table if not exists wsp_encuestas_abiertas (
 alter table wsp_encuestas_abiertas add column if not exists nombre     text;
 alter table wsp_encuestas_abiertas add column if not exists paso       int   not null default 0;
 alter table wsp_encuestas_abiertas add column if not exists respuestas jsonb not null default '{}'::jsonb;
+alter table wsp_encuestas_abiertas add column if not exists id_externo text;
+alter table wsp_encuestas_abiertas add column if not exists sucursal   text;
 
 -- Encuestas: resultados (el tablero por empresa). Una fila por pregunta
 -- respondida (con su clave en `pregunta`), más una fila por comentario final

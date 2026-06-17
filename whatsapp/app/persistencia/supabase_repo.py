@@ -133,6 +133,8 @@ class RepositorioSupabase(Repositorio):
                 "nombre": contexto.get("nombre", ""),
                 "paso": int(contexto.get("paso", 0) or 0),
                 "respuestas": json.dumps(contexto.get("respuestas") or {}),
+                "id_externo": contexto.get("id_externo", ""),
+                "sucursal": contexto.get("sucursal", ""),
                 "abierta_at": datetime.now(timezone.utc).isoformat(),
             },
             on_conflict="numero_cuenta,telefono",
@@ -141,7 +143,7 @@ class RepositorioSupabase(Repositorio):
     def encuesta_abierta(self, numero_cuenta: str, telefono: str) -> dict | None:
         res = (
             self._db.table("wsp_encuestas_abiertas")
-            .select("id_empresa,tipo,referencia,nombre,paso,respuestas")
+            .select("id_empresa,tipo,referencia,nombre,paso,respuestas,id_externo,sucursal")
             .eq("numero_cuenta", numero_cuenta)
             .eq("telefono", telefono)
             .limit(1)

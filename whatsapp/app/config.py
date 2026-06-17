@@ -56,6 +56,16 @@ class Configuracion(BaseSettings):
     panel_usuario: str = ""
     panel_clave: str = ""
 
+    # --- Integración con el sistema interno (in-house) ---
+    # Token que el sistema interno debe enviar en la cabecera X-API-Token para
+    # usar /eventos. Si queda vacío, el endpoint está abierto (sólo para probar).
+    api_token: str = ""
+    # URL del sistema interno a la que devolvemos el resultado de la encuesta
+    # (writeback). Si queda vacía, no se hace writeback (sólo se guarda local).
+    writeback_url: str = ""
+    # Token que enviamos al sistema interno en el writeback (Authorization: Bearer).
+    writeback_token: str = ""
+
     # --- Horarios ---
     tz_defecto: str = "America/Argentina/Buenos_Aires"
 

@@ -296,12 +296,15 @@ def registrar_respuesta(numero_cuenta: str, telefono: str, texto: str) -> str | 
 
     # Paso del COMENTARIO final (ya respondió todas las preguntas).
     if paso >= len(preguntas):
-        if limpio and limpio.lower() not in _SIN_COMENTARIO:
+        comentario = limpio if (limpio and limpio.lower() not in _SIN_COMENTARIO) else ""
+        if comentario:
             _guardar(
                 repo, id_empresa, telefono, tipo, referencia,
-                pregunta=PREGUNTA_COMENTARIO, valor=0, comentario=limpio,
+                pregunta=PREGUNTA_COMENTARIO, valor=0, comentario=comentario,
             )
             print(f"💬 [ENCUESTA] {telefono} dejó un comentario ({id_empresa})")
+        # Writeback con el comentario incluido (actualiza la OR en el sistema interno).
+        _writeback(contexto, telefono, respuestas, comentario)
         repo.cerrar_encuesta(numero_cuenta, telefono)
         return "¡Gracias de nuevo! 🙏 Tu opinión nos ayuda muchísimo a seguir mejorando."
 
@@ -332,6 +335,9 @@ def registrar_respuesta(numero_cuenta: str, telefono: str, texto: str) -> str | 
             f"🚨 [CALIDAD] {telefono} dejó puntaje BAJO en {id_empresa}. "
             "Avisar al responsable de calidad."
         )
+    # Writeback de los puntajes apenas se completan (sin esperar el comentario,
+    # así un RQR llega al sistema interno aunque el cliente no comente).
+    _writeback(contexto, telefono, respuestas, comentario="")
     return _cierre_preguntas(nombre, respuestas)
 
 
@@ -444,6 +450,16 @@ def _validar_cuestionario(datos: dict) -> dict:
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+def _writeback(contexto: dict, telefono: str, respuestas: dict, comentario: str) -> None:
+    """Devuelve el resultado al sistema interno (best-effort; import diferido)."""
+    try:
+        from . import integracion
+
+        integracion.enviar_writeback(contexto, telefono, respuestas, comentario)
+    except Exception as exc:  # noqa: BLE001
+        print(f"⚠️  [WRITEBACK] {exc}")
+
+
 def _texto_intro(id_empresa: str, tipo: str) -> str:
     """Primer mensaje (cuerpo de la plantilla): encabezado + escala + 1ª pregunta."""
     conf = cuestionario(id_empresa)

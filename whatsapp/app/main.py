@@ -24,7 +24,17 @@ import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from fastapi.responses import HTMLResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
@@ -111,6 +121,19 @@ def requiere_clave(cred: HTTPBasicCredentials | None = Depends(_seguridad)) -> N
         )
 
 
+def requiere_token(x_api_token: str | None = Header(default=None)) -> None:
+    """Autenticación de la API de integración (sistema interno → /eventos).
+
+    Si API_TOKEN está vacío, el endpoint queda abierto (sólo para probar).
+    Cuando lo completes, exige la cabecera ``X-API-Token`` con ese valor.
+    """
+    config = obtener_config()
+    if not config.api_token:
+        return
+    if not (x_api_token and secrets.compare_digest(x_api_token, config.api_token)):
+        raise HTTPException(status_code=401, detail="Token de API inválido")
+
+
 @app.get("/")
 def salud() -> dict[str, object]:
     """Endpoint de salud: confirma que el servicio está vivo y qué atiende cada número."""
@@ -193,6 +216,33 @@ async def webhook(
         return Response(status_code=200)
 
     return _twiml(twiml)
+
+
+@app.post("/eventos", dependencies=[Depends(requiere_token)])
+async def recibir_evento_interno(request: Request, dry_run: bool | None = None) -> dict:
+    """Recibe un evento del sistema interno y manda la encuesta por WhatsApp.
+
+    Lo llama el sistema in-house (al cerrar/entregar una OR, o con un botón). El
+    cuerpo es JSON genérico (sirve para servicio, ventas, repuestos, entregas…)::
+
+        POST /eventos      (cabecera X-API-Token: <token>)
+        {
+          "tipo": "servicio",
+          "id_externo": "OR-489826",
+          "cliente": "Francisco Mendez",
+          "telefono": "+542804320238",
+          "referencia": "Ford Transit AG299EX",
+          "sucursal": "Trelew",
+          "fecha_evento": "2026-06-06T11:22"
+        }
+
+    Cuando el cliente responde, el resultado se devuelve al sistema interno por
+    writeback (si WRITEBACK_URL está configurada).
+    """
+    from .services.integracion import recibir_evento
+
+    evento = await request.json()
+    return recibir_evento(evento, dry_run=dry_run)
 
 
 @app.post("/campanias/adjudicaciones/{id_empresa}", dependencies=[Depends(requiere_clave)])
