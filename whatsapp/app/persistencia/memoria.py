@@ -25,6 +25,7 @@ class RepositorioMemoria(Repositorio):
         self._encuestas_abiertas: dict[tuple[str, str], dict] = {}
         self._resultados: list[dict] = []
         self._historiales: dict[tuple[str, str], list[dict]] = {}
+        self._config_encuestas: dict[str, dict] = {}
 
     # --- Rate limit ---
     def campania_ya_enviada(self, id_empresa: str, campania: str, telefono: str) -> bool:
@@ -80,6 +81,13 @@ class RepositorioMemoria(Repositorio):
     def resultados(self, id_empresa: str) -> list[dict]:
         return [r for r in self._resultados if r.get("id_empresa") == id_empresa]
 
+    # --- Encuestas: cuestionario editable ---
+    def obtener_config_encuestas(self, id_empresa: str) -> dict | None:
+        return self._config_encuestas.get(id_empresa)
+
+    def guardar_config_encuestas(self, id_empresa: str, datos: dict) -> None:
+        self._config_encuestas[id_empresa] = dict(datos)
+
     # --- Memoria conversacional ---
     def historial(self, numero_cuenta: str, telefono: str) -> list[dict]:
         return list(self._historiales.get((numero_cuenta, telefono), []))
@@ -101,3 +109,4 @@ class RepositorioMemoria(Repositorio):
         self._encuestas_abiertas.clear()
         self._resultados.clear()
         self._historiales.clear()
+        self._config_encuestas.clear()

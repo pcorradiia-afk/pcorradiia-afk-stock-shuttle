@@ -252,6 +252,26 @@ def resultados_encuestas(id_empresa: str) -> dict:
     return tablero(id_empresa)
 
 
+@app.get("/encuestas/{id_empresa}/preguntas", dependencies=[Depends(requiere_clave)])
+def leer_preguntas_encuesta(id_empresa: str) -> dict:
+    """Devuelve el cuestionario (taller y ventas) para editarlo en el panel."""
+    from .services.encuestas import obtener_preguntas
+
+    return obtener_preguntas(id_empresa)
+
+
+@app.post("/encuestas/{id_empresa}/preguntas", dependencies=[Depends(requiere_clave)])
+async def guardar_preguntas_encuesta(id_empresa: str, request: Request) -> dict:
+    """Guarda el cuestionario editado desde el panel (preguntas de taller y ventas)."""
+    from .services.encuestas import guardar_preguntas
+
+    datos = await request.json()
+    try:
+        return guardar_preguntas(id_empresa, datos)
+    except EncuestaError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.post("/documentos/cupones/{id_empresa}")
 def lanzar_cupones(id_empresa: str, dry_run: bool = True) -> ReporteDocumentos:
     """Lanza la campaña de cupones de pago en PDF (caso #4) para una empresa.

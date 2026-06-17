@@ -22,6 +22,7 @@ Supabase, sin cambiar esta interfaz.
 
 from __future__ import annotations
 
+import copy
 import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta
@@ -45,44 +46,42 @@ PLANTILLA_ENCUESTA = "encuesta_calidad"
 # Clave que usamos para guardar el comentario final (no es un puntaje 1-5).
 PREGUNTA_COMENTARIO = "comentario"
 
-# ── CUESTIONARIO REAL (editá acá cuando calidad lo ajuste) ────────────────────
-# Cada pregunta es (clave_interna, texto). La clave se usa en el tablero para el
-# desglose por pregunta; el texto es lo que ve el cliente.
-PREGUNTAS: dict[str, tuple[tuple[str, str], ...]] = {
-    "taller": (
-        ("atencion", "¿Cómo te sentiste con la *atención en el taller*?"),
-        ("calidad_trabajo", "¿Cómo evaluás la *calidad del trabajo* realizado?"),
-        ("claridad", "¿La *explicación de los trabajos* fue clara?"),
-        ("recomendacion", "¿*Recomendarías* la marca y nuestro taller?"),
-    ),
-    "ventas": (
-        ("atencion", "¿Cómo fue la *atención* que recibiste?"),
-        ("asesoramiento", "¿Qué tan conforme quedaste con el *asesoramiento* en la compra?"),
-        ("entrega", "¿Cómo fue la *entrega* de tu vehículo?"),
-        ("recomendacion", "¿*Recomendarías* Pedro Corradi a un amigo o familiar?"),
-    ),
-}
-
-# Texto de la PRIMERA pregunta (= cuerpo de la plantilla aprobada). Variables:
-# {{1}} = nombre, {{2}} = referencia (modelo / service). Debe terminar con la
-# pregunta 1) del cuestionario de arriba.
-_INTRO: dict[str, str] = {
-    "taller": (
-        "¡Hola {nombre}! 👋 Soy Valentino, de {empresa}. Tu opinión nos ayuda a "
-        "mejorar 💪🚗\n\n"
-        "Sobre tu paso por el taller con tu {referencia}, del 1 al 5 (5 = excelente):\n"
-        "1) ¿Cómo te sentiste con la *atención en el taller*?\n\n"
-        "Respondé con un número del 1 al 5. 🙏"
-    ),
-    "ventas": (
-        "¡Hola {nombre}! 👋 Soy Valentino, de {empresa}. Tu opinión nos ayuda a "
-        "mejorar 💪🚗\n\n"
-        "Sobre la compra de tu {referencia}, del 1 al 5 (5 = excelente):\n"
-        "1) ¿Cómo fue la *atención* que recibiste?\n\n"
-        "Respondé con un número del 1 al 5. 🙏"
-    ),
-}
+# Tipos de encuesta y su etiqueta legible (para el panel).
+TIPOS = ("taller", "ventas")
+ETIQUETA_TIPO = {"taller": "Posventa / Taller", "ventas": "Ventas 0km"}
 _TIPO_DEFECTO = "taller"
+
+# ── CUESTIONARIO DE FÁBRICA ───────────────────────────────────────────────────
+# Estas son las preguntas por defecto. Se pueden EDITAR desde el panel (se
+# guardan por empresa en el repositorio); si una empresa no editó nada, se usan
+# estas. El `encabezado` + la 1ª pregunta forman el cuerpo de la plantilla
+# aprobada de WhatsApp (variables {nombre}, {empresa}, {referencia}).
+CUESTIONARIO_DEFECTO: dict[str, dict] = {
+    "taller": {
+        "encabezado": (
+            "¡Hola {nombre}! 👋 Soy Valentino, de {empresa}. Tu opinión nos ayuda "
+            "a mejorar 💪🚗\n\nSobre tu paso por el taller con tu {referencia}:"
+        ),
+        "preguntas": [
+            {"clave": "atencion", "texto": "¿Cómo te sentiste con la *atención en el taller*?"},
+            {"clave": "calidad_trabajo", "texto": "¿Cómo evaluás la *calidad del trabajo* realizado?"},
+            {"clave": "claridad", "texto": "¿La *explicación de los trabajos* fue clara?"},
+            {"clave": "recomendacion", "texto": "¿*Recomendarías* la marca y nuestro taller?"},
+        ],
+    },
+    "ventas": {
+        "encabezado": (
+            "¡Hola {nombre}! 👋 Soy Valentino, de {empresa}. Tu opinión nos ayuda "
+            "a mejorar 💪🚗\n\nSobre la compra de tu {referencia}:"
+        ),
+        "preguntas": [
+            {"clave": "atencion", "texto": "¿Cómo fue la *atención* que recibiste?"},
+            {"clave": "asesoramiento", "texto": "¿Qué tan conforme quedaste con el *asesoramiento* en la compra?"},
+            {"clave": "entrega", "texto": "¿Cómo fue la *entrega* de tu vehículo?"},
+            {"clave": "recomendacion", "texto": "¿*Recomendarías* Pedro Corradi a un amigo o familiar?"},
+        ],
+    },
+}
 
 # Palabras con las que el cliente abandona la encuesta o pide una persona.
 _ESCAPE = ("asesor", "humano", "cancelar", "salir", "basta")
@@ -208,7 +207,7 @@ def correr_encuestas_pendientes(
             continue
 
         # Texto de la 1ª pregunta y variables: {{1}}=nombre, {{2}}=referencia.
-        preview = _texto_intro(tipo).format_map(
+        preview = _texto_intro(id_empresa, tipo).format_map(
             _DefaultDict({**evento, "empresa": ctx.empresa})
         )
         variables = {"1": str(evento.get("nombre", "")), "2": str(referencia)}
@@ -282,11 +281,11 @@ def registrar_respuesta(numero_cuenta: str, telefono: str, texto: str) -> str | 
         return None
 
     tipo = contexto.get("tipo", _TIPO_DEFECTO)
-    preguntas = PREGUNTAS.get(tipo, PREGUNTAS[_TIPO_DEFECTO])
+    id_empresa = contexto.get("id_empresa", "")
+    preguntas = preguntas_de(id_empresa, tipo)
     paso = int(contexto.get("paso", 0) or 0)
     respuestas: dict[str, int] = dict(contexto.get("respuestas") or {})
     nombre = contexto.get("nombre", "")
-    id_empresa = contexto.get("id_empresa", "")
     referencia = contexto.get("referencia", "")
     limpio = (texto or "").strip()
 
@@ -379,12 +378,85 @@ def limpiar() -> None:
     obtener_repo().limpiar_todo()
 
 
+# ── Cuestionario configurable (editable desde el panel) ──────────────────────
+def cuestionario(id_empresa: str) -> dict:
+    """Cuestionario de la empresa: el editado en el panel o el de fábrica.
+
+    Hace un merge defensivo: si la empresa editó un tipo, se usa el suyo; si le
+    falta alguno (o nunca editó), se completa con CUESTIONARIO_DEFECTO.
+    """
+    base = copy.deepcopy(CUESTIONARIO_DEFECTO)
+    guardado = obtener_repo().obtener_config_encuestas(id_empresa)
+    if guardado:
+        for tipo in TIPOS:
+            bloque = guardado.get(tipo) or {}
+            if bloque.get("preguntas"):
+                base[tipo] = {
+                    "encabezado": bloque.get("encabezado") or base[tipo]["encabezado"],
+                    "preguntas": bloque["preguntas"],
+                }
+    return base
+
+
+def preguntas_de(id_empresa: str, tipo: str) -> list[tuple[str, str]]:
+    """Lista (clave, texto) de las preguntas de un tipo para una empresa."""
+    conf = cuestionario(id_empresa)
+    bloque = conf.get(tipo) or conf[_TIPO_DEFECTO]
+    return [(p.get("clave", ""), p.get("texto", "")) for p in bloque.get("preguntas", [])]
+
+
+def obtener_preguntas(id_empresa: str) -> dict:
+    """Devuelve el cuestionario completo (para mostrarlo/editarlo en el panel)."""
+    return cuestionario(id_empresa)
+
+
+def guardar_preguntas(id_empresa: str, datos: dict) -> dict:
+    """Valida y guarda el cuestionario editado desde el panel. Devuelve el guardado."""
+    limpio = _validar_cuestionario(datos)
+    obtener_repo().guardar_config_encuestas(id_empresa, limpio)
+    return limpio
+
+
+def _validar_cuestionario(datos: dict) -> dict:
+    """Normaliza lo que llega del panel: descarta preguntas vacías y exige al menos una."""
+    if not isinstance(datos, dict):
+        raise EncuestaError("Formato del cuestionario inválido.")
+    resultado: dict[str, dict] = {}
+    for tipo in TIPOS:
+        bloque = datos.get(tipo) or {}
+        preguntas: list[dict] = []
+        for i, p in enumerate(bloque.get("preguntas") or []):
+            texto = (str(p.get("texto", "")) or "").strip()
+            if not texto:
+                continue
+            clave = (str(p.get("clave", "")) or "").strip() or f"p{i + 1}"
+            preguntas.append({"clave": clave, "texto": texto})
+        if not preguntas:
+            raise EncuestaError(
+                f"La encuesta de '{ETIQUETA_TIPO.get(tipo, tipo)}' necesita al menos una pregunta."
+            )
+        encabezado = (
+            str(bloque.get("encabezado", "")).strip()
+            or CUESTIONARIO_DEFECTO[tipo]["encabezado"]
+        )
+        resultado[tipo] = {"encabezado": encabezado, "preguntas": preguntas}
+    return resultado
+
+
 # ── Helpers ──────────────────────────────────────────────────────────────────
-def _texto_intro(tipo: str) -> str:
-    return _INTRO.get(tipo, _INTRO[_TIPO_DEFECTO])
+def _texto_intro(id_empresa: str, tipo: str) -> str:
+    """Primer mensaje (cuerpo de la plantilla): encabezado + escala + 1ª pregunta."""
+    conf = cuestionario(id_empresa)
+    bloque = conf.get(tipo) or conf[_TIPO_DEFECTO]
+    encabezado = bloque["encabezado"]
+    primera = bloque["preguntas"][0]["texto"] if bloque.get("preguntas") else ""
+    return (
+        f"{encabezado}\nDel 1 al 5 (5 = excelente):\n1) {primera}\n\n"
+        "Respondé con un número del 1 al 5. 🙏"
+    )
 
 
-def _texto_pregunta(paso: int, preguntas: tuple[tuple[str, str], ...]) -> str:
+def _texto_pregunta(paso: int, preguntas: list[tuple[str, str]]) -> str:
     """Texto de la pregunta `paso` (0-based), numerada y con la escala."""
     numero = paso + 1
     _, etiqueta = preguntas[paso]

@@ -184,6 +184,35 @@ class RepositorioSupabase(Repositorio):
         )
         return res.data or []
 
+    # --- Encuestas: cuestionario editable ---
+    def obtener_config_encuestas(self, id_empresa: str) -> dict | None:
+        res = (
+            self._db.table("wsp_config_encuestas")
+            .select("datos")
+            .eq("id_empresa", id_empresa)
+            .limit(1)
+            .execute()
+        )
+        if not res.data:
+            return None
+        datos = res.data[0].get("datos")
+        if isinstance(datos, str):
+            try:
+                return json.loads(datos)
+            except ValueError:
+                return None
+        return datos
+
+    def guardar_config_encuestas(self, id_empresa: str, datos: dict) -> None:
+        self._db.table("wsp_config_encuestas").upsert(
+            {
+                "id_empresa": id_empresa,
+                "datos": json.dumps(datos),
+                "actualizado_at": datetime.now(timezone.utc).isoformat(),
+            },
+            on_conflict="id_empresa",
+        ).execute()
+
     # --- Memoria conversacional ---
     def historial(self, numero_cuenta: str, telefono: str) -> list[dict]:
         res = (

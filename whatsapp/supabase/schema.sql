@@ -87,6 +87,14 @@ alter table wsp_encuesta_resultados add column if not exists comentario text;
 create index if not exists wsp_encuesta_resultados_empresa
     on wsp_encuesta_resultados (id_empresa);
 
+-- Encuestas: cuestionario editable por empresa (preguntas de taller y ventas).
+-- `datos` guarda el JSON con encabezado + lista de preguntas de cada tipo.
+create table if not exists wsp_config_encuestas (
+    id_empresa     text        primary key,
+    datos          jsonb       not null,
+    actualizado_at timestamptz not null default now()
+);
+
 -- Memoria conversacional: historial de la charla con la IA por cliente.
 create table if not exists wsp_historial (
     id            bigint generated always as identity primary key,
@@ -107,3 +115,4 @@ alter table wsp_bot_pausado         enable row level security;
 alter table wsp_encuesta_envios     enable row level security;
 alter table wsp_encuestas_abiertas  enable row level security;
 alter table wsp_encuesta_resultados enable row level security;
+alter table wsp_config_encuestas    enable row level security;

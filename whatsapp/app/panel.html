@@ -102,11 +102,11 @@
       <small>Control & Gestión</small>
     </div>
     <div class="navlbl">Campañas</div>
-    <div class="navitem activo"><span class="ic">📨</span> Plan Óvalo</div>
+    <div class="navitem activo" data-vista="ovalo"><span class="ic">📨</span> Plan Óvalo</div>
     <div class="navitem"><span class="ic">🚙</span> Difusión de stock</div>
     <div class="navitem"><span class="ic">🎉</span> Adjudicaciones</div>
     <div class="navlbl">Herramientas</div>
-    <div class="navitem"><span class="ic">⭐</span> Encuestas</div>
+    <div class="navitem" data-vista="encuestas"><span class="ic">⭐</span> Encuestas</div>
     <div class="navitem"><span class="ic">💬</span> Conversaciones</div>
     <div class="navlbl">Cuenta</div>
     <div class="navitem"><span class="ic">⚙️</span> Configuración</div>
@@ -127,8 +127,9 @@
 
     <div class="content">
       <h2 class="saludo">Hola, Fernando 👋</h2>
-      <p class="saludo-sub">Subí el CSV del mes, elegí a quién enviar y revisá la vista previa antes de mandar.</p>
+      <p class="saludo-sub" id="subtitulo">Subí el CSV del mes, elegí a quién enviar y revisá la vista previa antes de mandar.</p>
 
+      <div id="vistaOvalo">
       <div class="card">
         <h2><span class="paso">1</span>Subí la base del mes (CSV del Óvalo)</h2>
         <input type="file" id="archivo" accept=".csv" />
@@ -180,13 +181,123 @@
         <div id="reporteResumen"></div>
         <div id="reporteEjemplos"></div>
       </div>
+      </div><!-- /vistaOvalo -->
+
+      <!-- ===== VISTA: ENCUESTAS DE CALIDAD ===== -->
+      <div id="vistaEncuestas" class="oculto">
+        <div class="card">
+          <h2><span class="paso">⭐</span>Encuestas de calidad — editá las preguntas</h2>
+          <p class="nota">El sistema envía estas preguntas automáticamente a las 48 hs de la compra (Ventas) o del paso por el taller (Posventa). El cliente responde de a una, eligiendo un número del 1 al 5.</p>
+          <p class="nota">📌 La <b>1ª pregunta</b> viaja dentro de la plantilla aprobada de WhatsApp: si la cambiás, hay que volver a aprobar la plantilla en Meta. De la 2ª en adelante, cambialas libremente.</p>
+        </div>
+
+        <div class="card">
+          <h2>🔧 Posventa / Taller</h2>
+          <label>Encabezado / saludo inicial <span class="mut">(variables: {nombre}, {empresa}, {referencia})</span></label>
+          <textarea data-tipo="taller" data-campo="encabezado"></textarea>
+          <label style="margin-top:12px;">Preguntas <span class="mut">(el cliente responde 1 a 5)</span></label>
+          <div id="preg-taller"></div>
+          <div style="margin-top:10px;"><button class="sec" data-add="taller">+ Agregar pregunta</button></div>
+        </div>
+
+        <div class="card">
+          <h2>🚙 Ventas 0km</h2>
+          <label>Encabezado / saludo inicial <span class="mut">(variables: {nombre}, {empresa}, {referencia})</span></label>
+          <textarea data-tipo="ventas" data-campo="encabezado"></textarea>
+          <label style="margin-top:12px;">Preguntas <span class="mut">(el cliente responde 1 a 5)</span></label>
+          <div id="preg-ventas"></div>
+          <div style="margin-top:10px;"><button class="sec" data-add="ventas">+ Agregar pregunta</button></div>
+        </div>
+
+        <div class="card">
+          <button id="btnGuardarPreg">💾 Guardar preguntas</button>
+          <span id="pregMsg" class="nota" style="margin-left:12px;"></span>
+        </div>
+      </div>
     </div>
   </main>
 </div>
 
 <script>
   const $ = (id) => document.getElementById(id);
+  const ID_EMPRESA = "empresa_pedro_corradi";
   let analisis = null;
+
+  // ===== Navegación entre vistas (Plan Óvalo / Encuestas) =====
+  let preguntasCargadas = false;
+  document.querySelectorAll('.navitem[data-vista]').forEach(it => {
+    it.addEventListener('click', () => {
+      document.querySelectorAll('.navitem').forEach(n => n.classList.remove('activo'));
+      it.classList.add('activo');
+      const v = it.dataset.vista;
+      $("vistaOvalo").classList.toggle('oculto', v !== 'ovalo');
+      $("vistaEncuestas").classList.toggle('oculto', v !== 'encuestas');
+      $("subtitulo").textContent = v === 'encuestas'
+        ? "Editá las preguntas de las encuestas de calidad (Posventa y Ventas)."
+        : "Subí el CSV del mes, elegí a quién enviar y revisá la vista previa antes de mandar.";
+      if (v === 'encuestas' && !preguntasCargadas) cargarPreguntas();
+    });
+  });
+
+  // ===== Editor de preguntas de encuestas =====
+  function filaPregunta(tipo, clave, texto) {
+    const d = document.createElement('div');
+    d.className = 'row';
+    d.style.cssText = 'display:flex;gap:8px;align-items:center;';
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.value = texto || '';
+    inp.dataset.campo = 'pregunta'; inp.dataset.clave = clave || '';
+    inp.style.flex = '1';
+    const b = document.createElement('button');
+    b.className = 'sec'; b.textContent = '✕'; b.title = 'Quitar';
+    b.style.padding = '8px 12px';
+    b.onclick = () => d.remove();
+    d.appendChild(inp); d.appendChild(b);
+    return d;
+  }
+
+  async function cargarPreguntas() {
+    try {
+      const r = await fetch(`/encuestas/${ID_EMPRESA}/preguntas`);
+      const data = await r.json();
+      ['taller', 'ventas'].forEach(tipo => {
+        const bloque = data[tipo] || {};
+        const enc = document.querySelector(`textarea[data-tipo="${tipo}"][data-campo="encabezado"]`);
+        if (enc) enc.value = bloque.encabezado || '';
+        const cont = $(`preg-${tipo}`); cont.innerHTML = '';
+        (bloque.preguntas || []).forEach(p => cont.appendChild(filaPregunta(tipo, p.clave, p.texto)));
+      });
+      preguntasCargadas = true;
+    } catch (e) { alert("No pude cargar las preguntas: " + e); }
+  }
+
+  document.querySelectorAll('button[data-add]').forEach(b => {
+    b.addEventListener('click', () => {
+      const tipo = b.dataset.add;
+      $(`preg-${tipo}`).appendChild(filaPregunta(tipo, '', ''));
+    });
+  });
+
+  document.getElementById('btnGuardarPreg').addEventListener('click', async () => {
+    const payload = {};
+    ['taller', 'ventas'].forEach(tipo => {
+      const enc = document.querySelector(`textarea[data-tipo="${tipo}"][data-campo="encabezado"]`).value;
+      const preguntas = [...document.querySelectorAll(`#preg-${tipo} input[data-campo="pregunta"]`)]
+        .map(i => ({ clave: i.dataset.clave || '', texto: i.value.trim() }))
+        .filter(p => p.texto);
+      payload[tipo] = { encabezado: enc, preguntas };
+    });
+    $("btnGuardarPreg").disabled = true; $("pregMsg").textContent = "Guardando...";
+    try {
+      const r = await fetch(`/encuestas/${ID_EMPRESA}/preguntas`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const res = await r.json();
+      $("pregMsg").textContent = res.detail ? ("⚠️ " + res.detail) : "✅ Preguntas guardadas.";
+    } catch (e) { $("pregMsg").textContent = "Error: " + e; }
+    $("btnGuardarPreg").disabled = false;
+  });
 
   function chip(grupo, valor, cantidad) {
     const l = document.createElement("label");

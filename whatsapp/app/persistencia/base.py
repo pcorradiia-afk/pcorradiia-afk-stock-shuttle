@@ -66,6 +66,13 @@ class Repositorio(ABC):
     @abstractmethod
     def resultados(self, id_empresa: str) -> list[dict]: ...
 
+    # --- Encuestas: cuestionario editable (preguntas por empresa) ---
+    @abstractmethod
+    def obtener_config_encuestas(self, id_empresa: str) -> dict | None: ...
+
+    @abstractmethod
+    def guardar_config_encuestas(self, id_empresa: str, datos: dict) -> None: ...
+
     # --- Memoria conversacional (historial de la charla con la IA) ---
     @abstractmethod
     def historial(self, numero_cuenta: str, telefono: str) -> list[dict]: ...
