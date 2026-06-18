@@ -319,7 +319,9 @@ export interface GestionImportada {
  */
 /** Reparto de una cuenta entre varios deptos (por % de ventas o % fijo). */
 export interface RepartoCuenta {
-  modo: "ventas" | "fijo";
+  // "ventas": por ventas totales de cada depto · "ventas_taller": idem pero para
+  // Repuestos pondera solo por sus ventas de repuestos-por-taller · "fijo": % fijos.
+  modo: "ventas" | "ventas_taller" | "fijo";
   deptos: string[];
   pct?: Record<string, number>;
 }
@@ -381,7 +383,7 @@ export function gestionImportada(
 
   // Cuentas con reparto por % de ventas: se resuelven en una 2.ª pasada, cuando
   // ya están calculadas las ventas por departamento.
-  const repartoVentas: { codigo: string; nombre: string; linea: LineaCuenta; per: string; r: number; deptos: string[] }[] = [];
+  const repartoVentas: { codigo: string; nombre: string; linea: LineaCuenta; per: string; r: number; deptos: string[]; modo: "ventas" | "ventas_taller" }[] = [];
 
   for (const imp of fuentes) {
     const p = imp.payload as BalanceParcial;
@@ -407,7 +409,7 @@ export function gestionImportada(
             const tot = rep.deptos.reduce((a, d) => a + (rep.pct?.[d] ?? 0), 0) || 1;
             for (const d of rep.deptos) aplicar(d, linea, per, (r * (rep.pct?.[d] ?? 0)) / tot, c.codigo, c.nombre);
           } else {
-            repartoVentas.push({ codigo: c.codigo, nombre: c.nombre, linea, per, r, deptos: rep.deptos });
+            repartoVentas.push({ codigo: c.codigo, nombre: c.nombre, linea, per, r, deptos: rep.deptos, modo: rep.modo === "ventas_taller" ? "ventas_taller" : "ventas" });
           }
         }
       }
@@ -437,9 +439,25 @@ export function gestionImportada(
     }
   }
 
-  // 2.ª pasada: reparto por % de ventas (usa las ventas por depto ya calculadas).
+  // Base "ventas de taller" por período: solo las ventas de repuestos-por-taller
+  // (subconjunto VENTA_RPTOS_TALLER, sin costos). Sirve para el modo
+  // "ventas_taller", donde Repuestos pondera por esto y no por su venta total.
+  const ventasRptosTallerPorPer: Record<string, number> = {};
+  for (const c of cuentas) {
+    if (!VENTA_RPTOS_TALLER.some((p) => c.codigo.startsWith(p))) continue;
+    for (const [per, r] of Object.entries(c.valores)) {
+      ventasRptosTallerPorPer[per] = (ventasRptosTallerPorPer[per] ?? 0) + r;
+    }
+  }
+
+  // 2.ª pasada: reparto por ventas (usa las ventas por depto ya calculadas). En
+  // modo "ventas_taller", Repuestos usa su venta de repuestos-por-taller.
   for (const item of repartoVentas) {
-    const vs = item.deptos.map((d) => Math.max(0, porDepto[d]?.[item.per]?.ingresos ?? 0));
+    const vs = item.deptos.map((d) =>
+      item.modo === "ventas_taller" && d === "repuestos"
+        ? Math.max(0, ventasRptosTallerPorPer[item.per] ?? 0)
+        : Math.max(0, porDepto[d]?.[item.per]?.ingresos ?? 0),
+    );
     const tot = vs.reduce((a, b) => a + b, 0);
     item.deptos.forEach((d, i) => {
       const w = tot ? vs[i] / tot : 1 / item.deptos.length;
