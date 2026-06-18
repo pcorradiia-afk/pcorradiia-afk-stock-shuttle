@@ -72,11 +72,21 @@ def _responder_con_claude(
     repo = obtener_repo()
     historial = repo.historial(numero_cuenta, telefono)
 
+    # Si ya hay charla previa, reforzamos (fuerte) que NO vuelva a saludar.
+    system = ctx.system_prompt
+    if historial:
+        system += (
+            "\n\n[CONTEXTO] Ya venís conversando con este cliente (hay mensajes "
+            "previos en este chat). NO saludes, NO te presentes y NO escribas "
+            "'¡Hola!' ni 'Bienvenido': continuá la charla directo, retomando lo "
+            "último que te dijo, sin repetir lo ya dicho."
+        )
+
     cliente = Anthropic(api_key=api_key)
     respuesta = cliente.messages.create(
         model=modelo.strip().lower(),       # los IDs de modelo van en minúscula
-        max_tokens=600,                     # respuestas breves, estilo WhatsApp
-        system=ctx.system_prompt,           # ← identidad dinámica por marca × línea
+        max_tokens=400,                     # respuestas breves, estilo WhatsApp
+        system=system,                      # ← identidad dinámica por marca × línea
         messages=historial + [{"role": "user", "content": mensaje}],
     )
 

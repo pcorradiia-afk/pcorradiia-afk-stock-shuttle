@@ -75,7 +75,7 @@ def recibir_evento(evento: dict, dry_run: bool | None = None) -> dict:
     referencia = evento.get("referencia", "")
     preview = encuestas._texto_intro(id_empresa, tipo_encuesta).format_map(
         encuestas._DefaultDict(
-            {"nombre": nombre, "empresa": ctx.empresa, "referencia": referencia}
+            {"nombre": nombre, "empresa": ctx.saludo, "referencia": referencia}
         )
     )
 

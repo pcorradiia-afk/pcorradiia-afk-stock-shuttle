@@ -20,6 +20,8 @@ y exponerlo con:         ngrok http 8000
 
 from __future__ import annotations
 
+import html
+import re
 import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -377,6 +379,69 @@ def estado_scheduler() -> dict:
 def panel_campanias() -> str:
     """Panel web para lanzar campañas del Óvalo (subir CSV, elegir a quién, enviar)."""
     return (Path(__file__).parent / "panel.html").read_text(encoding="utf-8")
+
+
+# ── Simulador: probar el bot sin enviar WhatsApp real ────────────────────────
+# Cliente ficticio y número real de Pedro Corradi (para que rutee a esa marca).
+_SIM_NUMERO = "+5492804001765"
+_SIM_TELEFONO = "+5491100000000"
+
+
+def _mensajes_de_twiml(twiml: str) -> list[str]:
+    """Extrae el/los texto(s) de un TwiML <Message>…</Message>."""
+    partes = re.findall(r"<Message>(.*?)</Message>", twiml, re.S)
+    if not partes:  # por las dudas: sacamos cualquier tag y devolvemos el texto
+        partes = [re.sub(r"<[^>]+>", "", twiml)]
+    return [html.unescape(p).strip() for p in partes if p.strip()]
+
+
+@app.post("/simular", dependencies=[Depends(requiere_clave)])
+async def simular(request: Request) -> dict:
+    """Corre el bot para un cliente ficticio y devuelve la respuesta (sin enviar nada)."""
+    datos = await request.json()
+    numero = normalizar_telefono(datos.get("numero") or _SIM_NUMERO)
+    telefono = normalizar_telefono(datos.get("telefono") or _SIM_TELEFONO)
+    cuenta = buscar_cuenta(numero)
+    if cuenta is None:
+        return {"respuestas": [f"(el número {numero} no está registrado)"]}
+    twiml = decidir_respuesta(cuenta, str(datos.get("texto", "")), telefono, numero)
+    if twiml is None:
+        return {
+            "respuestas": ["⏸️ (el bot quedó en pausa — derivado a un asesor humano)"],
+            "pausado": True,
+        }
+    return {"respuestas": _mensajes_de_twiml(twiml)}
+
+
+@app.post("/simular/encuesta", dependencies=[Depends(requiere_clave)])
+async def simular_encuesta(request: Request) -> dict:
+    """Inicia una encuesta de prueba (taller/ventas) para el cliente ficticio."""
+    from .services.integracion import recibir_evento
+
+    datos = await request.json()
+    telefono = datos.get("telefono") or _SIM_TELEFONO
+    # Sin id_externo → no se hace writeback al sistema interno (es una simulación).
+    evento = {
+        "tipo": str(datos.get("tipo", "servicio")),
+        "cliente": "Cliente de prueba",
+        "telefono": telefono,
+        "referencia": str(datos.get("referencia", "Ford Ranger")),
+        "empresa": "empresa_pedro_corradi",
+    }
+    res = recibir_evento(evento, dry_run=True)
+    return {"respuestas": [res.get("vista_previa", "(no se pudo iniciar)")], "estado": res.get("estado")}
+
+
+@app.post("/simular/reiniciar", dependencies=[Depends(requiere_clave)])
+async def simular_reiniciar(request: Request) -> dict:
+    """Borra el estado del chat de prueba (sesión, encuesta, memoria, pausa)."""
+    from .persistencia import obtener_repo
+
+    datos = await request.json()
+    numero = normalizar_telefono(datos.get("numero") or _SIM_NUMERO)
+    telefono = normalizar_telefono(datos.get("telefono") or _SIM_TELEFONO)
+    obtener_repo().reiniciar_conversacion(numero, telefono)
+    return {"ok": True}
 
 
 @app.post("/ovalo/analizar", dependencies=[Depends(requiere_clave)])

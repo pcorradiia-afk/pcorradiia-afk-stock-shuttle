@@ -100,6 +100,13 @@ class RepositorioMemoria(Repositorio):
         if len(hist) > _MAX_HISTORIAL:
             del hist[: len(hist) - _MAX_HISTORIAL]
 
+    # --- Reiniciar una conversación puntual ---
+    def reiniciar_conversacion(self, numero_cuenta: str, telefono: str) -> None:
+        self._lineas.pop((numero_cuenta, telefono), None)
+        self._encuestas_abiertas.pop((numero_cuenta, telefono), None)
+        self._historiales.pop((numero_cuenta, telefono), None)
+        self._bot_pausado.discard(telefono)
+
     # --- Tests ---
     def limpiar_todo(self) -> None:
         self._campanias.clear()

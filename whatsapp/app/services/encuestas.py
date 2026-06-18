@@ -208,7 +208,7 @@ def correr_encuestas_pendientes(
 
         # Texto de la 1ª pregunta y variables: {{1}}=nombre, {{2}}=referencia.
         preview = _texto_intro(id_empresa, tipo).format_map(
-            _DefaultDict({**evento, "empresa": ctx.empresa})
+            _DefaultDict({**evento, "empresa": ctx.saludo})
         )
         variables = {"1": str(evento.get("nombre", "")), "2": str(referencia)}
 

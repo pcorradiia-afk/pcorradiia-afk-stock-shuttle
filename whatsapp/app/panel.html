@@ -107,7 +107,7 @@
     <div class="navitem"><span class="ic">🎉</span> Adjudicaciones</div>
     <div class="navlbl">Herramientas</div>
     <div class="navitem" data-vista="encuestas"><span class="ic">⭐</span> Encuestas</div>
-    <div class="navitem"><span class="ic">💬</span> Conversaciones</div>
+    <div class="navitem" data-vista="simulador"><span class="ic">🧪</span> Simulador</div>
     <div class="navlbl">Cuenta</div>
     <div class="navitem"><span class="ic">⚙️</span> Configuración</div>
   </aside>
@@ -214,6 +214,27 @@
           <span id="pregMsg" class="nota" style="margin-left:12px;"></span>
         </div>
       </div>
+
+      <!-- ===== VISTA: SIMULADOR ===== -->
+      <div id="vistaSimulador" class="oculto">
+        <div class="card">
+          <h2><span class="paso">🧪</span>Simulador del bot</h2>
+          <p class="nota">Probá el bot como si fueras un cliente. <b>No envía WhatsApp real</b> ni gasta mensajes. Ideal para ver todas las respuestas posibles y ajustar las encuestas o el chat antes de salir en vivo.</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+            <button class="sec" id="simEncTaller">▶️ Probar encuesta de Taller</button>
+            <button class="sec" id="simEncVentas">▶️ Probar encuesta de Ventas</button>
+            <button class="sec" id="simReset">🔄 Reiniciar chat</button>
+          </div>
+        </div>
+        <div class="card">
+          <div id="simChat" style="min-height:280px; max-height:460px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:6px; background:#fafcff; border:1px solid var(--borde); border-radius:10px;"></div>
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <input type="text" id="simInput" placeholder="Escribí como cliente (ej: hola, 1, quiero una ranger, 5)..." style="flex:1;" />
+            <button id="simSend">Enviar</button>
+          </div>
+          <p class="nota">Tip: <b>hola</b> muestra el menú · un <b>número</b> elige una opción · <b>texto libre</b> habla con la IA. Para encuestas usá los botones de arriba y respondé con números <b>del 1 al 5</b>.</p>
+        </div>
+      </div>
     </div>
   </main>
 </div>
@@ -232,9 +253,13 @@
       const v = it.dataset.vista;
       $("vistaOvalo").classList.toggle('oculto', v !== 'ovalo');
       $("vistaEncuestas").classList.toggle('oculto', v !== 'encuestas');
-      $("subtitulo").textContent = v === 'encuestas'
-        ? "Editá las preguntas de las encuestas de calidad (Posventa y Ventas)."
-        : "Subí el CSV del mes, elegí a quién enviar y revisá la vista previa antes de mandar.";
+      $("vistaSimulador").classList.toggle('oculto', v !== 'simulador');
+      const subt = {
+        ovalo: "Subí el CSV del mes, elegí a quién enviar y revisá la vista previa antes de mandar.",
+        encuestas: "Editá las preguntas de las encuestas de calidad (Posventa y Ventas).",
+        simulador: "Probá el bot como si fueras un cliente, sin enviar WhatsApp real.",
+      };
+      $("subtitulo").textContent = subt[v] || subt.ovalo;
       if (v === 'encuestas' && !preguntasCargadas) cargarPreguntas();
     });
   });
@@ -304,6 +329,55 @@
     l.className = "chip";
     l.innerHTML = `<input type="checkbox" data-grupo="${grupo}" value="${valor.replaceAll('"','&quot;')}"> ${valor} <span class="n">(${cantidad})</span>`;
     return l;
+  }
+
+  // ===== Simulador del bot =====
+  function simBurbuja(texto, lado) {
+    const d = document.createElement('div');
+    const cli = lado === 'cliente';
+    d.style.cssText = 'align-self:' + (cli ? 'flex-end' : 'flex-start') +
+      '; max-width:82%; padding:9px 13px; border-radius:14px; white-space:pre-wrap; font-size:.9rem; ' +
+      (cli ? 'background:#dcf8c6;' : 'background:#fff;border:1px solid var(--borde);');
+    d.textContent = texto;
+    $("simChat").appendChild(d);
+    $("simChat").scrollTop = $("simChat").scrollHeight;
+  }
+
+  async function simEnviar(texto) {
+    if (!texto.trim()) return;
+    simBurbuja(texto, 'cliente');
+    try {
+      const r = await fetch('/simular', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto })
+      });
+      const res = await r.json();
+      (res.respuestas || []).forEach(m => simBurbuja(m, 'bot'));
+    } catch (e) { simBurbuja('Error: ' + e, 'bot'); }
+  }
+
+  async function simIniciarEncuesta(tipo) {
+    await fetch('/simular/reiniciar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    $("simChat").innerHTML = '';
+    try {
+      const r = await fetch('/simular/encuesta', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo })
+      });
+      const res = await r.json();
+      (res.respuestas || []).forEach(m => simBurbuja(m, 'bot'));
+    } catch (e) { simBurbuja('Error: ' + e, 'bot'); }
+  }
+
+  if ($("simSend")) {
+    $("simSend").addEventListener('click', () => { const v = $("simInput").value; $("simInput").value = ''; simEnviar(v); });
+    $("simInput").addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $("simSend").click(); } });
+    $("simReset").addEventListener('click', async () => {
+      await fetch('/simular/reiniciar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      $("simChat").innerHTML = ''; simBurbuja('— chat reiniciado —', 'bot');
+    });
+    $("simEncTaller").addEventListener('click', () => simIniciarEncuesta('servicio'));
+    $("simEncVentas").addEventListener('click', () => simIniciarEncuesta('ventas'));
   }
 
   $("btnAnalizar").addEventListener("click", async () => {

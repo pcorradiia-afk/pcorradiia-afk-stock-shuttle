@@ -241,6 +241,18 @@ class RepositorioSupabase(Repositorio):
             }
         ).execute()
 
+    # --- Reiniciar una conversación puntual ---
+    def reiniciar_conversacion(self, numero_cuenta: str, telefono: str) -> None:
+        for tabla in ("wsp_sesiones", "wsp_encuestas_abiertas", "wsp_historial"):
+            (
+                self._db.table(tabla)
+                .delete()
+                .eq("numero_cuenta", numero_cuenta)
+                .eq("telefono", telefono)
+                .execute()
+            )
+        self._db.table("wsp_bot_pausado").delete().eq("telefono", telefono).execute()
+
     # --- Tests ---
     def limpiar_todo(self) -> None:
         # No se borra la base real desde el código de la app a propósito.

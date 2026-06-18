@@ -85,3 +85,7 @@ class Repositorio(ABC):
     # --- Utilitario para tests ---
     @abstractmethod
     def limpiar_todo(self) -> None: ...
+
+    # --- Reiniciar una conversación puntual (simulador / "resetear este chat") ---
+    @abstractmethod
+    def reiniciar_conversacion(self, numero_cuenta: str, telefono: str) -> None: ...
