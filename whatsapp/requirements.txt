@@ -19,3 +19,6 @@ APScheduler==3.10.4       # Tareas programadas dentro de la app (encuestas a 48h
 
 # --- HTTP (para la Content API de Twilio: botones) ---
 requests==2.32.3        # Crear plantillas de respuesta rapida (botones) via API
+
+# --- Zona horaria (para mostrar la hora local de Argentina) ---
+tzdata==2024.2          # Base de zonas horarias IANA para zoneinfo

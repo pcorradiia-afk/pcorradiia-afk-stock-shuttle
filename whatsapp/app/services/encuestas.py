@@ -550,6 +550,18 @@ def _es_negativa(respuestas: dict[str, int]) -> bool:
     return bool(escala) and (sum(escala) / len(escala)) <= 2
 
 
+def _ahora_iso() -> str:
+    """Fecha/hora actual en la zona horaria configurada (Argentina por defecto)."""
+    from datetime import timezone
+    from zoneinfo import ZoneInfo
+
+    try:
+        tz = ZoneInfo(obtener_config().tz_defecto)
+    except Exception:  # noqa: BLE001 — si falta la base de zonas, usamos UTC-3
+        tz = timezone(timedelta(hours=-3))
+    return datetime.now(tz).isoformat(timespec="seconds")
+
+
 def _guardar(
     repo, id_empresa: str, telefono: str, tipo: str, referencia: str,
     pregunta: str, valor: int, comentario: str = "", nombre: str = "",
@@ -559,8 +571,7 @@ def _guardar(
             ResultadoEncuesta(
                 id_empresa=id_empresa, telefono=telefono, tipo=tipo,
                 referencia=referencia, pregunta=pregunta, valor=valor,
-                comentario=comentario, nombre=nombre,
-                fecha=datetime.now().isoformat(timespec="seconds"),
+                comentario=comentario, nombre=nombre, fecha=_ahora_iso(),
             )
         )
     )
