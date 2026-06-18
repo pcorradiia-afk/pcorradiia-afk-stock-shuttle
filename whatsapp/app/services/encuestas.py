@@ -369,6 +369,35 @@ def tablero(id_empresa: str) -> dict:
         if recom else None
     )
 
+    # Agrupado por cliente: una entrada por persona, con sus puntajes, si
+    # recomienda, comentario, clasificación y si necesita seguimiento (RQR).
+    por_tel: dict[str, dict] = {}
+    for r in items:
+        tel = r.get("telefono", "")
+        g = por_tel.setdefault(tel, {
+            "telefono": tel, "tipo": r.get("tipo", ""), "referencia": r.get("referencia", ""),
+            "puntajes": {}, "recomienda": None, "comentario": "", "fecha": "",
+        })
+        preg = r.get("pregunta", "")
+        if preg == PREGUNTA_COMENTARIO:
+            g["comentario"] = r.get("comentario", "")
+        elif preg == "recomendacion":
+            g["recomienda"] = int(r.get("valor", 0)) >= 3
+        elif preg:
+            g["puntajes"][preg] = int(r.get("valor", 0))
+        if str(r.get("fecha", "")) > g["fecha"]:
+            g["fecha"] = str(r.get("fecha", ""))
+
+    grupos = []
+    for g in por_tel.values():
+        vals = list(g["puntajes"].values())
+        bajo = any(v <= 2 for v in vals) or g["recomienda"] is False
+        medio = any(v == 3 for v in vals)
+        g["clasificacion"] = "RQR" if bajo else ("Registrar" if medio else "Felicitacion")
+        g["seguimiento"] = bajo
+        grupos.append(g)
+    grupos.sort(key=lambda x: x["fecha"], reverse=True)
+
     return {
         "id_empresa": id_empresa,
         "respuestas": total,
@@ -376,6 +405,8 @@ def tablero(id_empresa: str) -> dict:
         "distribucion": distribucion,
         "por_pregunta": promedio_pregunta,
         "recomienda_pct": recomienda_pct,
+        "encuestas": grupos,
+        "seguimiento": sum(1 for g in grupos if g["seguimiento"]),
         "comentarios": [
             {"telefono": c.get("telefono"), "texto": c.get("comentario", ""), "fecha": c.get("fecha")}
             for c in comentarios

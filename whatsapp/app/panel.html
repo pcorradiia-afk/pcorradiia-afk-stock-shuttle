@@ -107,6 +107,7 @@
     <div class="navitem"><span class="ic">🎉</span> Adjudicaciones</div>
     <div class="navlbl">Herramientas</div>
     <div class="navitem" data-vista="encuestas"><span class="ic">⭐</span> Encuestas</div>
+    <div class="navitem" data-vista="resultados"><span class="ic">📊</span> Resultados</div>
     <div class="navitem" data-vista="simulador"><span class="ic">🧪</span> Simulador</div>
     <div class="navlbl">Cuenta</div>
     <div class="navitem"><span class="ic">⚙️</span> Configuración</div>
@@ -235,6 +236,35 @@
           <p class="nota">Tip: <b>hola</b> muestra el menú · un <b>número</b> elige una opción · <b>texto libre</b> habla con la IA. Para encuestas usá los botones de arriba y respondé con números <b>del 1 al 5</b>.</p>
         </div>
       </div>
+
+      <!-- ===== VISTA: RESULTADOS DE ENCUESTAS ===== -->
+      <div id="vistaResultados" class="oculto">
+        <div class="card">
+          <h2><span class="paso">📊</span>Resultados de encuestas
+            <button class="sec" id="btnRefrescarRes" style="margin-left:auto; padding:6px 12px;">🔄 Actualizar</button>
+          </h2>
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">Respuestas</div><div class="num" id="resTotal">0</div>
+              <div class="ic" style="background:var(--azul-soft);color:var(--azul);">📝</div></div>
+            <div class="kpi"><div class="lbl">Promedio (1-5)</div><div class="num" id="resProm">–</div>
+              <div class="ic" style="background:#dcfce7;color:#16a34a;">⭐</div></div>
+            <div class="kpi"><div class="lbl">Recomienda</div><div class="num" id="resRec">–</div>
+              <div class="ic" style="background:#dcfce7;color:#16a34a;">👍</div></div>
+            <div class="kpi"><div class="lbl">Necesitan seguimiento</div><div class="num" id="resSeg" style="color:var(--rojo);">0</div>
+              <div class="ic" style="background:#fee2e2;color:#dc2626;">⚠️</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>⚠️ Necesitan seguimiento <span class="mut" style="font-weight:400;">(nota baja o "No recomienda" → un asesor debería contactar)</span></h2>
+          <div id="resSeguimiento"></div>
+        </div>
+
+        <div class="card">
+          <h2>📋 Todas las respuestas</h2>
+          <div id="resTodas"></div>
+        </div>
+      </div>
     </div>
   </main>
 </div>
@@ -254,13 +284,16 @@
       $("vistaOvalo").classList.toggle('oculto', v !== 'ovalo');
       $("vistaEncuestas").classList.toggle('oculto', v !== 'encuestas');
       $("vistaSimulador").classList.toggle('oculto', v !== 'simulador');
+      $("vistaResultados").classList.toggle('oculto', v !== 'resultados');
       const subt = {
         ovalo: "Subí el CSV del mes, elegí a quién enviar y revisá la vista previa antes de mandar.",
         encuestas: "Editá las preguntas de las encuestas de calidad (Posventa y Ventas).",
         simulador: "Probá el bot como si fueras un cliente, sin enviar WhatsApp real.",
+        resultados: "Mirá qué respondieron y quién necesita un seguimiento del equipo de calidad.",
       };
       $("subtitulo").textContent = subt[v] || subt.ovalo;
       if (v === 'encuestas' && !preguntasCargadas) cargarPreguntas();
+      if (v === 'resultados') cargarResultados();
     });
   });
 
@@ -330,6 +363,51 @@
     l.innerHTML = `<input type="checkbox" data-grupo="${grupo}" value="${valor.replaceAll('"','&quot;')}"> ${valor} <span class="n">(${cantidad})</span>`;
     return l;
   }
+
+  // ===== Resultados de encuestas =====
+  function resComentario(texto) {
+    if (!texto) return '';
+    if (texto.indexOf('[audio]') === 0) {
+      const url = texto.replace('[audio]', '').trim();
+      return ` · 🎤 <a href="${url}" target="_blank">Audio</a>`;
+    }
+    return ` · 💬 "${texto}"`;
+  }
+  function resTarjeta(e) {
+    const colores = { RQR: 'var(--rojo)', Registrar: '#b45309', Felicitacion: 'var(--verde)' };
+    const txtClas = { RQR: 'RQR', Registrar: 'Registrar', Felicitacion: '👍 Felicitación' };
+    const badge = `<span style="background:${colores[e.clasificacion]};color:#fff;border-radius:999px;padding:3px 10px;font-size:.74rem;font-weight:600;">${txtClas[e.clasificacion]}</span>`;
+    const puntajes = Object.entries(e.puntajes || {})
+      .map(([k, v]) => `${k}: <b>${v}</b>`).join(' · ');
+    const rec = e.recomienda === null ? '' :
+      ` · Recomienda: <b>${e.recomienda ? 'Sí 👍' : 'No 👎'}</b>`;
+    const fecha = (e.fecha || '').replace('T', ' ').slice(0, 16);
+    const d = document.createElement('div');
+    d.className = 'row';
+    d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">` +
+      `<b>${e.telefono}</b> ${badge}</div>` +
+      `<div class="mut" style="margin-top:4px;">${puntajes}${rec}${resComentario(e.comentario)}</div>` +
+      `<div class="mut" style="font-size:.78rem;margin-top:2px;">${e.tipo || ''} · ${e.referencia || ''} · ${fecha}</div>`;
+    return d;
+  }
+  async function cargarResultados() {
+    try {
+      const r = await fetch(`/encuestas/${ID_EMPRESA}/resultados`);
+      const d = await r.json();
+      $("resTotal").textContent = d.respuestas || 0;
+      $("resProm").textContent = d.promedio != null ? d.promedio : '–';
+      $("resRec").textContent = d.recomienda_pct != null ? d.recomienda_pct + '%' : '–';
+      $("resSeg").textContent = d.seguimiento || 0;
+      const seg = (d.encuestas || []).filter(e => e.seguimiento);
+      const cs = $("resSeguimiento"); cs.innerHTML = '';
+      if (!seg.length) cs.innerHTML = '<p class="nota">✅ Nadie requiere seguimiento por ahora.</p>';
+      else seg.forEach(e => cs.appendChild(resTarjeta(e)));
+      const ct = $("resTodas"); ct.innerHTML = '';
+      if (!(d.encuestas || []).length) ct.innerHTML = '<p class="nota">Todavía no hay respuestas.</p>';
+      else d.encuestas.forEach(e => ct.appendChild(resTarjeta(e)));
+    } catch (e) { alert('No pude cargar los resultados: ' + e); }
+  }
+  if ($("btnRefrescarRes")) $("btnRefrescarRes").addEventListener('click', cargarResultados);
 
   // ===== Simulador del bot =====
   function simBurbuja(texto, lado) {
