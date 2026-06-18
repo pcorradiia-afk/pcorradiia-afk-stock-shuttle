@@ -19,7 +19,15 @@ from __future__ import annotations
 
 from ..config import obtener_config
 from ..core.horarios import esta_abierta, mensaje_fuera_de_horario
-from ..marcas import Contexto, Cuenta, contexto_de, lineas_de
+from ..marcas import (
+    LINEA_PLANES,
+    LINEA_POSVENTA,
+    LINEA_VENTAS,
+    Contexto,
+    Cuenta,
+    contexto_de,
+    lineas_de,
+)
 from . import derivacion, encuestas, sesion
 from .ia import procesar_con_ia
 from .twilio_client import (
@@ -61,9 +69,45 @@ def decidir_respuesta(
     if len(lineas) == 1:
         # Número dedicado: la línea es directa, sin preguntar.
         ctx = contexto_de(cuenta, lineas[0])
+    elif cuenta.marca.menu_opciones:
+        # Número multi-línea CON menú de marca: ese menú (sus 5 opciones) ES la
+        # entrada. Los NÚMEROS navegan el menú; el TEXTO libre va a la IA en la
+        # línea que corresponda. Sin un segundo menú.
+        elegida = sesion.linea_elegida(numero_cuenta, telefono_cliente)
+        crudo = texto.strip()
+
+        # Volver al menú principal.
+        if texto.lower() in _VOLVER:
+            sesion.reiniciar(numero_cuenta, telefono_cliente)
+            return menu_bienvenida(contexto_de(cuenta, lineas[0]))
+
+        # Número de opción → fija (o cambia) la línea y confirma.
+        if crudo.isdigit():
+            linea_sel, etiqueta = _opcion_de_menu_marca(cuenta, texto)
+            if linea_sel is None:
+                return menu_bienvenida(contexto_de(cuenta, lineas[0]))
+            sesion.elegir_linea(numero_cuenta, telefono_cliente, linea_sel)
+            print(f"🧭 [MENÚ] {telefono_cliente} eligió: {etiqueta} → {linea_sel}")
+            return respuesta_texto(
+                f"✅ *{etiqueta}* — {cuenta.marca.saludo}. Contame los detalles por "
+                "acá y te asesoro 🙌 (o escribí *asesor* para hablar con una persona)."
+            )
+
+        if elegida is not None:
+            # Ya venía charlando en una línea → seguimos en ese contexto.
+            ctx = contexto_de(cuenta, elegida)
+        elif not crudo or texto.lower() in _SALUDOS:
+            # Saludo o vacío → menú de marca (único).
+            return menu_bienvenida(contexto_de(cuenta, lineas[0]))
+        else:
+            # Texto libre → detectamos la línea por intención y vamos a la IA
+            # (si no se detecta, Ventas por defecto).
+            linea_sel, _etq = _opcion_de_menu_marca(cuenta, texto)
+            defecto = linea_sel or (LINEA_VENTAS if LINEA_VENTAS in lineas else lineas[0])
+            sesion.elegir_linea(numero_cuenta, telefono_cliente, defecto)
+            ctx = contexto_de(cuenta, defecto)
     else:
-        # Número multi-línea: necesitamos saber/recordar qué línea quiere.
-        # (Una campaña pudo haber dejado la línea ya cebada en la sesión.)
+        # Número multi-línea SIN menú de marca: usamos el menú de líneas clásico.
         elegida = sesion.linea_elegida(numero_cuenta, telefono_cliente)
 
         # Permitir volver al menú de líneas en cualquier momento.
@@ -113,7 +157,7 @@ def _responder_en_contexto(
     # 4) Opción numérica: usa el menú principal de la marca si lo tiene,
     #    o el menú de la línea en su defecto.
     if ctx.marca.menu_opciones:
-        opciones = [f"{texto} {emoji}".strip() for texto, emoji in ctx.marca.menu_opciones]
+        opciones = [f"{t} {e}".strip() for t, e, _ln in ctx.marca.menu_opciones]
     else:
         opciones = OPCIONES_POR_LINEA.get(ctx.linea, [])
     if texto.isdigit():
@@ -138,6 +182,40 @@ def _responder_en_contexto(
 
     # 6) Texto libre → Agente de IA con el contexto (marca × línea) y memoria.
     return respuesta_texto(procesar_con_ia(ctx, texto, numero_cuenta, telefono_cliente))
+
+
+def _opcion_de_menu_marca(cuenta: Cuenta, texto: str) -> tuple[str | None, str | None]:
+    """Interpreta el mensaje como opción del menú de marca → (línea, etiqueta).
+
+    Acepta el número de la opción (1..n) o una palabra clave (plan, 0km, taller…).
+    Devuelve (None, None) si no reconoce ninguna opción.
+    """
+    opciones = cuenta.marca.menu_opciones  # cada una: (texto, emoji, línea)
+    crudo = texto.strip()
+    t = crudo.lower()
+
+    # Por número de opción.
+    if crudo.isdigit():
+        i = int(crudo)
+        if 1 <= i <= len(opciones):
+            etiqueta, _emoji, linea = opciones[i - 1]
+            return linea, etiqueta
+
+    # Por palabra clave.
+    sinonimos = {
+        "plan": LINEA_PLANES, "ovalo": LINEA_PLANES, "óvalo": LINEA_PLANES,
+        "cuota": LINEA_PLANES, "adjudic": LINEA_PLANES, "licitac": LINEA_PLANES,
+        "0km": LINEA_VENTAS, "okm": LINEA_VENTAS, "comprar": LINEA_VENTAS,
+        "nuevo": LINEA_VENTAS, "usado": LINEA_VENTAS, "modelo": LINEA_VENTAS,
+        "repuesto": LINEA_POSVENTA, "taller": LINEA_POSVENTA,
+        "service": LINEA_POSVENTA, "turno": LINEA_POSVENTA,
+    }
+    for clave, linea in sinonimos.items():
+        if clave in t:
+            etiqueta = next((tx for tx, _e, ln in opciones if ln == linea), clave)
+            return linea, etiqueta
+
+    return None, None
 
 
 def _interpretar_linea(texto: str, lineas: list[str]) -> str | None:

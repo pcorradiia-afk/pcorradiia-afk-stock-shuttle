@@ -59,8 +59,8 @@ class Marca:
     saludo: str                # Nombre con el que el bot se presenta
     horario: HorarioAtencion = field(default_factory=HorarioAtencion)
     anio_desde: int | None = None        # Año de fundación (para el saludo de marca)
-    # Menú de bienvenida personalizado: cada opción es (texto, emoji).
-    menu_opciones: tuple[tuple[str, str], ...] = ()
+    # Menú de bienvenida personalizado: cada opción es (texto, emoji, línea destino).
+    menu_opciones: tuple[tuple[str, str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -206,11 +206,11 @@ _PEDRO = Marca(
     horario=HorarioAtencion(apertura=0, cierre=24, dias_laborables=(0, 1, 2, 3, 4, 5, 6)),
     anio_desde=1925,
     menu_opciones=(
-        ("Comprar un 0km", "🚙"),
-        ("Plan Óvalo", "💳"),
-        ("Consultar por usados", "🔁"),
-        ("Repuestos", "⚙️"),
-        ("Taller", "🔧"),
+        ("Comprar un 0km", "🚙", LINEA_VENTAS),
+        ("Plan Óvalo", "💳", LINEA_PLANES),
+        ("Consultar por usados", "🔁", LINEA_VENTAS),
+        ("Repuestos", "⚙️", LINEA_POSVENTA),
+        ("Taller", "🔧", LINEA_POSVENTA),
     ),
 )
 _SAPAC = Marca(
