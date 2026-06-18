@@ -73,7 +73,7 @@ CUESTIONARIO_DEFECTO: dict[str, dict] = {
     },
 }
 
-_INTRO_ESCALA = "\nDel 1 al 5 (5 = excelente):\n1) {primera}\n\nRespondé con un número del 1 al 5. 🙏"
+_INVITACION = "\n\n¿Nos ayudás con una breve encuesta? Es 1 minuto 🙏 Tocá *Comenzar* 👇"
 
 _ESCAPE = ("asesor", "humano", "cancelar", "salir", "basta")
 _SIN_COMENTARIO = ("listo", "no", "nada", "gracias", "ninguno", "ok", "no gracias")
@@ -231,6 +231,7 @@ def correr_encuestas_pendientes(
                     "nombre": str(evento.get("nombre", "")),
                     "paso": 0,
                     "respuestas": {},
+                    "iniciada": False,
                 },
             )
             sesion.elegir_linea(numero_origen, telefono, LINEA_POSVENTA)
@@ -285,6 +286,15 @@ def registrar_respuesta(
     if not tiene_audio and any(p in limpio.lower() for p in _ESCAPE):
         repo.cerrar_encuesta(numero_cuenta, telefono)
         return None
+
+    # Arranque: el cliente tocó "Comenzar" (o escribió). Mandamos la 1ª pregunta
+    # tappable, sin tomar este mensaje como respuesta.
+    if not contexto.get("iniciada", True):
+        repo.abrir_encuesta(numero_cuenta, telefono, {**contexto, "iniciada": True})
+        q1 = _pregunta_actual(0, preguntas)
+        q1.texto = "¡Genial! 🙌 Empecemos.\n\n" + q1.texto
+        q1.cuerpo = "¡Genial! Empecemos.\n\n" + q1.cuerpo
+        return q1
 
     # Paso del COMENTARIO final (texto o audio).
     if paso >= len(preguntas):
@@ -465,12 +475,14 @@ def _writeback(contexto: dict, telefono: str, respuestas: dict, comentario: str)
 
 
 def _texto_intro(id_empresa: str, tipo: str) -> str:
-    """Primer mensaje (cuerpo de la plantilla): encabezado + escala + 1ª pregunta."""
+    """Mensaje de inicio (cuerpo de la plantilla): saludo + invitación a Comenzar.
+
+    Lleva un botón 'Comenzar'; al tocarlo se mandan las preguntas (todas tappables).
+    Este texto debe coincidir con el cuerpo de la plantilla aprobada en WhatsApp.
+    """
     conf = cuestionario(id_empresa)
     bloque = conf.get(tipo) or conf[_TIPO_DEFECTO]
-    encabezado = bloque["encabezado"]
-    primera = bloque["preguntas"][0]["texto"] if bloque.get("preguntas") else ""
-    return f"{encabezado}{_INTRO_ESCALA.format(primera=primera)}"
+    return f"{bloque['encabezado']}{_INVITACION}"
 
 
 def _pregunta_actual(paso: int, preguntas: list[dict]) -> RespuestaEncuesta:

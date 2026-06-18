@@ -103,6 +103,7 @@ def recibir_evento(evento: dict, dry_run: bool | None = None) -> dict:
             "nombre": nombre,
             "paso": 0,
             "respuestas": {},
+            "iniciada": False,
             "id_externo": evento.get("id_externo", ""),
             "sucursal": evento.get("sucursal", ""),
         },

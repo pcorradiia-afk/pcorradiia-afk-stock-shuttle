@@ -70,6 +70,7 @@ alter table wsp_encuestas_abiertas add column if not exists paso       int   not
 alter table wsp_encuestas_abiertas add column if not exists respuestas jsonb not null default '{}'::jsonb;
 alter table wsp_encuestas_abiertas add column if not exists id_externo text;
 alter table wsp_encuestas_abiertas add column if not exists sucursal   text;
+alter table wsp_encuestas_abiertas add column if not exists iniciada   boolean not null default true;
 
 -- Encuestas: resultados (el tablero por empresa). Una fila por pregunta
 -- respondida (con su clave en `pregunta`), más una fila por comentario final
