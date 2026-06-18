@@ -170,6 +170,92 @@ def enviar_typing(message_sid: str) -> None:
     )
 
 
+# ── Mensajes interactivos para encuestas (lista 1-5 y botones Sí/No) ──────────
+# Opciones fijas de la escala 1-5 (id → etiqueta tappable).
+_ESCALA_ITEMS = [
+    ("5", "5 · Muy satisfecho"),
+    ("4", "4 · Satisfecho"),
+    ("3", "3 · Neutral"),
+    ("2", "2 · Poco satisfecho"),
+    ("1", "1 · Nada satisfecho"),
+]
+_SINO_ACCIONES = [("si", "Sí 👍"), ("no", "No 👎")]
+
+# Caché de ContentSid por (tipo, cuerpo) para no recrear plantillas iguales.
+_CACHE_INTERACTIVO: dict[tuple[str, str], str] = {}
+
+
+def _crear_content(payload: dict) -> str:
+    """Crea un Content (Content API) y devuelve su ContentSid (HX...)."""
+    import requests
+
+    config = obtener_config()
+    r = requests.post(
+        "https://content.twilio.com/v1/Content",
+        auth=(config.twilio_account_sid, config.twilio_auth_token),
+        json=payload,
+        timeout=20,
+    )
+    r.raise_for_status()
+    return r.json()["sid"]
+
+
+def _content_sid_encuesta(tipo: str, cuerpo: str) -> str:
+    """Devuelve (creando/cacheando) el ContentSid de una pregunta interactiva.
+
+    - `escala` → lista tappable con las 5 opciones (ids "5".."1").
+    - `si_no`  → 2 botones de respuesta rápida (ids "si"/"no").
+    """
+    clave = (tipo, cuerpo)
+    if clave in _CACHE_INTERACTIVO:
+        return _CACHE_INTERACTIVO[clave]
+
+    sufijo = abs(hash(clave)) % 10**9
+    if tipo == "si_no":
+        payload = {
+            "friendly_name": f"enc_sino_{sufijo}",
+            "language": "es",
+            "types": {
+                "twilio/quick-reply": {
+                    "body": cuerpo,
+                    "actions": [{"title": t, "id": i} for i, t in _SINO_ACCIONES],
+                }
+            },
+        }
+    else:
+        payload = {
+            "friendly_name": f"enc_escala_{sufijo}",
+            "language": "es",
+            "types": {
+                "twilio/list-picker": {
+                    "body": cuerpo,
+                    "button": "Elegir puntaje",
+                    "items": [
+                        {"item": etiqueta, "id": idv, "description": ""}
+                        for idv, etiqueta in _ESCALA_ITEMS
+                    ],
+                }
+            },
+        }
+    sid = _crear_content(payload)
+    _CACHE_INTERACTIVO[clave] = sid
+    return sid
+
+
+def enviar_pregunta_interactiva(
+    numero_destino: str, numero_origen: str, tipo: str, cuerpo: str
+) -> str:
+    """Envía una pregunta de encuesta tappable (lista 1-5 o botones Sí/No)."""
+    content_sid = _content_sid_encuesta(tipo, cuerpo)
+    cliente = _cliente_rest()
+    mensaje = cliente.messages.create(
+        from_=f"whatsapp:{numero_origen}",
+        to=f"whatsapp:{numero_destino}",
+        content_sid=content_sid,
+    )
+    return mensaje.sid
+
+
 def _cliente_rest():
     """Crea el cliente REST de Twilio con las credenciales del .env."""
     from twilio.rest import Client

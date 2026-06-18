@@ -32,6 +32,7 @@ from . import derivacion, encuestas, sesion
 from .ia import procesar_con_ia
 from .twilio_client import (
     OPCIONES_POR_LINEA,
+    enviar_pregunta_interactiva,
     menu_bienvenida,
     menu_de_lineas,
     respuesta_texto,
@@ -48,22 +49,25 @@ def decidir_respuesta(
     cuerpo: str,
     telefono_cliente: str,
     numero_cuenta: str,
+    media: dict | None = None,
+    simular: bool = False,
 ) -> str | None:
     """Resuelve la línea y aplica las reglas. Devuelve el TwiML a responder (o None).
 
     `numero_cuenta` es el número de WhatsApp de la concesionaria (el `To`), que
-    junto con el teléfono del cliente identifica la sesión.
+    junto con el teléfono del cliente identifica la sesión. `media` describe un
+    adjunto entrante (audio). `simular=True` fuerza respuestas de texto (no envía
+    mensajes interactivos reales), para el simulador del panel.
     """
     texto = (cuerpo or "").strip()
     lineas = lineas_de(cuenta)
 
     # ── 0) RESPUESTA DE ENCUESTA ─────────────────────────────────────────────
-    # Tiene prioridad sobre todo: si hay una encuesta abierta y el cliente manda
-    # un 1-5, lo tomamos como puntaje (no como opción de menú).
+    # Tiene prioridad sobre todo: si hay una encuesta abierta, su respuesta manda.
     if encuestas.hay_encuesta_abierta(numero_cuenta, telefono_cliente):
-        agradecimiento = encuestas.registrar_respuesta(numero_cuenta, telefono_cliente, texto)
-        if agradecimiento is not None:
-            return respuesta_texto(agradecimiento)
+        resp = encuestas.registrar_respuesta(numero_cuenta, telefono_cliente, texto, media)
+        if resp is not None:
+            return _responder_encuesta(resp, telefono_cliente, numero_cuenta, simular)
 
     # ── A) RESOLUCIÓN DE LÍNEA ───────────────────────────────────────────────
     if len(lineas) == 1:
@@ -182,6 +186,23 @@ def _responder_en_contexto(
 
     # 6) Texto libre → Agente de IA con el contexto (marca × línea) y memoria.
     return respuesta_texto(procesar_con_ia(ctx, texto, numero_cuenta, telefono_cliente))
+
+
+def _responder_encuesta(resp, telefono_cliente: str, numero_cuenta: str, simular: bool) -> str | None:
+    """Renderiza la respuesta de una encuesta: interactiva (real) o texto (simulador/fallback)."""
+    config = obtener_config()
+    hay_twilio = bool(config.twilio_account_sid and config.twilio_auth_token)
+    # Si la pregunta es tappable y estamos en modo real con credenciales, la
+    # enviamos por la API (lista/botones) y respondemos vacío al webhook.
+    if resp.interactivo and not simular and hay_twilio:
+        try:
+            enviar_pregunta_interactiva(
+                telefono_cliente, numero_cuenta, resp.interactivo, resp.cuerpo
+            )
+            return None
+        except Exception as exc:  # noqa: BLE001
+            print(f"⚠️  [ENCUESTA] No se pudo enviar interactivo, mando texto: {exc}")
+    return respuesta_texto(resp.texto)
 
 
 def _opcion_de_menu_marca(cuenta: Cuenta, texto: str) -> tuple[str | None, str | None]:

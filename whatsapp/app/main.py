@@ -162,6 +162,9 @@ async def webhook(
     To: str = Form(default=""),          # Número de la concesionaria (clave de enrutamiento)
     Body: str = Form(default=""),        # Texto del mensaje
     MessageSid: str = Form(default=""),  # Identificador único del mensaje en Twilio
+    NumMedia: str = Form(default="0"),   # Cantidad de adjuntos (audio, imagen...)
+    MediaUrl0: str = Form(default=""),   # URL del primer adjunto
+    MediaContentType0: str = Form(default=""),  # Tipo del primer adjunto (ej. audio/ogg)
 ) -> Response:
     """Recibe el mensaje de Twilio, identifica la cuenta y responde con TwiML."""
     config = obtener_config()
@@ -211,7 +214,13 @@ async def webhook(
         )
 
     # 4) Decidir la respuesta (resuelve la línea y aplica las reglas de la marca).
-    twiml = decidir_respuesta(cuenta, Body, cliente, normalizar_telefono(To))
+    media = None
+    try:
+        if int(NumMedia or "0") > 0 and MediaUrl0:
+            media = {"url": MediaUrl0, "tipo": MediaContentType0}
+    except ValueError:
+        media = None
+    twiml = decidir_respuesta(cuenta, Body, cliente, normalizar_telefono(To), media=media)
 
     # 5) Si la lógica decidió no responder (bot pausado), devolvemos 200 vacío.
     if twiml is None:
@@ -404,7 +413,7 @@ async def simular(request: Request) -> dict:
     cuenta = buscar_cuenta(numero)
     if cuenta is None:
         return {"respuestas": [f"(el número {numero} no está registrado)"]}
-    twiml = decidir_respuesta(cuenta, str(datos.get("texto", "")), telefono, numero)
+    twiml = decidir_respuesta(cuenta, str(datos.get("texto", "")), telefono, numero, simular=True)
     if twiml is None:
         return {
             "respuestas": ["⏸️ (el bot quedó en pausa — derivado a un asesor humano)"],
