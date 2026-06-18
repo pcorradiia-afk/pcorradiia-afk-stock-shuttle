@@ -230,8 +230,15 @@ _SAPAC = Marca(
 #    - un número que atiende varias líneas (el bot pregunta).
 # =====================================================================
 _REGISTRO: dict[str, Cuenta] = {
-    # Pedro Corradi · número DEDICADO a Planes de Ahorro (una sola línea).
-    "+5493510000001": Cuenta(
+    # ─────────────────────────────────────────────────────────────────────────
+    # Pedro Corradi · NÚMERO REAL DE PRODUCCIÓN (eSIM, alta en Twilio + WABA
+    # "Pedro Corradi Ford" verificada). Atiende las tres líneas en un solo número.
+    # Las campañas de Planes (Óvalo) salen desde acá: buscar_por_empresa() lo
+    # encuentra para LINEA_PLANES.
+    # NOTA: los `sid` de plantilla son PROVISORIOS — reemplazar por los reales
+    # (HX...) cuando Meta apruebe cada plantilla.
+    # ─────────────────────────────────────────────────────────────────────────
+    "+5492804001765": Cuenta(
         marca=_PEDRO,
         lineas={
             LINEA_PLANES: _cfg(
@@ -242,12 +249,6 @@ _REGISTRO: dict[str, Cuenta] = {
                     "cupon_pago": Plantilla("HX11_planes_cccc", tiene_documento=True),
                 },
             ),
-        },
-    ),
-    # Pedro Corradi · número COMPARTIDO entre Ventas 0km y Posventa (varias líneas).
-    "+5493510000002": Cuenta(
-        marca=_PEDRO,
-        lineas={
             LINEA_VENTAS: _cfg(
                 LINEA_VENTAS, "Ford", "Pedro Corradi",
                 "Equipo comercial 0km Pedro Corradi",
@@ -271,7 +272,7 @@ _REGISTRO: dict[str, Cuenta] = {
             ),
         },
     ),
-    # Sapac · número ÚNICO que atiende las tres líneas (varias líneas).
+    # Sapac · número ÚNICO de DEMO que atiende las tres líneas (multi-marca).
     "+5493510000003": Cuenta(
         marca=_SAPAC,
         lineas={
