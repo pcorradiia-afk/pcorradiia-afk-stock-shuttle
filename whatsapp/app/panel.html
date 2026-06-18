@@ -238,6 +238,8 @@
         <div class="card">
           <h2>📲 Probar en mi WhatsApp (real)</h2>
           <p class="nota">Te manda la encuesta <b>tappable de verdad</b> (lista 1-5 y botones Sí/No) a tu WhatsApp. <b>Importante:</b> primero escribile <b>"hola"</b> al bot desde ese número, para abrir la conversación.</p>
+          <label>Nombre del cliente (para la prueba)</label>
+          <input type="text" id="encNombre" placeholder="Juan Pérez" />
           <label>Mi número (+549...)</label>
           <input type="text" id="encNumero" placeholder="+5492804418307" />
           <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
@@ -380,7 +382,7 @@
     if (!texto) return '';
     if (texto.indexOf('[audio]') === 0) {
       const url = texto.replace('[audio]', '').trim();
-      return ` · 🎤 <a href="${url}" target="_blank">Audio</a>`;
+      return `<div style="margin-top:6px;">🎤 <audio controls preload="none" src="/media?url=${encodeURIComponent(url)}" style="height:34px;vertical-align:middle;max-width:240px;"></audio></div>`;
     }
     return ` · 💬 "${texto}"`;
   }
@@ -393,10 +395,11 @@
     const rec = e.recomienda === null ? '' :
       ` · Recomienda: <b>${e.recomienda ? 'Sí 👍' : 'No 👎'}</b>`;
     const fecha = (e.fecha || '').replace('T', ' ').slice(0, 16);
+    const titulo = e.nombre ? `${e.nombre} <span class="mut" style="font-weight:400;">· ${e.telefono}</span>` : `${e.telefono}`;
     const d = document.createElement('div');
     d.className = 'row';
     d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">` +
-      `<b>${e.telefono}</b> ${badge}</div>` +
+      `<b>${titulo}</b> ${badge}</div>` +
       `<div class="mut" style="margin-top:4px;">${puntajes}${rec}${resComentario(e.comentario)}</div>` +
       `<div class="mut" style="font-size:.78rem;margin-top:2px;">${e.tipo || ''} · ${e.referencia || ''} · ${fecha}</div>`;
     return d;
@@ -428,7 +431,7 @@
     try {
       const r = await fetch('/encuestas/prueba', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ telefono: num, tipo })
+        body: JSON.stringify({ telefono: num, tipo, nombre: ($("encNombre") ? $("encNombre").value.trim() : "") })
       });
       const res = await r.json();
       $("encPruebaMsg").textContent = res.estado === 'enviada'

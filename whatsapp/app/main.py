@@ -432,6 +432,33 @@ def enviar_documento_individual(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.get("/media", dependencies=[Depends(requiere_clave)])
+def media_proxy(url: str) -> Response:
+    """Sirve un audio/imagen de Twilio (que pide autenticación) para escucharlo en el panel.
+
+    Twilio protege las URLs de media con la cuenta; este proxy las trae con las
+    credenciales y las devuelve para que el reproductor del panel funcione.
+    Sólo permite URLs de twilio.com (evita que se use para traer cualquier cosa).
+    """
+    from urllib.parse import urlparse
+
+    import requests
+
+    host = (urlparse(url).hostname or "").lower()
+    if not (host == "api.twilio.com" or host.endswith(".twilio.com")):
+        raise HTTPException(status_code=400, detail="URL no permitida.")
+    config = obtener_config()
+    try:
+        r = requests.get(
+            url, auth=(config.twilio_account_sid, config.twilio_auth_token), timeout=20
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"No se pudo traer el media: {exc}") from exc
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Twilio devolvió {r.status_code}.")
+    return Response(content=r.content, media_type=r.headers.get("Content-Type", "application/octet-stream"))
+
+
 @app.get("/scheduler", dependencies=[Depends(requiere_clave)])
 def estado_scheduler() -> dict:
     """Estado del scheduler: jobs activos y próxima ejecución."""

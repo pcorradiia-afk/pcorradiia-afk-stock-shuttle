@@ -89,6 +89,7 @@ create table if not exists wsp_encuesta_resultados (
 -- Columnas nuevas (por si la tabla ya existía de una versión anterior).
 alter table wsp_encuesta_resultados add column if not exists pregunta   text;
 alter table wsp_encuesta_resultados add column if not exists comentario text;
+alter table wsp_encuesta_resultados add column if not exists nombre     text;
 create index if not exists wsp_encuesta_resultados_empresa
     on wsp_encuesta_resultados (id_empresa);
 

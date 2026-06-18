@@ -95,6 +95,7 @@ class ResultadoEncuesta:
     valor: int          # 1..5 (0 para comentario)
     comentario: str = ""
     fecha: str = ""
+    nombre: str = ""
 
 
 @dataclass
@@ -296,7 +297,7 @@ def registrar_respuesta(
         if comentario:
             _guardar(
                 repo, id_empresa, telefono, tipo_enc, referencia,
-                pregunta=PREGUNTA_COMENTARIO, valor=0, comentario=comentario,
+                pregunta=PREGUNTA_COMENTARIO, valor=0, comentario=comentario, nombre=nombre,
             )
             print(f"💬 [ENCUESTA] {telefono} dejó un comentario ({id_empresa})")
         _writeback(contexto, telefono, respuestas, comentario)
@@ -320,7 +321,7 @@ def registrar_respuesta(
 
     clave = pregunta["clave"]
     respuestas[clave] = valor
-    _guardar(repo, id_empresa, telefono, tipo_enc, referencia, pregunta=clave, valor=valor)
+    _guardar(repo, id_empresa, telefono, tipo_enc, referencia, pregunta=clave, valor=valor, nombre=nombre)
     print(f"⭐ [ENCUESTA] {telefono} {clave}={valor} ({id_empresa} · {tipo_enc})")
 
     paso += 1
@@ -375,9 +376,12 @@ def tablero(id_empresa: str) -> dict:
     for r in items:
         tel = r.get("telefono", "")
         g = por_tel.setdefault(tel, {
-            "telefono": tel, "tipo": r.get("tipo", ""), "referencia": r.get("referencia", ""),
+            "telefono": tel, "nombre": "", "tipo": r.get("tipo", ""),
+            "referencia": r.get("referencia", ""),
             "puntajes": {}, "recomienda": None, "comentario": "", "fecha": "",
         })
+        if r.get("nombre"):
+            g["nombre"] = r.get("nombre")
         preg = r.get("pregunta", "")
         if preg == PREGUNTA_COMENTARIO:
             g["comentario"] = r.get("comentario", "")
@@ -548,14 +552,15 @@ def _es_negativa(respuestas: dict[str, int]) -> bool:
 
 def _guardar(
     repo, id_empresa: str, telefono: str, tipo: str, referencia: str,
-    pregunta: str, valor: int, comentario: str = "",
+    pregunta: str, valor: int, comentario: str = "", nombre: str = "",
 ) -> None:
     repo.guardar_resultado(
         asdict(
             ResultadoEncuesta(
                 id_empresa=id_empresa, telefono=telefono, tipo=tipo,
                 referencia=referencia, pregunta=pregunta, valor=valor,
-                comentario=comentario, fecha=datetime.now().isoformat(timespec="seconds"),
+                comentario=comentario, nombre=nombre,
+                fecha=datetime.now().isoformat(timespec="seconds"),
             )
         )
     )
