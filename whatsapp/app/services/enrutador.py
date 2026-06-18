@@ -28,6 +28,21 @@ from ..marcas import (
     contexto_de,
     lineas_de,
 )
+from ..persistencia import obtener_repo
+
+# Área (para el buzón de Conversaciones) según la opción del menú elegida.
+_AREA_POR_OPCION = {
+    "Comprar un 0km": "Ventas",
+    "Plan Óvalo": "Plan Óvalo",
+    "Consultar por usados": "Ventas (usados)",
+    "Repuestos": "Repuestos",
+    "Taller": "Taller",
+}
+_AREA_POR_LINEA = {
+    LINEA_VENTAS: "Ventas",
+    LINEA_PLANES: "Plan Óvalo",
+    LINEA_POSVENTA: "Taller",
+}
 from . import derivacion, encuestas, sesion
 from .ia import procesar_con_ia
 from .twilio_client import (
@@ -91,6 +106,9 @@ def decidir_respuesta(
             if linea_sel is None:
                 return menu_bienvenida(contexto_de(cuenta, lineas[0]))
             sesion.elegir_linea(numero_cuenta, telefono_cliente, linea_sel)
+            _fijar_area(
+                numero_cuenta, telefono_cliente, _AREA_POR_OPCION.get(etiqueta, etiqueta)
+            )
             print(f"🧭 [MENÚ] {telefono_cliente} eligió: {etiqueta} → {linea_sel}")
             return respuesta_texto(
                 f"✅ *{etiqueta}* — {cuenta.marca.saludo}. Contame los detalles por "
@@ -109,6 +127,9 @@ def decidir_respuesta(
             linea_sel, _etq = _opcion_de_menu_marca(cuenta, texto)
             defecto = linea_sel or (LINEA_VENTAS if LINEA_VENTAS in lineas else lineas[0])
             sesion.elegir_linea(numero_cuenta, telefono_cliente, defecto)
+            _fijar_area(
+                numero_cuenta, telefono_cliente, _AREA_POR_LINEA.get(defecto, "Ventas")
+            )
             ctx = contexto_de(cuenta, defecto)
     else:
         # Número multi-línea SIN menú de marca: usamos el menú de líneas clásico.
@@ -203,6 +224,14 @@ def _responder_encuesta(resp, telefono_cliente: str, numero_cuenta: str, simular
         except Exception as exc:  # noqa: BLE001
             print(f"⚠️  [ENCUESTA] No se pudo enviar interactivo, mando texto: {exc}")
     return respuesta_texto(resp.texto)
+
+
+def _fijar_area(numero_cuenta: str, telefono: str, area: str) -> None:
+    """Asigna el área de la conversación (best-effort: nunca rompe el flujo del bot)."""
+    try:
+        obtener_repo().fijar_area(numero_cuenta, telefono, area)
+    except Exception as exc:  # noqa: BLE001
+        print(f"⚠️  [ÁREA] No se pudo asignar el área: {exc}")
 
 
 def _opcion_de_menu_marca(cuenta: Cuenta, texto: str) -> tuple[str | None, str | None]:

@@ -82,6 +82,17 @@ class Repositorio(ABC):
         self, numero_cuenta: str, telefono: str, rol: str, contenido: str
     ) -> None: ...
 
+    # --- Conversaciones: listar los chats (para el buzón del equipo) ---
+    @abstractmethod
+    def listar_conversaciones(self, numero_cuenta: str) -> list[dict]: ...
+
+    # --- Conversaciones: área asignada (Ventas / Taller / Repuestos / Planes) ---
+    @abstractmethod
+    def fijar_area(self, numero_cuenta: str, telefono: str, area: str) -> None: ...
+
+    @abstractmethod
+    def area_de(self, numero_cuenta: str, telefono: str) -> str | None: ...
+
     # --- Utilitario para tests ---
     @abstractmethod
     def limpiar_todo(self) -> None: ...

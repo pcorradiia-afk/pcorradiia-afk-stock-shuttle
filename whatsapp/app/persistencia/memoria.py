@@ -26,6 +26,7 @@ class RepositorioMemoria(Repositorio):
         self._resultados: list[dict] = []
         self._historiales: dict[tuple[str, str], list[dict]] = {}
         self._config_encuestas: dict[str, dict] = {}
+        self._areas: dict[tuple[str, str], str] = {}
 
     # --- Rate limit ---
     def campania_ya_enviada(self, id_empresa: str, campania: str, telefono: str) -> bool:
@@ -100,11 +101,31 @@ class RepositorioMemoria(Repositorio):
         if len(hist) > _MAX_HISTORIAL:
             del hist[: len(hist) - _MAX_HISTORIAL]
 
+    # --- Conversaciones ---
+    def listar_conversaciones(self, numero_cuenta: str) -> list[dict]:
+        convs = []
+        for (nc, tel), hist in self._historiales.items():
+            if nc != numero_cuenta or not hist:
+                continue
+            ultimo = hist[-1]
+            convs.append({
+                "telefono": tel, "ultimo": ultimo.get("content", ""),
+                "rol": ultimo.get("role", ""), "fecha": "",
+            })
+        return convs
+
+    def fijar_area(self, numero_cuenta: str, telefono: str, area: str) -> None:
+        self._areas[(numero_cuenta, telefono)] = area
+
+    def area_de(self, numero_cuenta: str, telefono: str) -> str | None:
+        return self._areas.get((numero_cuenta, telefono))
+
     # --- Reiniciar una conversación puntual ---
     def reiniciar_conversacion(self, numero_cuenta: str, telefono: str) -> None:
         self._lineas.pop((numero_cuenta, telefono), None)
         self._encuestas_abiertas.pop((numero_cuenta, telefono), None)
         self._historiales.pop((numero_cuenta, telefono), None)
+        self._areas.pop((numero_cuenta, telefono), None)
         self._bot_pausado.discard(telefono)
 
     # --- Tests ---
@@ -117,3 +138,4 @@ class RepositorioMemoria(Repositorio):
         self._resultados.clear()
         self._historiales.clear()
         self._config_encuestas.clear()
+        self._areas.clear()

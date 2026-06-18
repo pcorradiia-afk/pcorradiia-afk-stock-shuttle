@@ -222,6 +222,11 @@ async def webhook(
         media = None
     twiml = decidir_respuesta(cuenta, Body, cliente, normalizar_telefono(To), media=media)
 
+    # Registrar la conversación (alimenta el buzón de Conversaciones y la memoria).
+    _registrar_conversacion(
+        normalizar_telefono(To), cliente, Body, twiml, es_media=bool(media)
+    )
+
     # 5) Si la lógica decidió no responder (bot pausado), devolvemos 200 vacío.
     if twiml is None:
         return Response(status_code=200)
@@ -496,6 +501,30 @@ def _mensajes_de_twiml(twiml: str) -> list[str]:
     return [html.unescape(p).strip() for p in partes if p.strip()]
 
 
+def _registrar_conversacion(
+    numero: str, telefono: str, body: str, twiml: str | None, es_media: bool = False
+) -> None:
+    """Guarda el mensaje del cliente y la respuesta del bot en el historial.
+
+    Centraliza el log de TODA conversación (no solo las de IA) para el buzón de
+    Conversaciones y la memoria. Best-effort: nunca rompe el webhook.
+    """
+    try:
+        from .persistencia import obtener_repo
+
+        repo = obtener_repo()
+        entrante = (body or "").strip()
+        if not entrante and es_media:
+            entrante = "🎤 (mensaje multimedia)"
+        if entrante:
+            repo.agregar_historial(numero, telefono, "user", entrante)
+        if twiml:
+            for m in _mensajes_de_twiml(twiml):
+                repo.agregar_historial(numero, telefono, "assistant", m)
+    except Exception as exc:  # noqa: BLE001
+        print(f"⚠️  [HISTORIAL] No se pudo registrar la conversación: {exc}")
+
+
 @app.post("/simular", dependencies=[Depends(requiere_clave)])
 async def simular(request: Request) -> dict:
     """Corre el bot para un cliente ficticio y devuelve la respuesta (sin enviar nada)."""
@@ -505,7 +534,9 @@ async def simular(request: Request) -> dict:
     cuenta = buscar_cuenta(numero)
     if cuenta is None:
         return {"respuestas": [f"(el número {numero} no está registrado)"]}
-    twiml = decidir_respuesta(cuenta, str(datos.get("texto", "")), telefono, numero, simular=True)
+    texto_in = str(datos.get("texto", ""))
+    twiml = decidir_respuesta(cuenta, texto_in, telefono, numero, simular=True)
+    _registrar_conversacion(numero, telefono, texto_in, twiml)  # memoria del simulador
     if twiml is None:
         return {
             "respuestas": ["⏸️ (el bot quedó en pausa — derivado a un asesor humano)"],
@@ -567,6 +598,94 @@ def media_proxy(url: str) -> Response:
         content=r.content,
         media_type=r.headers.get("Content-Type", "application/octet-stream"),
     )
+
+
+# ── Conversaciones: buzón del equipo (ver chats, derivar por área, responder) ─
+@app.get("/conversaciones", dependencies=[Depends(requiere_clave)])
+def listar_conversaciones_ep(area: str = "") -> dict:
+    """Lista los chats del número, con su área y si el bot está en pausa (pidió asesor)."""
+    from .persistencia import obtener_repo
+
+    repo = obtener_repo()
+    numero = normalizar_telefono(_SIM_NUMERO)
+    sim_tel = normalizar_telefono(_SIM_TELEFONO)
+    convs = [c for c in repo.listar_conversaciones(numero) if c["telefono"] != sim_tel]
+    for c in convs:
+        c["pausado"] = repo.bot_pausado(c["telefono"])
+        c["area"] = repo.area_de(numero, c["telefono"]) or "Sin asignar"
+    areas = sorted({c["area"] for c in convs})
+    if area:
+        convs = [c for c in convs if c["area"] == area]
+    convs.sort(key=lambda c: 0 if c.get("pausado") else 1)  # los que piden asesor, primero
+    return {"conversaciones": convs, "areas": areas}
+
+
+@app.get("/conversaciones/{telefono}", dependencies=[Depends(requiere_clave)])
+def ver_conversacion_ep(telefono: str) -> dict:
+    """Devuelve el historial de un chat + su área + si está en pausa."""
+    from .persistencia import obtener_repo
+
+    repo = obtener_repo()
+    numero = normalizar_telefono(_SIM_NUMERO)
+    tel = normalizar_telefono(telefono)
+    return {
+        "telefono": tel,
+        "mensajes": repo.historial(numero, tel),
+        "pausado": repo.bot_pausado(tel),
+        "area": repo.area_de(numero, tel) or "Sin asignar",
+    }
+
+
+@app.post("/conversaciones/{telefono}/responder", dependencies=[Depends(requiere_clave)])
+async def responder_conversacion_ep(telefono: str, request: Request) -> dict:
+    """Un asesor responde al cliente desde el panel (y el bot queda en pausa)."""
+    from .persistencia import obtener_repo
+    from .services.twilio_client import enviar_mensaje
+
+    datos = await request.json()
+    texto = str(datos.get("texto", "")).strip()
+    if not texto:
+        raise HTTPException(status_code=400, detail="Mensaje vacío.")
+    repo = obtener_repo()
+    numero = normalizar_telefono(_SIM_NUMERO)
+    tel = normalizar_telefono(telefono)
+    try:
+        sid = enviar_mensaje(tel, numero, texto)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "estado": "error",
+            "detalle": (
+                f"No se pudo enviar: {exc}. Si pasaron más de 24 hs desde el último "
+                "mensaje del cliente, WhatsApp no permite responder en texto libre."
+            ),
+        }
+    repo.agregar_historial(numero, tel, "assistant", texto)
+    repo.pausar_bot(tel)  # el asesor toma la conversación
+    return {"estado": "enviado", "sid": sid}
+
+
+@app.post("/conversaciones/{telefono}/reactivar", dependencies=[Depends(requiere_clave)])
+async def reactivar_conversacion_ep(telefono: str) -> dict:
+    """Devuelve la conversación al bot (lo reactiva)."""
+    from .persistencia import obtener_repo
+
+    obtener_repo().reactivar_bot(normalizar_telefono(telefono))
+    return {"ok": True}
+
+
+@app.post("/conversaciones/{telefono}/derivar", dependencies=[Depends(requiere_clave)])
+async def derivar_conversacion_ep(telefono: str, request: Request) -> dict:
+    """Asigna/deriva la conversación a un área (Ventas, Taller, Repuestos, Planes...)."""
+    from .persistencia import obtener_repo
+
+    datos = await request.json()
+    area = str(datos.get("area", "")).strip()
+    if not area:
+        raise HTTPException(status_code=400, detail="Falta el área.")
+    obtener_repo().fijar_area(
+        normalizar_telefono(_SIM_NUMERO), normalizar_telefono(telefono), area
+    )
+    return {"ok": True, "area": area}
 
 
 @app.post("/ovalo/analizar", dependencies=[Depends(requiere_clave)])

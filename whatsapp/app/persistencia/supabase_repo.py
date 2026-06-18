@@ -242,9 +242,49 @@ class RepositorioSupabase(Repositorio):
             }
         ).execute()
 
+    # --- Conversaciones ---
+    def listar_conversaciones(self, numero_cuenta: str) -> list[dict]:
+        res = (
+            self._db.table("wsp_historial")
+            .select("telefono,contenido,rol,creado_at")
+            .eq("numero_cuenta", numero_cuenta)
+            .order("id", desc=True)
+            .limit(400)
+            .execute()
+        )
+        vistos: dict[str, dict] = {}
+        for fila in res.data or []:
+            tel = fila.get("telefono")
+            if tel and tel not in vistos:  # la primera (desc) es la más reciente
+                vistos[tel] = {
+                    "telefono": tel, "ultimo": fila.get("contenido", ""),
+                    "rol": fila.get("rol", ""), "fecha": fila.get("creado_at", ""),
+                }
+        return list(vistos.values())
+
+    def fijar_area(self, numero_cuenta: str, telefono: str, area: str) -> None:
+        self._db.table("wsp_conversacion_area").upsert(
+            {
+                "numero_cuenta": numero_cuenta, "telefono": telefono, "area": area,
+                "actualizado_at": datetime.now(timezone.utc).isoformat(),
+            },
+            on_conflict="numero_cuenta,telefono",
+        ).execute()
+
+    def area_de(self, numero_cuenta: str, telefono: str) -> str | None:
+        res = (
+            self._db.table("wsp_conversacion_area")
+            .select("area")
+            .eq("numero_cuenta", numero_cuenta)
+            .eq("telefono", telefono)
+            .limit(1)
+            .execute()
+        )
+        return res.data[0]["area"] if res.data else None
+
     # --- Reiniciar una conversación puntual ---
     def reiniciar_conversacion(self, numero_cuenta: str, telefono: str) -> None:
-        for tabla in ("wsp_sesiones", "wsp_encuestas_abiertas", "wsp_historial"):
+        for tabla in ("wsp_sesiones", "wsp_encuestas_abiertas", "wsp_historial", "wsp_conversacion_area"):
             (
                 self._db.table(tabla)
                 .delete()

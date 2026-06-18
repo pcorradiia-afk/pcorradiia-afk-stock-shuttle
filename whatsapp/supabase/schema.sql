@@ -101,6 +101,16 @@ create table if not exists wsp_config_encuestas (
     actualizado_at timestamptz not null default now()
 );
 
+-- Conversaciones: área asignada a cada chat (Ventas / Taller / Repuestos / Planes),
+-- para el buzón del equipo (derivación por área).
+create table if not exists wsp_conversacion_area (
+    numero_cuenta  text        not null,
+    telefono       text        not null,
+    area           text        not null,
+    actualizado_at timestamptz not null default now(),
+    primary key (numero_cuenta, telefono)
+);
+
 -- Memoria conversacional: historial de la charla con la IA por cliente.
 create table if not exists wsp_historial (
     id            bigint generated always as identity primary key,
@@ -122,3 +132,4 @@ alter table wsp_encuesta_envios     enable row level security;
 alter table wsp_encuestas_abiertas  enable row level security;
 alter table wsp_encuesta_resultados enable row level security;
 alter table wsp_config_encuestas    enable row level security;
+alter table wsp_conversacion_area   enable row level security;

@@ -96,10 +96,7 @@ def _responder_con_claude(
             texto = bloque.text.strip()
             break
 
-    # Guardamos la ida y vuelta en el historial (sólo si hubo respuesta), para
-    # que el historial quede consistente (user → assistant → user → ...).
-    if texto:
-        repo.agregar_historial(numero_cuenta, telefono, "user", mensaje)
-        repo.agregar_historial(numero_cuenta, telefono, "assistant", texto)
-
+    # El guardado del historial (user → assistant) lo centraliza el webhook
+    # (`_registrar_conversacion`), para que TODA conversación quede registrada
+    # —no solo las que pasan por la IA— y aparezca en el buzón de Conversaciones.
     return texto
