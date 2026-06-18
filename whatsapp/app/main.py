@@ -545,6 +545,30 @@ async def simular_reiniciar(request: Request) -> dict:
     return {"ok": True}
 
 
+@app.get("/media", dependencies=[Depends(requiere_clave)])
+def media_proxy(url: str) -> Response:
+    """Sirve un audio/imagen de Twilio (requiere autenticación) para oírlo en el panel."""
+    import requests as _requests
+    from urllib.parse import urlparse
+
+    host = (urlparse(url).hostname or "").lower()
+    if not (host == "api.twilio.com" or host.endswith(".twilio.com")):
+        raise HTTPException(status_code=400, detail="URL no permitida.")
+    config = obtener_config()
+    try:
+        r = _requests.get(
+            url, auth=(config.twilio_account_sid, config.twilio_auth_token), timeout=25
+        )
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=502, detail=f"No se pudo obtener el medio: {exc}") from exc
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Twilio respondió {r.status_code}.")
+    return Response(
+        content=r.content,
+        media_type=r.headers.get("Content-Type", "application/octet-stream"),
+    )
+
+
 @app.post("/ovalo/analizar", dependencies=[Depends(requiere_clave)])
 async def ovalo_analizar(archivo: UploadFile = File(...)) -> dict:
     """Lee el CSV del Óvalo y devuelve el resumen para armar el selector."""
