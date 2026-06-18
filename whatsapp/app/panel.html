@@ -235,6 +235,17 @@
           </div>
           <p class="nota">Tip: <b>hola</b> muestra el menú · un <b>número</b> elige una opción · <b>texto libre</b> habla con la IA. Para encuestas usá los botones de arriba y respondé con números <b>del 1 al 5</b>.</p>
         </div>
+        <div class="card">
+          <h2>📲 Probar en mi WhatsApp (real)</h2>
+          <p class="nota">Te manda la encuesta <b>tappable de verdad</b> (lista 1-5 y botones Sí/No) a tu WhatsApp. <b>Importante:</b> primero escribile <b>"hola"</b> al bot desde ese número, para abrir la conversación.</p>
+          <label>Mi número (+549...)</label>
+          <input type="text" id="encNumero" placeholder="+5492804418307" />
+          <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+            <button id="encPruebaTaller">Enviar encuesta de Taller</button>
+            <button class="sec" id="encPruebaVentas">Enviar encuesta de Ventas</button>
+          </div>
+          <div id="encPruebaMsg" class="nota"></div>
+        </div>
       </div>
 
       <!-- ===== VISTA: RESULTADOS DE ENCUESTAS ===== -->
@@ -408,6 +419,27 @@
     } catch (e) { alert('No pude cargar los resultados: ' + e); }
   }
   if ($("btnRefrescarRes")) $("btnRefrescarRes").addEventListener('click', cargarResultados);
+
+  // ===== Probar encuesta en mi WhatsApp (real) =====
+  async function enviarEncuestaPrueba(tipo) {
+    const num = $("encNumero").value.trim();
+    if (!num) { alert("Poné tu número (+549...)."); return; }
+    $("encPruebaMsg").textContent = "Enviando...";
+    try {
+      const r = await fetch('/encuestas/prueba', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telefono: num, tipo })
+      });
+      const res = await r.json();
+      $("encPruebaMsg").textContent = res.estado === 'enviada'
+        ? '✅ Enviada a ' + res.destino + ' — revisá tu WhatsApp y tocá las opciones.'
+        : '⚠️ ' + (res.detalle || res.detail || res.estado);
+    } catch (e) { $("encPruebaMsg").textContent = 'Error: ' + e; }
+  }
+  if ($("encPruebaTaller")) {
+    $("encPruebaTaller").addEventListener('click', () => enviarEncuestaPrueba('taller'));
+    $("encPruebaVentas").addEventListener('click', () => enviarEncuestaPrueba('ventas'));
+  }
 
   // ===== Simulador del bot =====
   function simBurbuja(texto, lado) {

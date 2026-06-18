@@ -333,6 +333,71 @@ async def guardar_preguntas_encuesta(id_empresa: str, request: Request) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
+@app.post("/encuestas/prueba", dependencies=[Depends(requiere_clave)])
+async def encuesta_prueba(request: Request) -> dict:
+    """Manda la encuesta tappable REAL a un WhatsApp (para probarla en el teléfono).
+
+    Usa mensajes interactivos dentro de la conversación (no plantilla), así que
+    el número de destino tiene que tener la charla ABIERTA: que le haya escrito
+    al bot en las últimas 24 hs (ej. mandar 'hola').
+    """
+    from .marcas import LINEA_POSVENTA, LINEA_VENTAS, buscar_por_empresa
+    from .persistencia import obtener_repo
+    from .services import encuestas, sesion
+    from .services.twilio_client import enviar_pregunta_interactiva
+
+    datos = await request.json()
+    telefono = normalizar_telefono(datos.get("telefono", ""))
+    if not telefono:
+        raise HTTPException(status_code=400, detail="Falta el teléfono (+549...).")
+
+    tipo = str(datos.get("tipo", "taller")).lower()
+    if tipo in ("ventas", "entrega", "0km"):
+        linea, tipo_enc = LINEA_VENTAS, "ventas"
+    else:
+        linea, tipo_enc = LINEA_POSVENTA, "taller"
+
+    enc = buscar_por_empresa("empresa_pedro_corradi", linea)
+    if enc is None:
+        raise HTTPException(status_code=400, detail="No hay línea configurada.")
+    numero_origen, ctx = enc
+    preguntas = encuestas.preguntas_de("empresa_pedro_corradi", tipo_enc)
+    if not preguntas:
+        raise HTTPException(status_code=400, detail="No hay preguntas configuradas.")
+
+    nombre = str(datos.get("nombre", ""))
+    referencia = str(datos.get("referencia", "Ford Ranger"))
+
+    repo = obtener_repo()
+    repo.reiniciar_conversacion(numero_origen, telefono)  # arrancamos limpio
+    repo.abrir_encuesta(numero_origen, telefono, {
+        "id_empresa": "empresa_pedro_corradi", "tipo": tipo_enc,
+        "referencia": referencia, "nombre": nombre, "paso": 0, "respuestas": {},
+    })
+    sesion.elegir_linea(numero_origen, telefono, linea)
+
+    # Cuerpo del 1er mensaje = saludo + pregunta 1 (la lista lleva las opciones).
+    conf = encuestas.cuestionario("empresa_pedro_corradi")
+    encabezado = conf[tipo_enc]["encabezado"].format_map(
+        encuestas._DefaultDict({"nombre": nombre, "empresa": ctx.saludo, "referencia": referencia})
+    )
+    primera = preguntas[0]
+    cuerpo = f"{encabezado}\n\n1) {primera['texto']}"
+    try:
+        sid = enviar_pregunta_interactiva(
+            telefono, numero_origen, primera.get("tipo", "escala"), cuerpo
+        )
+        return {"estado": "enviada", "sid": sid, "destino": telefono}
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "estado": "error",
+            "detalle": (
+                f"{exc} — Escribile primero *hola* al bot desde ese WhatsApp (para "
+                "abrir la conversación) y reintentá."
+            ),
+        }
+
+
 @app.post("/documentos/cupones/{id_empresa}")
 def lanzar_cupones(id_empresa: str, dry_run: bool = True) -> ReporteDocumentos:
     """Lanza la campaña de cupones de pago en PDF (caso #4) para una empresa.
