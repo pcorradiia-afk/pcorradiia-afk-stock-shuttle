@@ -268,7 +268,7 @@ _REGISTRO: dict[str, Cuenta] = {
                 "Equipo de Posventa Pedro Corradi",
                 {
                     "encuesta_calidad": Plantilla(
-                        "HX11_pv_bbbb",
+                        "HXdba66490f20d4b4a7d5883d06259864b",  # plantilla real (Taller) en aprobación
                         opciones=("1", "2", "3", "4", "5"),
                     ),
                 },
