@@ -53,10 +53,10 @@ CUESTIONARIO_DEFECTO: dict[str, dict] = {
             "a mejorar 💪🚗\n\nSobre tu paso por el taller con tu {referencia}:"
         ),
         "preguntas": [
-            {"clave": "calidad_trabajo", "texto": "¿Cómo evaluás la *calidad del trabajo* realizado?", "tipo": ESCALA},
-            {"clave": "atencion", "texto": "¿Cómo te sentiste con la *atención* recibida?", "tipo": ESCALA},
-            {"clave": "claridad", "texto": "¿La *explicación de los trabajos* fue clara?", "tipo": ESCALA},
-            {"clave": "recomendacion", "texto": "¿*Recomendarías* la marca y nuestro concesionario?", "tipo": SI_NO},
+            {"clave": "calidad_trabajo", "texto": "¿Cómo calificás la *calidad del trabajo*?", "tipo": ESCALA},
+            {"clave": "atencion", "texto": "¿Cómo calificás la *calidad de atención*?", "tipo": ESCALA},
+            {"clave": "explicacion", "texto": "¿Cómo calificás la *explicación del trabajo*?", "tipo": ESCALA},
+            {"clave": "recomendacion", "texto": "¿*Recomendarías* el concesionario y la marca?", "tipo": SI_NO},
         ],
     },
     "ventas": {
