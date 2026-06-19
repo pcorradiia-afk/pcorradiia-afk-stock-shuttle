@@ -300,6 +300,7 @@
               <div id="convHead" class="oculto" style="border-bottom:1px solid var(--borde); padding:10px 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                 <b id="convTitulo"></b>
                 <span id="convAreaBadge" class="badge"></span>
+                <button class="sec" id="convCopiarCRM" style="padding:6px 10px;">📋 Copiar a CRM</button>
                 <span style="margin-left:auto;display:flex;gap:6px;align-items:center;font-size:.85rem;">
                   Derivar a:
                   <select id="convDerivar" style="padding:6px 8px;border:1px solid var(--borde);border-radius:8px;">
@@ -424,6 +425,7 @@
 
   // ===== Conversaciones (buzón del equipo) =====
   let convActual = null;
+  let convDatos = null;
   function convItem(c) {
     const d = document.createElement('div');
     d.style.cssText = 'padding:10px 12px;border-bottom:1px solid var(--borde);cursor:pointer;';
@@ -465,6 +467,7 @@
     try {
       const r = await fetch('/conversaciones/' + encodeURIComponent(tel));
       const d = await r.json();
+      convDatos = d;
       $("convVacio").classList.add('oculto');
       $("convHead").classList.remove('oculto');
       $("convResponder").classList.remove('oculto');
@@ -492,7 +495,32 @@
       abrirConv(convActual); cargarConversaciones();
     } catch (e) { $("convEstado").textContent = 'Error: ' + e; }
   }
+  function copiarCRM() {
+    if (!convDatos) return;
+    const l = [];
+    l.push('Conversación WhatsApp — Pedro Corradi Ford');
+    l.push('Cliente: ' + (convDatos.telefono || ''));
+    l.push('Área: ' + (convDatos.area || ''));
+    l.push('Fecha: ' + new Date().toLocaleString('es-AR'));
+    l.push('----------------------------------------');
+    (convDatos.mensajes || []).forEach(m => {
+      const quien = m.role === 'user' ? 'Cliente' : 'Pedro Corradi';
+      l.push(quien + ': ' + m.content);
+    });
+    const texto = l.join('\n');
+    const ok = () => {
+      const b = $("convCopiarCRM"); const o = b.textContent;
+      b.textContent = '✅ Copiado'; setTimeout(() => b.textContent = o, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(ok).catch(() => prompt('Copiá la conversación (Ctrl+C):', texto));
+    } else {
+      prompt('Copiá la conversación (Ctrl+C):', texto);
+    }
+  }
+
   if ($("convEnviarBtn")) {
+    $("convCopiarCRM").addEventListener('click', copiarCRM);
     $("convEnviarBtn").addEventListener('click', convEnviar);
     $("convInput").addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); convEnviar(); } });
     $("convDevolverBtn").addEventListener('click', async () => {
