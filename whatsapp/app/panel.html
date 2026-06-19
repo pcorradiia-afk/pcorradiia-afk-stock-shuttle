@@ -285,7 +285,8 @@
       <div id="vistaConversaciones" class="oculto">
         <div class="card">
           <h2><span class="paso">💬</span>Conversaciones
-            <button class="sec" id="btnRefrescarConv" style="margin-left:auto;padding:6px 12px;">🔄 Actualizar</button>
+            <button class="sec" id="btnProbarSonido" style="margin-left:auto;padding:6px 12px;">🔔 Probar sonido</button>
+            <button class="sec" id="btnRefrescarConv" style="padding:6px 12px;">🔄 Actualizar</button>
           </h2>
           <p class="nota">Chats de clientes con el bot. Los marcados 🔴 <b>pidieron un asesor</b> (el bot está en pausa, esperando que respondas). Derivá cada uno al área que corresponda (Ventas, Taller, Repuestos, Planes…).</p>
           <div style="margin-top:8px;">
@@ -434,11 +435,16 @@
   function _beep() {
     try {
       _desbloquearAudio();
-      const o = _audioCtx.createOscillator(), g = _audioCtx.createGain();
-      o.connect(g); g.connect(_audioCtx.destination); o.type = 'sine'; g.gain.value = 0.14;
-      o.frequency.setValueAtTime(880, _audioCtx.currentTime);
-      o.frequency.setValueAtTime(660, _audioCtx.currentTime + 0.18);
-      o.start(); o.stop(_audioCtx.currentTime + 0.36);
+      const now = _audioCtx.currentTime;
+      [0, 0.22, 0.44].forEach((t, i) => {
+        const o = _audioCtx.createOscillator(), g = _audioCtx.createGain();
+        o.connect(g); g.connect(_audioCtx.destination);
+        o.type = 'sine'; o.frequency.value = (i === 2) ? 988 : 784;
+        g.gain.setValueAtTime(0.0001, now + t);
+        g.gain.exponentialRampToValueAtTime(0.3, now + t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.18);
+        o.start(now + t); o.stop(now + t + 0.2);
+      });
     } catch (e) {}
   }
   function mostrarToast(msg) {
@@ -569,6 +575,7 @@
     }
   }
 
+  if ($("btnProbarSonido")) $("btnProbarSonido").addEventListener('click', _beep);
   if ($("convEnviarBtn")) {
     $("convCopiarCRM").addEventListener('click', copiarCRM);
     $("convEnviarBtn").addEventListener('click', convEnviar);
