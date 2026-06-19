@@ -106,15 +106,27 @@ app = FastAPI(
 _seguridad = HTTPBasic(auto_error=False)
 
 
-def requiere_clave(cred: HTTPBasicCredentials | None = Depends(_seguridad)) -> None:
+def _usuarios_panel() -> dict[str, str]:
+    """Usuarios válidos del panel: el simple + los de PANEL_USUARIOS ('user:clave,...')."""
     config = obtener_config()
-    if not (config.panel_usuario and config.panel_clave):
-        return  # sin clave configurada → abierto (sirve para probar)
-    valido = (
-        cred is not None
-        and secrets.compare_digest(cred.username, config.panel_usuario)
-        and secrets.compare_digest(cred.password, config.panel_clave)
-    )
+    usuarios: dict[str, str] = {}
+    if config.panel_usuario and config.panel_clave:
+        usuarios[config.panel_usuario] = config.panel_clave
+    for par in (config.panel_usuarios or "").split(","):
+        par = par.strip()
+        if ":" in par:
+            usuario, clave = par.split(":", 1)
+            if usuario.strip() and clave.strip():
+                usuarios[usuario.strip()] = clave.strip()
+    return usuarios
+
+
+def requiere_clave(cred: HTTPBasicCredentials | None = Depends(_seguridad)) -> None:
+    usuarios = _usuarios_panel()
+    if not usuarios:
+        return  # sin usuarios configurados → abierto (sirve para probar)
+    esperada = usuarios.get(cred.username, "") if cred is not None else ""
+    valido = bool(esperada) and secrets.compare_digest(cred.password, esperada)
     if not valido:
         raise HTTPException(
             status_code=401,

@@ -55,6 +55,9 @@ class Configuracion(BaseSettings):
     # exigir usuario + contraseña al entrar.
     panel_usuario: str = ""
     panel_clave: str = ""
+    # Usuarios adicionales del panel (varios), formato: "user:clave,user2:clave2".
+    # Se suman al usuario simple de arriba. Cargalos en Render (no en el código).
+    panel_usuarios: str = ""
 
     # --- Integración con el sistema interno (in-house) ---
     # Token que el sistema interno debe enviar en la cabecera X-API-Token para
