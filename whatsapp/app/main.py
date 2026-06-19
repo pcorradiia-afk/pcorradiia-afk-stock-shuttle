@@ -148,6 +148,13 @@ def requiere_token(x_api_token: str | None = Header(default=None)) -> None:
         raise HTTPException(status_code=401, detail="Token de API inválido")
 
 
+@app.get("/usuarios", dependencies=[Depends(requiere_clave)])
+def usuarios_panel() -> dict:
+    """Lista los usuarios del panel dados de alta (sin las claves)."""
+    nombres = sorted(_usuarios_panel().keys())
+    return {"cantidad": len(nombres), "usuarios": nombres}
+
+
 @app.get("/")
 def salud() -> dict[str, object]:
     """Endpoint de salud: confirma que el servicio está vivo y qué atiende cada número."""
