@@ -303,12 +303,21 @@
                 <b id="convTitulo"></b>
                 <span id="convAreaBadge" class="badge"></span>
                 <button class="sec" id="convCopiarCRM" style="padding:6px 10px;">📋 Copiar a CRM</button>
+                <button class="sec" id="convResumenBtn" style="padding:6px 10px;">🧠 Resumen p/ asesor</button>
                 <span style="margin-left:auto;display:flex;gap:6px;align-items:center;font-size:.85rem;">
                   Derivar a:
                   <select id="convDerivar" style="padding:6px 8px;border:1px solid var(--borde);border-radius:8px;">
                     <option>Ventas</option><option>Plan Óvalo</option><option>Taller</option><option>Repuestos</option><option>Recepción</option><option>Gerencia</option>
                   </select>
                 </span>
+              </div>
+              <div id="convResumenBox" class="oculto" style="border-bottom:1px solid var(--borde);padding:10px 12px;background:#fffbeb;">
+                <div id="convResumenTxt" style="white-space:pre-wrap;font-size:.88rem;">Generando resumen…</div>
+                <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+                  <button class="sec" id="convCopiarResumen" style="padding:6px 10px;">📋 Copiar resumen</button>
+                  <button class="sec" id="convCopiarTodo" style="padding:6px 10px;">📋 Copiar resumen + chat</button>
+                  <button class="sec" id="convCerrarResumen" style="padding:6px 10px;">✕</button>
+                </div>
               </div>
               <div id="convMensajes" style="flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; background:#fafcff;"></div>
               <div id="convResponder" class="oculto" style="border-top:1px solid var(--borde); padding:10px;">
@@ -524,6 +533,8 @@
       const r = await fetch('/conversaciones/' + encodeURIComponent(tel));
       const d = await r.json();
       convDatos = d;
+      convResumen = '';
+      $("convResumenBox").classList.add('oculto');
       $("convVacio").classList.add('oculto');
       $("convHead").classList.remove('oculto');
       $("convResponder").classList.remove('oculto');
@@ -575,9 +586,45 @@
     }
   }
 
+  // Copiar texto al portapapeles (con feedback en el botón).
+  function copiarTexto(texto, btn) {
+    const ok = () => { if (btn) { const o = btn.textContent; btn.textContent = '✅ Copiado'; setTimeout(() => btn.textContent = o, 1600); } };
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(texto).then(ok).catch(() => prompt('Copiá (Ctrl+C):', texto));
+    else prompt('Copiá (Ctrl+C):', texto);
+  }
+  // Texto completo de la conversación (para "resumen + chat" y CRM).
+  function convTextoCompleto() {
+    if (!convDatos) return '';
+    return (convDatos.mensajes || []).map(m =>
+      (m.role === 'user' ? 'Cliente' : 'Pedro Corradi') + ': ' + m.content).join('\n');
+  }
+  let convResumen = '';
+  async function pedirResumen() {
+    if (!convActual) return;
+    $("convResumenBox").classList.remove('oculto');
+    $("convResumenTxt").textContent = 'Generando resumen… ⏳';
+    try {
+      const r = await fetch('/conversaciones/' + encodeURIComponent(convActual) + '/resumen', { method: 'POST' });
+      const d = await r.json();
+      convResumen = d.resumen || '(sin resumen)';
+      $("convResumenTxt").textContent = convResumen;
+    } catch (e) { $("convResumenTxt").textContent = 'No se pudo generar el resumen: ' + e; }
+  }
+  function cabeceraCaso() {
+    const area = (convDatos && convDatos.area) ? convDatos.area : '';
+    return '📌 Caso para asesor — ' + area + '\nCliente (WhatsApp): ' + (convActual || '') + '\n\n';
+  }
+
   if ($("btnProbarSonido")) $("btnProbarSonido").addEventListener('click', _beep);
   if ($("convEnviarBtn")) {
     $("convCopiarCRM").addEventListener('click', copiarCRM);
+    $("convResumenBtn").addEventListener('click', pedirResumen);
+    $("convCerrarResumen").addEventListener('click', () => $("convResumenBox").classList.add('oculto'));
+    $("convCopiarResumen").addEventListener('click', () =>
+      copiarTexto(cabeceraCaso() + convResumen, $("convCopiarResumen")));
+    $("convCopiarTodo").addEventListener('click', () =>
+      copiarTexto(cabeceraCaso() + 'RESUMEN:\n' + convResumen + '\n\n--- CONVERSACIÓN COMPLETA ---\n' + convTextoCompleto(), $("convCopiarTodo")));
     $("convEnviarBtn").addEventListener('click', convEnviar);
     $("convInput").addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); convEnviar(); } });
     $("convDevolverBtn").addEventListener('click', async () => {

@@ -688,6 +688,55 @@ async def derivar_conversacion_ep(telefono: str, request: Request) -> dict:
     return {"ok": True, "area": area}
 
 
+@app.post("/conversaciones/{telefono}/resumen", dependencies=[Depends(requiere_clave)])
+def resumen_conversacion_ep(telefono: str) -> dict:
+    """Genera un resumen del chat (con IA) para pasarle el caso a un asesor."""
+    from .persistencia import obtener_repo
+
+    repo = obtener_repo()
+    numero = normalizar_telefono(_SIM_NUMERO)
+    tel = normalizar_telefono(telefono)
+    mensajes = repo.historial(numero, tel)
+    area = repo.area_de(numero, tel) or ""
+    return {"telefono": tel, "area": area, "resumen": _resumir_conversacion(mensajes, tel, area)}
+
+
+def _resumir_conversacion(mensajes: list[dict], telefono: str, area: str) -> str:
+    """Resumen breve de la conversación para el asesor (IA si está activa; si no, fallback)."""
+    transcripcion = "\n".join(
+        f"{'Cliente' if m.get('role') == 'user' else 'Pedro Corradi'}: {m.get('content', '')}"
+        for m in mensajes
+    )
+    config = obtener_config()
+    if config.ia_activa and config.anthropic_api_key and transcripcion.strip():
+        try:
+            from anthropic import Anthropic
+
+            cliente = Anthropic(api_key=config.anthropic_api_key)
+            r = cliente.messages.create(
+                model=config.ia_modelo.strip().lower(),
+                max_tokens=350,
+                system=(
+                    "Resumís conversaciones de WhatsApp de una concesionaria Ford para "
+                    "pasarle el caso a un asesor que NO leyó el chat. Devolvé un resumen "
+                    "BREVE en viñetas: qué necesita el cliente, datos clave (modelo de "
+                    "interés, usado en parte de pago, forma de pago/presupuesto, urgencia) "
+                    "y qué acción concreta se requiere. Claro y al grano, sin saludos."
+                ),
+                messages=[{
+                    "role": "user",
+                    "content": f"Área: {area}\nCliente: {telefono}\n\nConversación:\n{transcripcion}",
+                }],
+            )
+            for bloque in r.content:
+                if bloque.type == "text":
+                    return bloque.text.strip()
+        except Exception as exc:  # noqa: BLE001
+            print(f"⚠️  [RESUMEN] {exc}")
+    # Fallback sin IA: devolvemos la transcripción (recortada).
+    return "(Resumen automático no disponible.) Conversación:\n" + transcripcion[-800:]
+
+
 @app.post("/ovalo/analizar", dependencies=[Depends(requiere_clave)])
 async def ovalo_analizar(archivo: UploadFile = File(...)) -> dict:
     """Lee el CSV del Óvalo y devuelve el resumen para armar el selector."""
