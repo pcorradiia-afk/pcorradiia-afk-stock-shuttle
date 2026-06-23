@@ -359,15 +359,17 @@ async def guardar_preguntas_encuesta(id_empresa: str, request: Request) -> dict:
 
 @app.post("/encuestas/prueba", dependencies=[Depends(requiere_clave)])
 async def encuesta_prueba(request: Request) -> dict:
-    """Manda la encuesta tappable REAL a un WhatsApp (para probarla en el teléfono).
+    """Manda la encuesta REAL a un WhatsApp para probarla en el teléfono.
 
-    Usa mensajes interactivos dentro de la conversación (no plantilla), así que
-    el número de destino tiene que tener la charla ABIERTA: que le haya escrito
-    al bot en las últimas 24 hs (ej. mandar 'hola').
+    Si la línea tiene plantilla APROBADA (Taller), manda el mensaje de inicio como
+    plantilla (business-initiated: no hace falta que el cliente escriba antes).
+    Si no hay plantilla (ej. Ventas), manda la 1ª pregunta interactiva dentro de
+    la charla (requiere que el cliente haya escrito 'hola' en las últimas 24 hs).
     """
     from .marcas import LINEA_POSVENTA, LINEA_VENTAS, buscar_por_empresa
     from .persistencia import obtener_repo
     from .services import encuestas, sesion
+    from .services.integracion import recibir_evento
     from .services.twilio_client import enviar_pregunta_interactiva
 
     datos = await request.json()
@@ -375,49 +377,56 @@ async def encuesta_prueba(request: Request) -> dict:
     if not telefono:
         raise HTTPException(status_code=400, detail="Falta el teléfono (+549...).")
 
-    tipo = str(datos.get("tipo", "taller")).lower()
-    if tipo in ("ventas", "entrega", "0km"):
-        linea, tipo_enc = LINEA_VENTAS, "ventas"
-    else:
-        linea, tipo_enc = LINEA_POSVENTA, "taller"
+    es_ventas = str(datos.get("tipo", "taller")).lower() in ("ventas", "entrega", "0km")
+    tipo_enc = "ventas" if es_ventas else "taller"
+    linea = LINEA_VENTAS if es_ventas else LINEA_POSVENTA
+    nombre = str(datos.get("nombre", ""))
+    referencia = str(datos.get("referencia", "Ford Ranger"))
 
     enc = buscar_por_empresa("empresa_pedro_corradi", linea)
     if enc is None:
         raise HTTPException(status_code=400, detail="No hay línea configurada.")
     numero_origen, ctx = enc
+    obtener_repo().reiniciar_conversacion(numero_origen, telefono)  # arrancamos limpio
+
+    # Si hay plantilla aprobada → mandamos el mensaje REAL (sin 'hola' previo).
+    if ctx.plantillas.get(encuestas.PLANTILLA_ENCUESTA) is not None:
+        evento = {
+            "tipo": "ventas" if es_ventas else "servicio",
+            "cliente": nombre, "telefono": telefono,
+            "referencia": referencia, "empresa": "empresa_pedro_corradi",
+        }
+        res = recibir_evento(evento, dry_run=False)
+        if res.get("estado") == "enviada":
+            return {"estado": "enviada", "detalle": res.get("detalle"), "destino": telefono}
+        return {"estado": "error", "detalle": res.get("detalle", "No se pudo enviar la plantilla.")}
+
+    # Sin plantilla (ej. Ventas) → 1ª pregunta interactiva dentro de la charla.
     preguntas = encuestas.preguntas_de("empresa_pedro_corradi", tipo_enc)
     if not preguntas:
         raise HTTPException(status_code=400, detail="No hay preguntas configuradas.")
-
-    nombre = str(datos.get("nombre", ""))
-    referencia = str(datos.get("referencia", "Ford Ranger"))
-
     repo = obtener_repo()
-    repo.reiniciar_conversacion(numero_origen, telefono)  # arrancamos limpio
     repo.abrir_encuesta(numero_origen, telefono, {
         "id_empresa": "empresa_pedro_corradi", "tipo": tipo_enc,
         "referencia": referencia, "nombre": nombre, "paso": 0, "respuestas": {},
     })
     sesion.elegir_linea(numero_origen, telefono, linea)
-
-    # Cuerpo del 1er mensaje = saludo + pregunta 1 (la lista lleva las opciones).
     conf = encuestas.cuestionario("empresa_pedro_corradi")
     encabezado = conf[tipo_enc]["encabezado"].format_map(
         encuestas._DefaultDict({"nombre": nombre, "empresa": ctx.saludo, "referencia": referencia})
     )
-    primera = preguntas[0]
-    cuerpo = f"{encabezado}\n\n1) {primera['texto']}"
+    cuerpo = f"{encabezado}\n\n1) {preguntas[0]['texto']}"
     try:
         sid = enviar_pregunta_interactiva(
-            telefono, numero_origen, primera.get("tipo", "escala"), cuerpo
+            telefono, numero_origen, preguntas[0].get("tipo", "escala"), cuerpo
         )
         return {"estado": "enviada", "sid": sid, "destino": telefono}
     except Exception as exc:  # noqa: BLE001
         return {
             "estado": "error",
             "detalle": (
-                f"{exc} — Escribile primero *hola* al bot desde ese WhatsApp (para "
-                "abrir la conversación) y reintentá."
+                f"{exc} — (Ventas todavía no tiene plantilla aprobada: escribile *hola* "
+                "al bot desde ese WhatsApp y reintentá.)"
             ),
         }
 
