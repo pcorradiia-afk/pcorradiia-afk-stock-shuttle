@@ -189,6 +189,19 @@
       <!-- ===== VISTA: ENCUESTAS DE CALIDAD ===== -->
       <div id="vistaEncuestas" class="oculto">
         <div class="card">
+          <h2><span class="paso">📤</span>Enviar encuestas a la base (Excel)</h2>
+          <p class="nota">Subí el Excel exportado de tu sistema (Calidad → Encuestas Internas → Exportar Excel). Se envían <b>SOLO</b> las que están <b>"pendiente"</b> o <b>"no_logra_contactar"</b>. NO se tocan las <b>"completada"</b> ni <b>"rechazada"</b>.</p>
+          <input type="file" id="encArchivo" accept=".xlsx" />
+          <div style="margin-top:12px;"><button id="encAnalizarBtn">Analizar base</button></div>
+          <div id="encResumen" class="oculto" style="margin-top:14px;"></div>
+          <div id="encEnvioBox" class="oculto" style="margin-top:14px;">
+            <label class="check"><input type="checkbox" id="encDryrun" checked /> Modo simulación (no envía; solo muestra a cuántos llegaría)</label>
+            <div style="margin-top:12px;"><button id="encEnviarBtn">Enviar encuestas</button></div>
+            <p class="nota">💡 Empezá con la <b>simulación</b> para ver el número. Para enviar de verdad, destildá la simulación.</p>
+            <div id="encReporte" style="margin-top:10px;"></div>
+          </div>
+        </div>
+        <div class="card">
           <h2><span class="paso">⭐</span>Encuestas de calidad — editá las preguntas</h2>
           <p class="nota">El sistema envía estas preguntas automáticamente a las 48 hs de la compra (Ventas) o del paso por el taller (Posventa). El cliente responde de a una, eligiendo un número del 1 al 5.</p>
           <p class="nota">📌 La <b>1ª pregunta</b> viaja dentro de la plantilla aprobada de WhatsApp: si la cambiás, hay que volver a aprobar la plantilla en Meta. De la 2ª en adelante, cambialas libremente.</p>
@@ -382,6 +395,43 @@
     b.onclick = () => d.remove();
     d.appendChild(inp); d.appendChild(b);
     return d;
+  }
+
+  // ===== Envío masivo de encuestas por Excel =====
+  if ($("encAnalizarBtn")) {
+    $("encAnalizarBtn").addEventListener('click', async () => {
+      const f = $("encArchivo").files[0];
+      if (!f) { alert('Elegí el Excel primero.'); return; }
+      $("encAnalizarBtn").disabled = true; $("encAnalizarBtn").textContent = 'Analizando...';
+      try {
+        const fd = new FormData(); fd.append('archivo', f);
+        const r = await fetch('/encuestas/analizar-excel', { method: 'POST', body: fd });
+        const d = await r.json();
+        const ps = Object.entries(d.por_status || {}).map(([k, v]) => `${k}: <b>${v}</b>`).join(' · ');
+        $("encResumen").innerHTML = `<div class="row">Total en el Excel: <b>${d.total}</b><br>${ps}<br><br>` +
+          `✅ Se van a enviar (pendiente + no_logra_contactar): <b style="color:var(--verde);font-size:1.15rem;">${d.enviables}</b>` +
+          (d.sin_telefono ? ` · ⚠️ sin teléfono: ${d.sin_telefono}` : '') + `</div>`;
+        $("encResumen").classList.remove('oculto');
+        $("encEnvioBox").classList.remove('oculto');
+      } catch (e) { alert('No pude analizar: ' + e); }
+      $("encAnalizarBtn").disabled = false; $("encAnalizarBtn").textContent = 'Analizar base';
+    });
+    $("encEnviarBtn").addEventListener('click', async () => {
+      const f = $("encArchivo").files[0];
+      if (!f) { alert('Falta el Excel.'); return; }
+      const real = !$("encDryrun").checked;
+      if (real && !confirm('Vas a ENVIAR las encuestas REALES por WhatsApp a la base. ¿Confirmás?')) return;
+      $("encEnviarBtn").disabled = true; $("encEnviarBtn").textContent = 'Procesando...';
+      try {
+        const fd = new FormData(); fd.append('archivo', f); fd.append('dry_run', real ? 'false' : 'true');
+        const r = await fetch('/encuestas/enviar-excel', { method: 'POST', body: fd });
+        const rep = await r.json();
+        const modo = rep.modo === 'real' ? '✅ ENVIADO' : '🧪 SIMULACIÓN';
+        $("encReporte").innerHTML = `<div class="row"><b>${modo}</b> · a enviar: ${rep.enviables}<br>` +
+          `enviadas: <b>${rep.enviadas}</b> · simuladas: ${rep.simuladas} · duplicadas: ${rep.duplicadas} · errores: ${rep.errores}</div>`;
+      } catch (e) { $("encReporte").textContent = 'Error: ' + e; }
+      $("encEnviarBtn").disabled = false; $("encEnviarBtn").textContent = 'Enviar encuestas';
+    });
   }
 
   async function cargarPreguntas() {

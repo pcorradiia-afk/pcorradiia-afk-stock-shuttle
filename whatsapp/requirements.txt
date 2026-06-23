@@ -22,3 +22,6 @@ requests==2.32.3        # Crear plantillas de respuesta rapida (botones) via API
 
 # --- Zona horaria (para mostrar la hora local de Argentina) ---
 tzdata==2024.2          # Base de zonas horarias IANA para zoneinfo
+
+# --- Lectura de Excel (envío masivo de encuestas desde el export de Calidad) ---
+openpyxl==3.1.5         # Parseo de archivos .xlsx

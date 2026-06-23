@@ -431,6 +431,26 @@ async def encuesta_prueba(request: Request) -> dict:
         }
 
 
+@app.post("/encuestas/analizar-excel", dependencies=[Depends(requiere_clave)])
+async def encuestas_analizar_excel(archivo: UploadFile = File(...)) -> dict:
+    """Lee el Excel de Calidad y devuelve el resumen (cuántas se enviarían)."""
+    from .services.encuestas_masivo import analizar, parsear_excel
+
+    filas = parsear_excel(await archivo.read())
+    return analizar(filas)
+
+
+@app.post("/encuestas/enviar-excel", dependencies=[Depends(requiere_clave)])
+async def encuestas_enviar_excel(
+    archivo: UploadFile = File(...), dry_run: bool = Form(True)
+):
+    """Envía (o simula) la encuesta a las filas 'pendiente'/'no_logra_contactar' del Excel."""
+    from .services.encuestas_masivo import enviar, parsear_excel
+
+    filas = parsear_excel(await archivo.read())
+    return enviar(filas, dry_run=dry_run)
+
+
 @app.post("/documentos/cupones/{id_empresa}")
 def lanzar_cupones(id_empresa: str, dry_run: bool = True) -> ReporteDocumentos:
     """Lanza la campaña de cupones de pago en PDF (caso #4) para una empresa.
