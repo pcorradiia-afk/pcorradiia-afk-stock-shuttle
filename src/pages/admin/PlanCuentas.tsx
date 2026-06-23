@@ -200,7 +200,7 @@ function EditorReparto({
   lineaActual?: LineaCuenta;
   onClose: () => void;
 }) {
-  const [modo, setModo] = useState<"ventas" | "fijo">(inicial?.modo ?? "ventas");
+  const [modo, setModo] = useState<"ventas" | "ventas_taller" | "fijo">(inicial?.modo ?? "ventas");
   const [deptos, setDeptos] = useState<string[]>(inicial?.deptos ?? [fila.deptoAuto]);
   const [pct, setPct] = useState<Record<string, number>>(inicial?.pct ?? {});
 
@@ -241,6 +241,9 @@ function EditorReparto({
             <div className="flex gap-2">
               <Button type="button" size="sm" variant={modo === "ventas" ? "default" : "outline"} onClick={() => setModo("ventas")}>
                 Por % de ventas
+              </Button>
+              <Button type="button" size="sm" variant={modo === "ventas_taller" ? "default" : "outline"} onClick={() => setModo("ventas_taller")}>
+                Por ventas de Taller
               </Button>
               <Button type="button" size="sm" variant={modo === "fijo" ? "default" : "outline"} onClick={() => setModo("fijo")}>
                 % fijo
@@ -283,6 +286,9 @@ function EditorReparto({
             )}
             {modo === "ventas" && (
               <p className="text-xs text-muted-foreground">Se reparte según las ventas de cada depto en el mes.</p>
+            )}
+            {modo === "ventas_taller" && (
+              <p className="text-xs text-muted-foreground">Igual que por ventas, pero Repuestos pondera solo por sus ventas de repuestos-por-taller (no por toda la venta de Repuestos).</p>
             )}
           </div>
         </div>

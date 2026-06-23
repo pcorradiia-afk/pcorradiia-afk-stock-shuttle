@@ -7,8 +7,13 @@ import { pushConfig } from "./configSync";
 // que detecta el sistema por su código. Lo que no se toca, usa la automática.
 
 export interface RepartoCuenta {
-  /** "ventas": por % de ventas de cada depto en el mes · "fijo": % fijos. */
-  modo: "ventas" | "fijo";
+  /**
+   * "ventas": por % de ventas de cada depto en el mes ·
+   * "ventas_taller": idem, pero Repuestos pondera solo por sus ventas de
+   * repuestos-por-taller (no por toda la venta de Repuestos) ·
+   * "fijo": % fijos.
+   */
+  modo: "ventas" | "ventas_taller" | "fijo";
   /** Departamentos entre los que se reparte. */
   deptos: string[];
   /** % fijo por depto (clave = depto), solo en modo "fijo". Idealmente suman 100. */
