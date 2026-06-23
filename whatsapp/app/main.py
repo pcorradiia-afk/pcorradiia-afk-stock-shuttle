@@ -442,13 +442,23 @@ async def encuestas_analizar_excel(archivo: UploadFile = File(...)) -> dict:
 
 @app.post("/encuestas/enviar-excel", dependencies=[Depends(requiere_clave)])
 async def encuestas_enviar_excel(
-    archivo: UploadFile = File(...), dry_run: bool = Form(True)
+    archivo: UploadFile = File(...),
+    dry_run: bool = Form(True),
+    limite: int = Form(0),  # 0 = sin límite (manda todo lo pendiente)
 ):
-    """Envía (o simula) la encuesta a las filas 'pendiente'/'no_logra_contactar' del Excel."""
+    """Envía (o simula) la encuesta a las filas enviables del Excel (en tandas)."""
     from .services.encuestas_masivo import enviar, parsear_excel
 
     filas = parsear_excel(await archivo.read())
-    return enviar(filas, dry_run=dry_run)
+    return enviar(filas, dry_run=dry_run, limite=(limite or None))
+
+
+@app.get("/encuestas/horario", dependencies=[Depends(requiere_clave)])
+def encuestas_horario() -> dict:
+    """Indica si estamos dentro del horario de envío de encuestas."""
+    from .services.encuestas_masivo import en_horario
+
+    return en_horario()
 
 
 @app.post("/documentos/cupones/{id_empresa}")

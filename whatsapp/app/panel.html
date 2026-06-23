@@ -196,10 +196,31 @@
           <div id="encResumen" class="oculto" style="margin-top:14px;"></div>
           <div id="encEnvioBox" class="oculto" style="margin-top:14px;">
             <label class="check"><input type="checkbox" id="encDryrun" checked /> Modo simulación (no envía; solo muestra a cuántos llegaría)</label>
-            <div style="margin-top:12px;"><button id="encEnviarBtn">Enviar encuestas</button></div>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;align-items:flex-end;">
+              <div><label>Tanda (mensajes)</label><input type="number" id="encTanda" value="10" min="1" style="width:110px;" /></div>
+              <div><label>Cada (minutos)</label><input type="number" id="encIntervalo" value="10" min="1" style="width:110px;" /></div>
+            </div>
+            <p class="nota">El envío real va <b>de a tandas</b> (dejá esta pestaña abierta). Respeta el horario: <b>L-V 9:00–17:30 · Sáb 9:30–12:45</b>.</p>
+            <div style="margin-top:10px;display:flex;gap:8px;">
+              <button id="encEnviarBtn">Enviar encuestas</button>
+              <button class="sec oculto" id="encDetenerBtn">⏹️ Detener</button>
+            </div>
             <p class="nota">💡 Empezá con la <b>simulación</b> para ver el número. Para enviar de verdad, destildá la simulación.</p>
             <div id="encReporte" style="margin-top:10px;"></div>
           </div>
+        </div>
+
+        <div class="card">
+          <h2><span class="paso">⚡</span>Enviar a un cliente puntual</h2>
+          <p class="nota">Mandá la encuesta de Taller a un cliente específico, ahora mismo.</p>
+          <label>Nombre</label>
+          <input type="text" id="unoNombre" placeholder="Juan Pérez" />
+          <label>Teléfono (+549...)</label>
+          <input type="text" id="unoTel" placeholder="+5492804415555" />
+          <label>Vehículo</label>
+          <input type="text" id="unoVeh" placeholder="Ford Ranger AB123CD" />
+          <div style="margin-top:12px;"><button id="unoEnviarBtn">Enviar encuesta</button></div>
+          <div id="unoMsg" class="nota" style="margin-top:8px;"></div>
         </div>
         <div class="card">
           <h2><span class="paso">⭐</span>Encuestas de calidad — editá las preguntas</h2>
@@ -416,21 +437,87 @@
       } catch (e) { alert('No pude analizar: ' + e); }
       $("encAnalizarBtn").disabled = false; $("encAnalizarBtn").textContent = 'Analizar base';
     });
+    let encTimer = null, encDetenido = false, encForzar = false, encAcum = 0;
+    async function encHorario() {
+      try { const r = await fetch('/encuestas/horario'); return await r.json(); }
+      catch (e) { return { ok: true, descripcion: '' }; }
+    }
+    function encFin() {
+      encDetenido = true; clearTimeout(encTimer);
+      $("encDetenerBtn").classList.add('oculto');
+      $("encEnviarBtn").disabled = false; $("encEnviarBtn").textContent = 'Enviar encuestas';
+    }
+    async function encTanda() {
+      if (encDetenido) return;
+      const h = await encHorario();
+      if (!h.ok && !encForzar) {
+        $("encReporte").innerHTML = `<div class="row">⏸️ Fuera de horario (${h.descripcion}). Reanudá en el horario de envío. Enviadas hasta ahora: <b>${encAcum}</b>.</div>`;
+        encFin(); return;
+      }
+      const tanda = parseInt($("encTanda").value) || 10;
+      const interMs = (parseInt($("encIntervalo").value) || 10) * 60000;
+      const f = $("encArchivo").files[0];
+      try {
+        const fd = new FormData(); fd.append('archivo', f); fd.append('dry_run', 'false'); fd.append('limite', String(tanda));
+        const rep = await (await fetch('/encuestas/enviar-excel', { method: 'POST', body: fd })).json();
+        encAcum += rep.enviadas;
+        $("encReporte").innerHTML = `<div class="row">✅ Enviadas: <b>${encAcum}</b> · faltan: <b>${rep.restantes}</b> · errores: ${rep.errores}` +
+          (rep.duplicadas ? ` · ya tenían (24h): ${rep.duplicadas}` : '') + `</div>`;
+        if (rep.restantes > 0 && !encDetenido) {
+          $("encReporte").innerHTML += `<div class="nota">⏳ Próxima tanda en ${$("encIntervalo").value} min… (no cierres esta pestaña)</div>`;
+          encTimer = setTimeout(encTanda, interMs);
+        } else {
+          $("encReporte").innerHTML += `<div class="nota">🎉 Listo, no quedan pendientes.</div>`; encFin();
+        }
+      } catch (e) { $("encReporte").textContent = 'Error: ' + e; encFin(); }
+    }
     $("encEnviarBtn").addEventListener('click', async () => {
       const f = $("encArchivo").files[0];
       if (!f) { alert('Falta el Excel.'); return; }
-      const real = !$("encDryrun").checked;
-      if (real && !confirm('Vas a ENVIAR las encuestas REALES por WhatsApp a la base. ¿Confirmás?')) return;
-      $("encEnviarBtn").disabled = true; $("encEnviarBtn").textContent = 'Procesando...';
+      if ($("encDryrun").checked) {  // simulación: todo de una
+        $("encEnviarBtn").disabled = true; $("encEnviarBtn").textContent = 'Simulando...';
+        try {
+          const fd = new FormData(); fd.append('archivo', f); fd.append('dry_run', 'true'); fd.append('limite', '0');
+          const rep = await (await fetch('/encuestas/enviar-excel', { method: 'POST', body: fd })).json();
+          $("encReporte").innerHTML = `<div class="row">🧪 SIMULACIÓN · a enviar: <b>${rep.enviables}</b> · simuladas: ${rep.simuladas} · ya tenían (24h): ${rep.duplicadas} · omitidas (no corresponden): ${rep.omitidas}</div>`;
+        } catch (e) { $("encReporte").textContent = 'Error: ' + e; }
+        $("encEnviarBtn").disabled = false; $("encEnviarBtn").textContent = 'Enviar encuestas';
+        return;
+      }
+      // real: drip por tandas
+      const h = await encHorario();
+      let msg = 'Vas a ENVIAR encuestas REALES por WhatsApp, de a tandas. Dejá esta pestaña abierta hasta que termine.';
+      encForzar = false;
+      if (!h.ok) { msg += '\n\n⚠️ Estás FUERA del horario (' + h.descripcion + '). ¿Enviar igual?'; }
+      if (!confirm(msg)) return;
+      if (!h.ok) encForzar = true;
+      encDetenido = false; encAcum = 0;
+      $("encEnviarBtn").disabled = true; $("encEnviarBtn").textContent = 'Enviando…';
+      $("encDetenerBtn").classList.remove('oculto');
+      encTanda();
+    });
+    $("encDetenerBtn").addEventListener('click', () => {
+      $("encReporte").innerHTML += `<div class="nota">⏹️ Detenido. Enviadas: <b>${encAcum}</b>.</div>`; encFin();
+    });
+  }
+
+  // Envío a un cliente puntual (usa la plantilla aprobada)
+  if ($("unoEnviarBtn")) {
+    $("unoEnviarBtn").addEventListener('click', async () => {
+      const tel = $("unoTel").value.trim();
+      if (!tel) { alert('Falta el teléfono (+549...).'); return; }
+      $("unoEnviarBtn").disabled = true; $("unoMsg").textContent = 'Enviando...';
       try {
-        const fd = new FormData(); fd.append('archivo', f); fd.append('dry_run', real ? 'false' : 'true');
-        const r = await fetch('/encuestas/enviar-excel', { method: 'POST', body: fd });
-        const rep = await r.json();
-        const modo = rep.modo === 'real' ? '✅ ENVIADO' : '🧪 SIMULACIÓN';
-        $("encReporte").innerHTML = `<div class="row"><b>${modo}</b> · a enviar: ${rep.enviables}<br>` +
-          `enviadas: <b>${rep.enviadas}</b> · simuladas: ${rep.simuladas} · duplicadas: ${rep.duplicadas} · errores: ${rep.errores}</div>`;
-      } catch (e) { $("encReporte").textContent = 'Error: ' + e; }
-      $("encEnviarBtn").disabled = false; $("encEnviarBtn").textContent = 'Enviar encuestas';
+        const r = await fetch('/encuestas/prueba', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ telefono: tel, tipo: 'taller', nombre: $("unoNombre").value, referencia: $("unoVeh").value })
+        });
+        const res = await r.json();
+        $("unoMsg").textContent = res.estado === 'enviada'
+          ? '✅ Enviada a ' + (res.destino || tel)
+          : '⚠️ ' + (res.detalle || res.detail || res.estado);
+      } catch (e) { $("unoMsg").textContent = 'Error: ' + e; }
+      $("unoEnviarBtn").disabled = false;
     });
   }
 

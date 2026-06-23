@@ -72,6 +72,13 @@ class Configuracion(BaseSettings):
     # --- Horarios ---
     tz_defecto: str = "America/Argentina/Buenos_Aires"
 
+    # --- Horario de envío de encuestas (cómodo para el cliente) ---
+    # Lunes a Viernes y Sábados (Domingo no se envía). Formato "HH:MM".
+    envio_lv_desde: str = "09:00"
+    envio_lv_hasta: str = "17:30"
+    envio_sab_desde: str = "09:30"
+    envio_sab_hasta: str = "12:45"
+
     @property
     def usar_supabase(self) -> bool:
         """True si hay credenciales de Supabase para persistir los datos."""

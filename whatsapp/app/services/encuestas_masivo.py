@@ -102,45 +102,43 @@ class ReporteMasivo:
     duplicadas: int = 0
     omitidas: int = 0
     errores: int = 0
+    restantes: int = 0
     resultados: list[ResultadoEnvioMasivo] = field(default_factory=list)
 
 
-def enviar(filas: list[FilaEncuesta], dry_run: bool = True) -> ReporteMasivo:
-    """Envía (o simula) la encuesta a las filas 'pendiente'/'no_logra_contactar'."""
+def enviar(filas: list[FilaEncuesta], dry_run: bool = True, limite: int | None = None) -> ReporteMasivo:
+    """Envía (o simula) la encuesta a las filas enviables.
+
+    `limite`: máximo a enviar en esta llamada (para el envío 'gota a gota').
+    Devuelve también cuántas quedan pendientes (`restantes`) para la próxima tanda.
+    """
     from ..config import obtener_config
     from .integracion import recibir_evento
 
     config = obtener_config()
     usar_twilio = (not dry_run) and bool(config.twilio_account_sid and config.twilio_auth_token)
+
+    enviables_todas = [f for f in filas if f.enviable]
+    # Las que ya recibieron en las últimas 24 hs no se reenvían.
+    pendientes = [
+        f for f in enviables_todas
+        if not rate_limit.ya_enviado(_ID_EMPRESA, _CAMPANIA, f.telefono)
+    ]
+    lote = pendientes if limite is None else pendientes[: max(0, limite)]
+
     reporte = ReporteMasivo(
         modo="real" if usar_twilio else "simulado",
         total=len(filas),
-        enviables=sum(1 for f in filas if f.enviable),
+        enviables=len(enviables_todas),
+        duplicadas=len(enviables_todas) - len(pendientes),
+        omitidas=len(filas) - len(enviables_todas),
     )
 
-    for f in filas:
-        if f.status not in ENVIABLES:
-            reporte.omitidas += 1
-            continue
-        if not f.telefono:
-            reporte.errores += 1
-            reporte.resultados.append(ResultadoEnvioMasivo("?", f.cliente, "error", "sin teléfono"))
-            continue
-        if rate_limit.ya_enviado(_ID_EMPRESA, _CAMPANIA, f.telefono):
-            reporte.duplicadas += 1
-            reporte.resultados.append(
-                ResultadoEnvioMasivo(f.telefono, f.cliente, "duplicada", "ya recibió en 24 hs")
-            )
-            continue
-
+    for f in lote:
         evento = {
-            "tipo": "servicio",
-            "id_externo": f.orden,
-            "cliente": f.cliente,
-            "telefono": f.telefono,
-            "referencia": f.referencia,
-            "sucursal": f.sucursal,
-            "empresa": _ID_EMPRESA,
+            "tipo": "servicio", "id_externo": f.orden, "cliente": f.cliente,
+            "telefono": f.telefono, "referencia": f.referencia,
+            "sucursal": f.sucursal, "empresa": _ID_EMPRESA,
         }
         res = recibir_evento(evento, dry_run=dry_run)
         estado = res.get("estado", "error")
@@ -155,7 +153,36 @@ def enviar(filas: list[FilaEncuesta], dry_run: bool = True) -> ReporteMasivo:
             ResultadoEnvioMasivo(f.telefono, f.cliente, estado, res.get("detalle", ""))
         )
 
+    reporte.restantes = max(0, len(pendientes) - len(lote))
     return reporte
+
+
+def en_horario(ahora=None) -> dict:
+    """¿Estamos dentro del horario de envío? Devuelve {ok, descripcion}."""
+    from datetime import datetime, timedelta, timezone
+    from zoneinfo import ZoneInfo
+
+    from ..config import obtener_config
+
+    config = obtener_config()
+    try:
+        tz = ZoneInfo(config.tz_defecto)
+    except Exception:  # noqa: BLE001
+        tz = timezone(timedelta(hours=-3))
+    now = ahora or datetime.now(tz)
+    wd = now.weekday()  # 0=Lun … 6=Dom
+    hm = now.strftime("%H:%M")
+    desc = (
+        f"L-V {config.envio_lv_desde}-{config.envio_lv_hasta} · "
+        f"Sáb {config.envio_sab_desde}-{config.envio_sab_hasta} · Dom: no"
+    )
+    if 0 <= wd <= 4:
+        ok = config.envio_lv_desde <= hm <= config.envio_lv_hasta
+    elif wd == 5:
+        ok = config.envio_sab_desde <= hm <= config.envio_sab_hasta
+    else:
+        ok = False
+    return {"ok": ok, "descripcion": desc, "ahora": hm}
 
 
 def _titulo(valor) -> str:
