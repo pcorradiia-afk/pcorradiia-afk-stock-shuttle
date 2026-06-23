@@ -716,7 +716,7 @@ export function Rentabilidad() {
                   </TableHeader>
                   <TableBody>
                     {cuentas.map((c) => (
-                      <TableRow key={c.codigo}>
+                      <TableRow key={`${c.codigo}|${c.depto}`}>
                         <TableCell className="px-1.5 py-1 font-mono">{c.codigo}</TableCell>
                         <TableCell className="max-w-[280px] truncate px-1.5 py-1" title={c.nombre}>{c.nombre}</TableCell>
                         <TableCell className="whitespace-nowrap px-1.5 py-1 text-muted-foreground">
