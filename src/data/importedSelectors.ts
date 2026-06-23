@@ -385,6 +385,17 @@ export function gestionImportada(
   // ya están calculadas las ventas por departamento.
   const repartoVentas: { codigo: string; nombre: string; linea: LineaCuenta; per: string; r: number; deptos: string[]; modo: "ventas" | "ventas_taller" }[] = [];
 
+  // Detalle por depto de las cuentas repartidas: cada cuenta se registra en cada
+  // depto con su porción, para que la composición (drill-down) coincida con el
+  // cuadro. Sin esto, una cuenta repartida aparecería entera bajo un solo depto.
+  const repCuentas = new Map<string, CuentaBP>();
+  const regRepCuenta = (codigo: string, nombre: string, linea: LineaCuenta, depto: string, per: string, val: number) => {
+    const k = `${codigo}|${depto}`;
+    let e = repCuentas.get(k);
+    if (!e) { e = { codigo, nombre, depto, linea, valores: {} }; repCuentas.set(k, e); }
+    e.valores[per] = (e.valores[per] ?? 0) + val;
+  };
+
   for (const imp of fuentes) {
     const p = imp.payload as BalanceParcial;
     for (const per of p.periodos ?? []) periodos.add(per);
@@ -400,16 +411,24 @@ export function gestionImportada(
           (clasificarGasto(c.codigo) === "costo_directo" ? { linea: "costo" as LineaCuenta } : {});
         const linea = ov.linea ?? c.linea;
         const rep = ov.reparto && ov.reparto.deptos.length > 0 ? ov.reparto : null;
-        const deptoVista = rep ? rep.deptos[0] : ov.depto ?? c.depto;
-        cuentas.push({ ...c, depto: deptoVista, linea });
-        for (const [per, r] of Object.entries(c.valores)) {
-          if (!rep) {
-            aplicar(ov.depto ?? c.depto, linea, per, r, c.codigo, c.nombre);
-          } else if (rep.modo === "fijo") {
-            const tot = rep.deptos.reduce((a, d) => a + (rep.pct?.[d] ?? 0), 0) || 1;
-            for (const d of rep.deptos) aplicar(d, linea, per, (r * (rep.pct?.[d] ?? 0)) / tot, c.codigo, c.nombre);
-          } else {
-            repartoVentas.push({ codigo: c.codigo, nombre: c.nombre, linea, per, r, deptos: rep.deptos, modo: rep.modo === "ventas_taller" ? "ventas_taller" : "ventas" });
+        if (!rep) {
+          const d = ov.depto ?? c.depto;
+          cuentas.push({ ...c, depto: d, linea });
+          for (const [per, r] of Object.entries(c.valores)) aplicar(d, linea, per, r, c.codigo, c.nombre);
+        } else {
+          // Cuenta repartida: se aplica a cada depto con su porción y se registra
+          // el detalle por depto (las de % de ventas se resuelven en la 2.ª pasada).
+          for (const [per, r] of Object.entries(c.valores)) {
+            if (rep.modo === "fijo") {
+              const tot = rep.deptos.reduce((a, d) => a + (rep.pct?.[d] ?? 0), 0) || 1;
+              for (const d of rep.deptos) {
+                const val = (r * (rep.pct?.[d] ?? 0)) / tot;
+                aplicar(d, linea, per, val, c.codigo, c.nombre);
+                regRepCuenta(c.codigo, c.nombre, linea, d, per, val);
+              }
+            } else {
+              repartoVentas.push({ codigo: c.codigo, nombre: c.nombre, linea, per, r, deptos: rep.deptos, modo: rep.modo === "ventas_taller" ? "ventas_taller" : "ventas" });
+            }
           }
         }
       }
@@ -461,7 +480,9 @@ export function gestionImportada(
     const tot = vs.reduce((a, b) => a + b, 0);
     item.deptos.forEach((d, i) => {
       const w = tot ? vs[i] / tot : 1 / item.deptos.length;
-      aplicar(d, item.linea, item.per, item.r * w, item.codigo, item.nombre);
+      const val = item.r * w;
+      aplicar(d, item.linea, item.per, val, item.codigo, item.nombre);
+      regRepCuenta(item.codigo, item.nombre, item.linea, d, item.per, val);
     });
   }
 
@@ -487,6 +508,10 @@ export function gestionImportada(
     aRepuestos.valores[per] = -x;
   }
   if (Object.keys(aTaller.valores).length > 0) cuentas.push(aTaller, aRepuestos);
+
+  // Detalle por depto de las cuentas repartidas (una entrada por depto, con su
+  // porción), para que la composición coincida con los totales del cuadro.
+  for (const e of repCuentas.values()) cuentas.push(e);
 
   return {
     hayDatos: fuentes.length > 0,
