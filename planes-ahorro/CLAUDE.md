@@ -1,0 +1,347 @@
+# CLAUDE.md — Sistema de Gestión y Seguimiento de Planes de Ahorro (Grupo Corradi)
+
+> **Memoria del proyecto.** Este archivo resume el contrato del sistema: stack, modelo de
+> datos, roles, reglas de negocio críticas, matriz de permisos, plan de fases y estado de
+> avance. Se actualiza en **cada fase**. Si algo entra en conflicto con el código, manda este
+> archivo hasta que se resuelva la diferencia.
+
+---
+
+## 0. Estado de avance
+
+| Fase | Descripción | Estado |
+|---|---|---|
+| **Planificación** | Plan de fases, modelo de datos, matriz de permisos | ✅ **Entregado (este archivo) — pendiente de aprobación del cliente** |
+| Fase 0 | Base: Next.js + Supabase, login, multiempresa, usuarios/roles, super admin, impersonar | ⬜ No iniciado |
+| Fase 1 | Núcleo: ficha cliente, bitácora, importación Ford, unicidad DNI/N° solicitud, asignación a vendedor | ⬜ No iniciado |
+| Fase 2 | Ventas: recepción, vendedor, presupuestos, planes, cierre, reasignación, supervisión | ⬜ No iniciado |
+| Fase 3 | Administración por estadios (Scoring → … → Entrega) | ⬜ No iniciado |
+| Fase 4 | Campañas y notificaciones por WhatsApp | ⬜ No iniciado |
+| Fase 5 | Informes, tableros gerenciales, exportaciones, auditoría completa | ⬜ No iniciado |
+
+> **Decisión del cliente (2026-06-24):** este sistema se construye como **proyecto separado**
+> en la subcarpeta `planes-ahorro/`, sin tocar el sistema existente "Grupo Fiorasi · Control &
+> Gestión" que vive en la raíz del repositorio. Stack **Next.js**. Login **único con cambio de
+> empresa**. Por ahora **solo se entrega el plan** (sin código de la app).
+
+---
+
+## 1. Propósito del sistema
+
+Reemplazar al sistema de terceros (SIGNOS Gestión) en lo que hace al seguimiento de
+**clientes ahorristas** de Plan Óvalo Ford para dos concesionarias del grupo: **PEDRO
+CORRADI SA** y **SAPAC SA**.
+
+El corazón del sistema es:
+1. **Ficha del cliente/ahorrista** con sus datos y su solicitud Ford.
+2. **Bitácora (anotador)** de todas las comunicaciones con cada cliente, a lo largo de un
+   proceso por etapas.
+3. **Importación** de los ahorristas desde el Excel que exporta Ford (Plan Óvalo). El sistema
+   **no** se conecta por API a Ford: el usuario descarga el Excel y lo sube.
+
+---
+
+## 2. Stack tecnológico (decidido)
+
+- **Frontend + Backend:** Next.js (App Router, TypeScript). API routes para webhooks de
+  WhatsApp e importación de Excel del lado servidor.
+- **Base de datos + Auth + Permisos:** Supabase (PostgreSQL + Supabase Auth + **Row Level
+  Security**). El aislamiento por empresa/terciarizada se implementa con RLS real, no
+  ocultando botones.
+- **UI:** Tailwind CSS + shadcn/ui. Diseño sobrio, profesional, pensado para uso intensivo de
+  oficina (tablas, filtros, formularios claros).
+- **Importación de Excel:** SheetJS (`xlsx`).
+- **Despliegue:** Vercel (app) + Supabase (datos, región São Paulo `sa-east-1`).
+- **Idioma:** español argentino en toda la interfaz, mensajes, botones y datos.
+
+---
+
+## 3. Modelo de datos (PostgreSQL / Supabase)
+
+> Nomenclatura: tablas en `snake_case`, en español. Toda fila operativa lleva `empresa_id`
+> (y cuando corresponde `gestion_id` para terciarizadas) para que RLS pueda aislar datos.
+
+### 3.1 Organización y acceso
+- **empresa** — `id`, `nombre` (Pedro Corradi / SAPAC), `cuit`, `activo`.
+- **sucursal** — `id`, `empresa_id`, `nombre`, `activo`.
+- **equipo** — `id`, `sucursal_id`, `nombre`, `tipo` (`ventas` | `administracion`).
+- **usuario** (`profiles`, 1:1 con Supabase Auth) — `id`(=auth.uid), `nombre`, `email`,
+  `empresa_id`, `sucursal_id`, `equipo_id`, `tipo_perfil` (`concesionario` |
+  `terciarizada`), `activo`. Para login único multiempresa, los accesos cruzados se modelan
+  con **membresia_empresa** (ver abajo).
+- **membresia_empresa** — `usuario_id`, `empresa_id`, `alcance` (`empresa` | `grupo`). Permite
+  que un usuario (ej. super admin / gerencia) opere varias empresas con un único login.
+- **rol** — catálogo de roles funcionales (ver §4.2).
+- **usuario_rol** — `usuario_id`, `rol_id`, `empresa_id` (un usuario puede tener rol acotado
+  por empresa).
+- **acceso_estadio** — `usuario_id`, `estadio` (enum). Define a qué estadios de administración
+  accede cada usuario de administración (el super admin lo asigna). Ver §6.
+
+### 3.2 Comercial / cliente
+- **cliente** (ahorrista — entidad central) — `id`, `empresa_id`, `gestion_id` (nullable; para
+  terciarizadas), `nombre_completo`, `documento` (DNI o CUIT, **ÚNICO** — ver §3.6),
+  `tipo_documento`, `telefono`, `email`, `origen_dato`, `vendedor_id`, `estadio_actual`,
+  `estado` (`lead` | `vendido` | `gestionado` | …), `nacido_como` (`lead_interno` |
+  `importado_ford`), `fecha_alta`.
+- **solicitud** — `id`, `cliente_id`, `empresa_id`, `nro_solicitud` (**ÚNICO E IRREPETIBLE** —
+  ver §3.6), `tipo_solicitud`, `carga`, `modelo`, `plan_id`, `debito_automatico`,
+  `medio_pago`, `status_ford`, `fecha_carga`, `fecha_envio`, `fecha_ultimo_envio`.
+- **comunicacion** (bitácora / anotador) — `id`, `cliente_id`, `usuario_id`, `fecha_hora`,
+  `tipo_contacto`, `detalle` (lo conversado), `proxima_accion`, `estadio`. Se visualiza como
+  **historial cronológico por cliente**.
+- **presupuesto** — `id`, `cliente_id`, `archivo_url`, `subido_por`, `fecha`.
+- **plan** — catálogo de planes (precargado por admin; el vendedor elige de la lista).
+  `id`, `empresa_id`, `nombre`, `modelo`, `activo`.
+
+### 3.3 Estadios / scoring
+- **observacion_scoring** — `id`, `cliente_id`, `fecha_hora`, `usuario_id`, `resultado`
+  (enum: `observado_requisitos_crediticios` | `observado_gastos_retiro` |
+  `observado_vehiculo_usado` | `observado_presupuesto` | `observado_otros` | `aprobado` |
+  `pendiente`), `gestion_resultado`, `gestion_fecha_hora`, `gestion_usuario_id`.
+- **estadio_registro** — registros propios de cada estadio (agrupamiento, gestión de cliente,
+  adjudicación, pedido, patentamiento, entrega). Diseño detallado por estadio en §6
+  (Agrupamiento queda **A DEFINIR**).
+
+### 3.4 Alertas y auditoría
+- **alerta** — `id`, `usuario_destino_id`, `tipo`, `cliente_id`, `mensaje`, `leida`,
+  `fecha`. (Campanita in-app; email queda preparado para más adelante.)
+- **log_auditoria** — `id`, `usuario_id`, `accion`, `entidad`, `entidad_id`, `dato_anterior`
+  (jsonb), `dato_nuevo` (jsonb), `fecha_hora`. Registra alta/baja/edición de usuarios, cambios
+  de rol, corrección de N° solicitud, importaciones, cambios de estadio, envíos de campañas.
+
+### 3.5 WhatsApp (Fase 4)
+- **consentimiento_whatsapp** (opt-in) — `cliente_id`, `tiene_optin` (bool), `fecha_optin`,
+  `canal_origen`. **Sin opt-in no se puede enviar.**
+- **plantilla_whatsapp** — `id`, `nombre`, `categoria` (`marketing` | `utility` |
+  `authentication`), `idioma`, `cuerpo` (con variables), `estado_aprobacion`.
+- **campania_whatsapp** — `id`, `empresa_id`, `nombre`, `plantilla_id`, `segmento` (jsonb de
+  filtros), `fecha_programada`, `estado`.
+- **envio_whatsapp** — `id`, `campania_id`, `cliente_id`, `estado_entrega` (`enviado` |
+  `entregado` | `leido` | `error`), `fecha`, `costo_estimado`.
+
+### 3.6 Reglas de integridad innegociables
+1. **Documento (DNI/CUIT) único por cliente** (constraint único por `empresa_id` o global — *a
+   confirmar alcance*). Al intentar cargar uno existente, el sistema **no crea duplicado**:
+   avisa y **sugiere el cliente ya existente** para sumar gestión sobre ese.
+2. **N° de solicitud único e irrepetible**. Si se cargó mal, **solo el Supervisor de
+   Administración** puede corregirlo, y la corrección queda en `log_auditoria`.
+3. **Importación = upsert**: match por N° de solicitud y DNI → si existe, actualiza; si no,
+   crea. Nunca duplica.
+
+---
+
+## 4. Perfiles, roles y permisos
+
+Hay **dos capas**: tipo de perfil de organización (capa de visibilidad / RLS) y rol funcional
+(capa de acciones).
+
+### 4.1 Tipo de perfil de organización (RLS)
+- **Concesionario:** ve **todos** los clientes de su empresa.
+- **Terciarizada:** ve y gestiona **solo los clientes de su propia gestión** (`gestion_id`),
+  sin acceso al resto. Implementado con RLS real en Supabase.
+
+### 4.2 Roles funcionales
+- **Super Admin** — configura y controla todo: alta/baja de usuarios, roles, empresas,
+  sucursales, equipos; asigna estadios de administración por usuario; **puede impersonar**.
+- **Recepción** — ingresa leads y los asigna a un vendedor. Al ingresar un lead, **email y
+  origen del dato son obligatorios**.
+- **Vendedor** — gestiona leads asignados y propios: registra lo conversado, adjunta
+  presupuesto, prueba de manejo (sí/no), necesidades, próxima acción; elige plan de la lista.
+  **Para cerrar como vendido es obligatorio: DNI/CUIT + teléfono + email + N° de solicitud.**
+- **Supervisor de ventas** — ve ventas de su equipo, **reasigna leads**, obtiene informes
+  (ventas, efectividad, leads pendientes), gestiona observaciones de scoring de su equipo.
+- **Administración** — sigue la gestión por **estadios** (el super admin define a cuáles
+  accede). *Restricción terciarizada:* solo **informar agrupamiento** y **gestión de mora**.
+- **Supervisor de administración** — recibe alertas, **corrige N° de solicitud**, supervisa la
+  gestión administrativa.
+- **Entregas** — gestiona la entrega del vehículo.
+- **Analista de Suscripciones** *(rol de administración)* — destinatario de alertas de
+  scoring observado.
+- **Gerencia / Dirección (lectura)** *(rol inferido — a confirmar)* — acceso de solo lectura a
+  tableros e informes del grupo. No figura explícito en el documento pero el cliente (Gerente
+  General) necesita ver informes; se incluye para confirmar.
+
+### 4.3 Matriz de permisos Rol × Acción
+
+> Leyenda: **V** ver · **C** crear · **E** editar · **X** eliminar · **—** sin acceso.
+> "Propio/equipo" = limitado a sus registros o a su equipo/empresa según RLS.
+> Esta matriz se debe **confirmar antes de codear la seguridad (Fase 0)**.
+
+| Acción / recurso | Super Admin | Recepción | Vendedor | Sup. Ventas | Administración | Sup. Admin. | Entregas | Analista Susc. | Gerencia (lectura) |
+|---|---|---|---|---|---|---|---|---|---|
+| Empresas / sucursales / equipos | V C E X | — | — | — | — | — | — | — | V |
+| Usuarios (alta/baja/edición) | V C E X | — | — | — | — | — | — | — | — |
+| Cambiar roles | V C E X | — | — | — | — | — | — | — | — |
+| Asignar estadios a usuarios | V C E X | — | — | — | — | — | — | — | — |
+| Impersonar usuarios | ✔ | — | — | — | — | — | — | — | — |
+| Catálogo de planes | V C E X | V | V | V | V | V | — | — | V |
+| Leads — crear | C | C | C (propio) | C | — | — | — | — | — |
+| Leads — asignar a vendedor | E | E | — | E (equipo) | — | — | — | — | — |
+| Leads — reasignar | E | — | — | E (equipo) | — | — | — | — | — |
+| Ficha cliente — ver | V | V (empresa) | V (propio) | V (equipo) | V (estadios asignados) | V | V (entrega) | V (scoring) | V (lectura) |
+| Ficha cliente — editar | E | E | E (propio) | E (equipo) | E (estadios asignados) | E | E (entrega) | — | — |
+| Bitácora — crear/ver | V C | V C | V C (propio) | V C (equipo) | V C | V C | V C | V | V |
+| Presupuesto — adjuntar | C | — | C (propio) | C (equipo) | — | — | — | — | — |
+| Cerrar venta (marcar vendido) | E | — | E (propio, con datos obligatorios) | E (equipo) | — | — | — | — | — |
+| N° de solicitud — corregir | E | — | — | — | — | **E** | — | — | — |
+| Importar Excel de Ford | ✔ | — | — | — | ✔ | ✔ | — | — | — |
+| Scoring — registrar resultado | E | — | — | — | C E | V | — | V | — |
+| Gestionar observación de scoring | — | — | — | **C E (equipo)** | — | V | — | — | — |
+| Estadio Agrupamiento | E | — | — | — | E* | V | — | — | — |
+| Estadio Gestión de cliente / mora | E | — | — | — | E* | V | — | — | — |
+| Estadio Adjudicación | E | — | — | — | E | V | — | — | — |
+| Estadio Pedido | E | — | — | — | E | V | — | — | — |
+| Estadio Patentamiento | E | — | — | — | E | V | — | — | — |
+| Estadio Entrega | E | — | — | — | V | V | **C E** | — | — |
+| Campañas WhatsApp — crear/enviar | C E | — | — | C (equipo) | C E | C E | — | — | — |
+| Plantillas WhatsApp | V C E X | — | — | — | V | V | — | — | V |
+| Informes / tableros | V (todo) | — | V (propio) | V (equipo) | V (estadios) | V (admin) | V (entregas) | — | V (grupo) |
+| Auditoría (log) | V | — | — | — | — | V | — | — | V |
+
+`*` Para **Administración de perfil terciarizada**: en estadios solo habilitar **Agrupamiento
+(informar)** y **Gestión de mora**; el resto bloqueado por RLS/permiso.
+
+---
+
+## 5. Importación desde Ford "Plan Óvalo"
+
+Módulo de importación con **vista previa, mapeo de columnas y validación**.
+
+- **Columnas esperadas** (mapeo configurable; pueden variar): `Conce`, `Usuario`,
+  `Nro. Solicitud`, `Tipo Solicitud`, `Carga`, `Fecha de carga`, `Fecha de envío`, `Fecha
+  Último Envío`, `Nombre Completo`, `DNI`, `Status`, `Modelo`, `Débito Automático`, `Plan
+  Arranque`, `Medio de Pago`.
+- **Flujo:** subir archivo → vista previa → mapeo de columnas → validación → confirmación.
+- **Match (upsert):** por N° de solicitud y DNI. Si existe → actualiza; si no → crea. Respeta
+  unicidad de §3.6.
+- **Empresa:** se elige al importar (Pedro Corradi o SAPAC) y se asigna a todas las filas.
+- **Reporte de resultado:** creados / actualizados / rechazados (con motivo).
+- **Auditoría:** quién, cuándo, archivo, cantidades.
+
+> ⚠️ **A DEFINIR (Q4):** confirmar columnas reales y subir un **Excel de ejemplo** de Plan
+> Óvalo para fijar el mapeo por defecto.
+
+---
+
+## 6. Flujo de trabajo y estadios
+
+Orden: **Scoring de ventas → Agrupamiento → Gestión de cliente → Adjudicación → Pedido →
+Patentamiento → Entrega.** El super admin define a qué estadio accede cada usuario de admin.
+
+### 6.1 Scoring de ventas
+- Registrar **fecha y hora** de llamados/registros.
+- Resultados: *Observado por requisitos crediticios* · *Observado por gastos de retiro* ·
+  *Observado por vehículo usado* · *Observado presupuesto* · *Observado por otros* ·
+  *Aprobado* · *Pendiente*.
+- Cualquier **"Observado"** dispara **alerta** a: **Analista de Suscripciones**, **Supervisor
+  de Administración** y **Supervisor de Ventas del equipo**.
+- El **Supervisor de Ventas** gestiona la observación (registra resultado con fecha y hora) →
+  cliente pasa a **"Gestionado"** → vuelve a Administración (scoring) para recontactar.
+- Administración puede volver a marcar "Observado…" o **Aprobado**.
+- **Aprobado** → finaliza Scoring → pasa a **Agrupamiento**.
+
+### 6.2 Agrupamiento — ⚠️ A DEFINIR (Q3)
+El documento original quedó incompleto. **Preguntar al cliente** qué acciones/registros
+necesita antes de implementar. Por ahora: estadio existente con **formulario mínimo**.
+
+### 6.3 Gestión de cliente
+Campañas de: **gestión de mora**, **invitación a licitar**, **informar ganadores por sorteo**,
+**campañas especiales**.
+
+### 6.4 Adjudicación
+Informar al cliente sobre **requisitos crediticios** y **pagos a realizar**.
+
+### 6.5 Pedido
+Registrar **fecha**, **modelo solicitado** y **colores**.
+
+### 6.6 Patentamiento
+Registrar **fecha de factura** e instancias: *informe de gastos de retiro* · *cita para firma
+de documentación* · *pase a gestoría* · *patentamiento finalizado*.
+
+### 6.7 Entrega (rol Entregas)
+Registrar **fecha de contacto** para coordinar turno · **registro del turno** · **cierre del
+proceso**.
+
+### 6.8 Restricción terciarizada
+Administración de perfil **terciarizada**: solo **informar agrupamiento** y **gestión de
+mora**.
+
+---
+
+## 7. Informes y tableros (Fase 5)
+
+- Tablero por empresa (Pedro Corradi / SAPAC) y **consolidado del grupo**.
+- Embudo por estadio · ventas por vendedor/equipo/sucursal · **efectividad (leads→ventas)** y
+  leads pendientes · observaciones de scoring abiertas y tiempo de resolución.
+- Filtros por fecha, empresa, sucursal, equipo, vendedor, estado.
+- **Exportación de cualquier listado a Excel.**
+
+> En Fase 1 alcanza con listados base.
+
+---
+
+## 8. Alertas y auditoría
+
+- **Alertas in-app** (campanita) para los eventos descritos (ej. observación de scoring). Email
+  queda **preparado pero opcional** para más adelante.
+- **Auditoría:** alta/baja/edición de usuarios, cambios de rol, corrección de N° solicitud,
+  importaciones y cambios de estadio. Cada registro con usuario, fecha/hora y dato
+  anterior/nuevo.
+
+---
+
+## 9. WhatsApp (Fase 4)
+
+- El sistema **no envía WhatsApp por su cuenta**: se integra vía API con un **proveedor BSP**
+  (Twilio / 360dialog / Gupshup / WATI u otro). Conexión **configurable** por variables de
+  entorno.
+- Abstracción interna **`EnviadorWhatsApp`** con una implementación por proveedor → cambiar de
+  proveedor no reescribe la lógica de campañas.
+- Mientras tanto, **proveedor simulado** (modo prueba que registra el envío sin mandarlo) para
+  construir y testear el flujo.
+- **Reglas críticas:** solo a clientes con **opt-in**; envíos proactivos requieren **plantillas
+  pre-aprobadas por Meta**; mostrar **categoría** de cada plantilla (Marketing = cara / Utility
+  = barata / Authentication) y advertir si la campaña es Marketing; respetar ventana de 24 hs.
+- **A construir:** catálogo de plantillas · armado de campaña (plantilla + segmento + vista
+  previa de alcance + estimación de costo + confirmación) · envío (inmediato o programado) ·
+  reporte de resultados (enviados/entregados/leídos/errores + costo) · multi-empresa.
+
+> ⚠️ **A DEFINIR (Q6):** confirmar el BSP elegido antes de codear la integración concreta.
+
+---
+
+## 10. Plan de fases
+
+- **Fase 0 — Base:** Next.js + Supabase, login, multiempresa (login único con cambio de
+  empresa), alta de usuarios y roles, super admin, impersonar, RLS base. Confirmar matriz de
+  permisos (§4.3) antes de codear seguridad.
+- **Fase 1 — Núcleo:** ficha cliente/ahorrista, **bitácora**, **importación Excel de Ford**,
+  unicidad DNI/CUIT y N° de solicitud, asignación a vendedor.
+- **Fase 2 — Ventas:** recepción carga leads, vendedor gestiona, presupuestos, catálogo de
+  planes, cierre de venta, reasignación, supervisión de ventas.
+- **Fase 3 — Administración por estadios:** Scoring (con alertas), Agrupamiento (tras
+  definirlo), Gestión de cliente, Adjudicación, Pedido, Patentamiento, Entrega.
+- **Fase 4 — Campañas y notificaciones por WhatsApp.**
+- **Fase 5 — Informes y tableros gerenciales + exportaciones + auditoría completa.**
+
+---
+
+## 11. Preguntas abiertas (pendientes de confirmar con el cliente)
+
+| # | Tema | Estado |
+|---|---|---|
+| Q1 | Stack Next.js + Supabase + Vercel | ✅ Confirmado (Next.js) |
+| Q5 | Modelo de login multiempresa | ✅ Confirmado (login único con cambio de empresa) |
+| Q2 | Matriz de permisos Rol × Acción (§4.3) | ⏳ Pendiente de aprobación |
+| Q3 | Reglas de la etapa **Agrupamiento** (§6.2) | ⏳ A definir |
+| Q4 | Columnas reales del Excel de Ford + ejemplo (§5) | ⏳ Falta Excel de ejemplo |
+| Q6 | Herramienta/BSP de WhatsApp (§9) | ⏳ A definir (mientras tanto, proveedor simulado) |
+| — | Alcance de unicidad de documento: ¿global o por empresa? (§3.6) | ⏳ A confirmar |
+| — | Rol "Gerencia/Dirección (lectura)": ¿se incluye? (§4.2) | ⏳ A confirmar |
+
+---
+
+## 12. Cómo levantar el proyecto (se completa al iniciar Fase 0)
+
+> Pendiente hasta escribir código. Incluirá pasos para alguien **no técnico**: instalación,
+> variables de entorno de Supabase, comando de desarrollo y despliegue en Vercel.
