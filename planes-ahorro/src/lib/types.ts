@@ -70,3 +70,49 @@ export interface RegistroAuditoria {
   fechaHora: string;
   detalle?: string;
 }
+
+// --------- Fase 1: cliente / ahorrista, solicitud y bitácora ---------
+
+export type EstadoCliente = "lead" | "vendido" | "gestionado" | "cartera";
+export type NacidoComo = "lead_interno" | "importado_cartera" | "importado_ovalo";
+export type TipoDocumento = "DNI" | "CUIT";
+
+export interface Solicitud {
+  nroSolicitud: string | null; // ÚNICO E IRREPETIBLE
+  grupo: string | null;
+  orden: string | null;
+  plan: string | null;
+  modelo: string | null;
+  statusCartera: string | null; // código de FIS (2, 4, 9, ...)
+  statusDesc: string | null; // "AHORRISTA AL DIA", etc.
+  valorMovil: number | null;
+}
+
+export interface Cliente {
+  id: string;
+  empresaId: string;
+  nombreCompleto: string;
+  documento: string | null; // DNI o CUIT — ÚNICO por cliente
+  tipoDocumento: TipoDocumento | null;
+  telefono: string | null;
+  email: string | null;
+  origenDato: string | null;
+  vendedorId: string | null;
+  estado: EstadoCliente;
+  estadio: Estadio;
+  nacidoComo: NacidoComo;
+  fechaAlta: string;
+  solicitud: Solicitud;
+}
+
+export interface Comunicacion {
+  id: string;
+  clienteId: string;
+  usuarioId: string;
+  usuarioNombre: string;
+  fechaHora: string;
+  tipoContacto: string; // Llamado, WhatsApp, Email, Presencial, ...
+  detalle: string; // lo conversado
+  proximaAccion: string | null;
+  estadio: Estadio;
+}

@@ -13,7 +13,7 @@
 |---|---|---|
 | **Planificación** | Plan de fases, modelo de datos, matriz de permisos | ✅ **Entregado (este archivo) — pendiente de aprobación del cliente** |
 | Fase 0 | Base: Next.js + Supabase, login, multiempresa, usuarios/roles, super admin, impersonar | ✅ **Hecho (modo demo)** — app Next.js funcionando, login, selector de empresa, usuarios, matriz de roles e impersonar; esquema SQL + RLS listos en `supabase/`. Falta conectar Supabase real. |
-| Fase 1 | Núcleo: ficha cliente, bitácora, importación Ford, unicidad DNI/N° solicitud, asignación a vendedor | ⬜ No iniciado |
+| Fase 1 | Núcleo: ficha cliente, bitácora, importación Ford, unicidad DNI/N° solicitud, asignación a vendedor | ✅ **Hecho (modo demo)** — listado de ahorristas con filtros, ficha + **bitácora** cronológica, alta de lead con **documento único** (sugiere el existente), **importación de cartera Novedades** (CSV `;` o Excel) con vista previa, mapeo auto-detectado, **upsert** por N° solicitud / grupo+orden y reporte. Falta backend real y remapeo manual de columnas. |
 | Fase 2 | Ventas: recepción, vendedor, presupuestos, planes, cierre, reasignación, supervisión | ⬜ No iniciado |
 | Fase 3 | Administración por estadios (Scoring → … → Entrega) | ⬜ No iniciado |
 | Fase 4 | Campañas y notificaciones por WhatsApp | ⬜ No iniciado |
