@@ -20,15 +20,17 @@ const TIPOS_CONTACTO = ["Llamado", "WhatsApp", "Email", "Presencial", "Otro"];
 export default function FichaClientePage() {
   const params = useParams<{ id: string }>();
   const { usuarioActivo } = useSesion();
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
+    const unsub = suscribir(() => setTick((t) => t + 1));
     inicializar();
-    return suscribir(() => setTick((t) => t + 1));
+    setTick((t) => t + 1);
+    return unsub;
   }, []);
 
-  const cliente = useMemo<Cliente | undefined>(() => getCliente(params.id), [params.id]);
-  const coms = useMemo<Comunicacion[]>(() => listarComunicaciones(params.id), [params.id]);
+  const cliente = useMemo<Cliente | undefined>(() => getCliente(params.id), [params.id, tick]);
+  const coms = useMemo<Comunicacion[]>(() => listarComunicaciones(params.id), [params.id, tick]);
 
   if (!usuarioActivo) return null;
   if (!cliente) {

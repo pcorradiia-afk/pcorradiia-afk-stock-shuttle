@@ -19,16 +19,18 @@ export default function ClientesPage() {
   const [texto, setTexto] = useState("");
   const [estado, setEstado] = useState<FiltroClientes["estado"]>("todos");
   const [estadio, setEstadio] = useState<FiltroClientes["estadio"]>("todos");
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
+    const unsub = suscribir(() => setTick((t) => t + 1));
     inicializar();
-    return suscribir(() => setTick((t) => t + 1));
+    setTick((t) => t + 1);
+    return unsub;
   }, []);
 
   const clientes = useMemo<Cliente[]>(
     () => (empresaActivaId ? listarClientes(empresaActivaId, { texto, estado, estadio }) : []),
-    [empresaActivaId, texto, estado, estadio]
+    [empresaActivaId, texto, estado, estadio, tick]
   );
 
   if (!usuarioActivo) return null;
