@@ -268,9 +268,12 @@ _REGISTRO: dict[str, Cuenta] = {
                 "Equipo de Posventa Pedro Corradi",
                 {
                     "encuesta_calidad": Plantilla(
-                        # Plantilla real (Taller) con la escala ordenada 5→1.
-                        "HXc4ca47b5bcd2268011d89dd6e3ab85f7",
-                        opciones=("5", "4", "3", "2", "1"),
+                        # Plantilla Taller APROBADA y en uso (escala 1→5).
+                        # La versión 5→1 (HXc4ca47b5bcd2268011d89dd6e3ab85f7) está
+                        # esperando aprobación de Meta; cuando la aprueben, cambiar
+                        # acá el SID y poner opciones=("5","4","3","2","1").
+                        "HXdba66490f20d4b4a7d5883d06259864b",
+                        opciones=("1", "2", "3", "4", "5"),
                     ),
                 },
             ),
