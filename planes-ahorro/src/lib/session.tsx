@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { USUARIOS } from "./demo-data";
+import { USUARIOS, EMPRESAS } from "./demo-data";
 import type { Usuario } from "./types";
 
 const STORAGE_KEY = "pa.sesion";
@@ -9,17 +9,17 @@ const STORAGE_KEY = "pa.sesion";
 interface EstadoSesion {
   usuarioRealId: string | null; // quién inició sesión
   usuarioActivoId: string | null; // quién se está viendo (puede diferir si se impersona)
-  empresaActivaId: string | "grupo" | null; // empresa seleccionada o vista de grupo
+  empresaActivaId: string | null; // empresa seleccionada (los clientes no se consolidan entre empresas)
 }
 
 interface SesionContextValue {
   usuarioReal: Usuario | null;
   usuarioActivo: Usuario | null;
   impersonando: boolean;
-  empresaActivaId: string | "grupo" | null;
+  empresaActivaId: string | null;
   login: (email: string) => { ok: boolean; error?: string };
   logout: () => void;
-  setEmpresaActiva: (id: string | "grupo") => void;
+  setEmpresaActiva: (id: string) => void;
   impersonar: (usuarioId: string) => void;
   dejarDeImpersonar: () => void;
 }
@@ -31,9 +31,10 @@ function buscarUsuario(id: string | null): Usuario | null {
   return USUARIOS.find((u) => u.id === id) ?? null;
 }
 
-function empresaInicial(u: Usuario | null): string | "grupo" {
-  if (!u) return "grupo";
-  if (u.alcance === "grupo") return "grupo";
+function empresaInicial(u: Usuario | null): string | null {
+  if (!u) return null;
+  // Los clientes no se consolidan entre empresas: siempre se ve UNA empresa por vez.
+  if (u.alcance === "grupo") return EMPRESAS[0]?.id ?? u.empresaId;
   return u.alcance[0] ?? u.empresaId;
 }
 
@@ -74,7 +75,7 @@ export function SesionProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => persistir({ usuarioRealId: null, usuarioActivoId: null, empresaActivaId: null });
 
-  const setEmpresaActiva = (id: string | "grupo") =>
+  const setEmpresaActiva = (id: string) =>
     persistir({ ...estado, empresaActivaId: id });
 
   const impersonar = (usuarioId: string) => {

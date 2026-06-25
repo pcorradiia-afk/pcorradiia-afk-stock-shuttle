@@ -15,10 +15,9 @@ export default function DashboardPage() {
   const { usuarioActivo, empresaActivaId } = useSesion();
   if (!usuarioActivo) return null;
 
-  const empresaTexto =
-    empresaActivaId === "grupo" || !empresaActivaId
-      ? "Grupo (consolidado)"
-      : empresaPorId(empresaActivaId)?.nombreComercial ?? "";
+  const empresaTexto = empresaActivaId
+    ? empresaPorId(empresaActivaId)?.nombreComercial ?? ""
+    : "";
 
   return (
     <div className="space-y-6">

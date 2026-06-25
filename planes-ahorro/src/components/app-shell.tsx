@@ -44,12 +44,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const roles = usuarioActivo.roles;
   const items = NAV.filter((i) => !i.permiso || tienePermiso(roles, i.permiso));
 
-  // Empresas que el usuario activo puede ver con su único login.
+  // Empresas que el usuario activo puede ver con su único login (una por vez; no se consolidan).
   const empresasVisibles =
     usuarioActivo.alcance === "grupo"
       ? EMPRESAS
       : EMPRESAS.filter((e) => (usuarioActivo.alcance as string[]).includes(e.id));
-  const puedeVerGrupo = usuarioActivo.alcance === "grupo";
 
   return (
     <div className="flex min-h-screen">
@@ -108,15 +107,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="text-sm text-muted-foreground">Empresa:</span>
             <select
               value={empresaActivaId ?? ""}
-              onChange={(e) => setEmpresaActiva(e.target.value as string)}
-              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+              onChange={(e) => setEmpresaActiva(e.target.value)}
+              disabled={empresasVisibles.length <= 1}
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm disabled:opacity-70"
             >
-              {puedeVerGrupo && <option value="grupo">Grupo (consolidado)</option>}
               {empresasVisibles.map((e) => (
                 <option key={e.id} value={e.id}>{e.nombreComercial}</option>
               ))}
             </select>
-            {empresaActivaId && empresaActivaId !== "grupo" && (
+            {empresaActivaId && (
               <span className="text-xs text-muted-foreground">
                 CUIT {empresaPorId(empresaActivaId)?.cuit}
               </span>

@@ -22,7 +22,8 @@
 > **Decisión del cliente (2026-06-24):** este sistema se construye como **proyecto separado**
 > en la subcarpeta `planes-ahorro/`, sin tocar el sistema existente "Grupo Fiorasi · Control &
 > Gestión" que vive en la raíz del repositorio. Stack **Next.js**. Login **único con cambio de
-> empresa**. Por ahora **solo se entrega el plan** (sin código de la app).
+> empresa** (una empresa por vez; **sin vista consolidada** — los ahorristas de cada empresa son
+> clientes distintos, decisión 2026-06-25).
 
 ---
 
@@ -370,7 +371,9 @@ mora**.
 
 ## 7. Informes y tableros (Fase 5)
 
-- Tablero por empresa (Pedro Corradi / SAPAC) y **consolidado del grupo**.
+- Tablero **por empresa** (Pedro Corradi / Fiorasi). **No se consolida** entre empresas: los
+  ahorristas son clientes distintos de cada empresa (decisión del cliente, 2026-06-25). Un
+  usuario con acceso a ambas cambia de empresa con el selector, pero ve una por vez.
 - Embudo por estadio · ventas por vendedor/equipo/sucursal · **efectividad (leads→ventas)** y
   leads pendientes · observaciones de scoring abiertas y tiempo de resolución.
 - Filtros por fecha, empresa, sucursal, equipo, vendedor, estado.
