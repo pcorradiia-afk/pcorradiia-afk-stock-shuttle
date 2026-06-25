@@ -284,6 +284,43 @@ descuento en celdas verdes, generación de presupuesto PDF y hoja de pedido). Es
 significativo y cae en **Fase 3** (estadios). Los **valores de arancel/sellado deben ser
 parámetros editables por jurisdicción** (hoy Neuquén/Río Negro; dejar configurable).
 
+### 5.bis.3 `Adjudicatarios_Sin_Pedido_*.csv` — lista de trabajo del estadio PEDIDO
+CSV `sep=;`, con comillas. Adjudicados que **todavía no cargaron el pedido** (work-list para
+admin/ventas). Columnas:
+`NRO_GRUPO; NRO_ORDEN; GRUPO_ACTO_ADJUDICACION; ORDEN_ACTO_ADJUDICACION; APELLIDO Y NOMBRE;
+STATUS; MODELO; ID_CONCESIONARIO; FECHA_ACEPTACION; REQ_CRED; REQ_CRED_ST; PLAN; PORC_AX;
+RECHAZOS; VWC079_OBSERVACIONES; AGING; PUEDE_INGRESAR_PEDIDO (S/N)`
+- `VWC079_OBSERVACIONES` (ej. "Adeuda Alícuota + Rq Cred") y `PUEDE_INGRESAR_PEDIDO` definen si
+  el caso está habilitado para pedido → alimenta alertas y el tablero del estadio Pedido.
+- `AGING` = días de antigüedad de la adjudicación sin pedido (priorización).
+
+### 5.bis.4 `Ganadores_Acto_NN.csv` — ganadores de sorteo/licitación por acto
+CSV `sep=;` **codificado en UTF-16** (ojo al importar: detectar encoding). Columnas:
+`NRO_ACTO; NRO_GRUPO; NRO_ORDEN; GRUPO_ACTO_ADJUDICACION; ORDEN_ACTO_ADJUDICACION; APELLIDO Y
+NOMBRE; STATUS; ID_CONCESIONARIO; PLAN; MODELO; TIPO_ADJUDICACION (ej. "Reemplazo Titular");
+CONDICIONAL ("Titular"); IMPORTE_OFERTA`
+- Es la fuente directa del caso de uso **"informar ganadores por sorteo"** (campaña WhatsApp) y
+  del estadio **Adjudicación**.
+
+### 5.bis.5 `cta_cte_*.txt` — cuenta corriente del concesionario con la administradora
+Archivo de **ancho fijo / posicional** (un movimiento por línea). Estructura observada:
+`concesionario(059432) | fecha(dd/mm/aaaa) | código_mov(3) | descripción(~33) | D|C |
+importe con $ (signado) | clave grupo+orden (y/o solicitud)`. Códigos de movimiento vistos:
+`ITP`=Incentivo X Plan, `ADJ`=Derecho Adjudic., `RPP`/`PPP`/`CPE`=prenda/penalizaciones,
+`SXS`=Impuesto de Sellos, `GPS`=Gastos Prest. Serv., `F03`=Formularios 03.
+- Es la **cta cte de la concesionaria con Plan Óvalo** (incentivos a favor, cargos en contra),
+  no la cuenta del cliente. Útil para conciliación/finanzas; **no** es el saldo del ahorrista.
+
+### 5.bis.6 `adh_NNNNNN.txt` — movimiento por adherente (posicional, ancho fijo)
+Archivo de **ancho fijo** sin separadores. Cada línea trae, entremezclados: identificador,
+importes (varios campos numéricos), `177` (concesionario), grupo, fecha (aammdd), un número
+largo (identificador/CUIT), **código postal, domicilio, localidad, provincia, apellido y
+nombre, teléfono**, más campos numéricos de saldo. Es la fuente más rica en **datos de contacto
+y domicilio** del adherente.
+- ⚠️ **Requiere la especificación del layout posicional** (posiciones exactas de cada campo)
+  para parsearlo con seguridad. **Pedir al cliente el diseño de registro** o un archivo con
+  cabeceras. Hasta tenerlo, no se implementa este import.
+
 ---
 
 ## 6. Flujo de trabajo y estadios
@@ -403,8 +440,10 @@ mora**.
 | — | Rol "Gerencia/Dirección (lectura)": ¿se incluye? (§4.2) | ⏳ A confirmar |
 | N1 | **Motor de cálculo de la planilla** (gastos de patentamiento, requisitos, licitación, hoja de pedido): ¿se replica dentro del sistema en Fase 3? Es alcance significativo. | ⏳ A confirmar prioridad |
 | N2 | **Jurisdicciones de patentamiento** a cubrir (hoy Neuquén y Río Negro) y quién mantiene los valores de arancel/sellado. | ⏳ A confirmar |
-| N3 | Archivos anunciados aún no recibidos: **lista de precios**, **movimiento de cada adherente**, **cuenta corriente**. | ⏳ Pendientes de envío |
+| N3 | Archivos recibidos (2026-06-25): cartera **Novedades** (§5.bis.1), **planilla** (§5.bis.2), **Adjudicatarios sin pedido** (§5.bis.3), **Ganadores de acto** (§5.bis.4), **cta cte concesionario** (§5.bis.5), **movimiento por adherente** (§5.bis.6). Falta: **lista de precios** como archivo aparte (por ahora se toma de la solapa Precio). | ✅ En su mayoría recibidos |
 | N4 | Mapeo de **STATUS de cartera → estadio** del cliente (códigos 2/4/9/…). | ⏳ A definir con el cliente |
+| N5 | **Layout posicional** del archivo `adh_*.txt` (§5.bis.6): hace falta el diseño de registro para parsearlo. | ⏳ Pedir al cliente |
+| N6 | `cta_cte_*.txt` es la cuenta de la **concesionaria con la administradora**, no del cliente. ¿Entra en alcance (finanzas/conciliación) o queda fuera? | ⏳ A confirmar |
 
 ---
 
