@@ -29,8 +29,12 @@
 ## 1. Propósito del sistema
 
 Reemplazar al sistema de terceros (SIGNOS Gestión) en lo que hace al seguimiento de
-**clientes ahorristas** de Plan Óvalo Ford para dos concesionarias del grupo: **PEDRO
-CORRADI SA** y **SAPAC SA**.
+**clientes ahorristas** de Plan Óvalo Ford para dos concesionarias del grupo:
+
+| Empresa | CUIT | Nombre comercial |
+|---|---|---|
+| **PEDRO CORRADI SA** (S.A.C.I.F.I. y E.) | **33-52033241-9** | Pedro Corradi |
+| **SAPAC SA** | **30-59970938-6** | **Fiorasi** |
 
 El corazón del sistema es:
 1. **Ficha del cliente/ahorrista** con sus datos y su solicitud Ford.
@@ -125,8 +129,11 @@ El corazón del sistema es:
    avisa y **sugiere el cliente ya existente** para sumar gestión sobre ese.
 2. **N° de solicitud único e irrepetible**. Si se cargó mal, **solo el Supervisor de
    Administración** puede corregirlo, y la corrección queda en `log_auditoria`.
-3. **Importación = upsert**: match por N° de solicitud y DNI → si existe, actualiza; si no,
-   crea. Nunca duplica.
+3. **Importación = upsert**, con dos fuentes distintas (ver §5.bis):
+   - **Cartera (Novedades / ACTUALIZACION):** match por `nro_solicitud` y/o `grupo`+`orden`.
+     **No** trae DNI → no se valida documento en esta importación.
+   - **Solicitudes Plan Óvalo (§5):** match por `nro_solicitud` y `DNI`.
+   - En ambos casos: si existe → actualiza; si no → crea. Nunca duplica.
 
 ---
 
@@ -218,8 +225,64 @@ Módulo de importación con **vista previa, mapeo de columnas y validación**.
 - **Reporte de resultado:** creados / actualizados / rechazados (con motivo).
 - **Auditoría:** quién, cuándo, archivo, cantidades.
 
-> ⚠️ **A DEFINIR (Q4):** confirmar columnas reales y subir un **Excel de ejemplo** de Plan
-> Óvalo para fijar el mapeo por defecto.
+> ✅ **Actualización (2026-06-25):** el cliente ya entregó archivos reales. Ver **§5.bis** para
+> las columnas reales de la **cartera (Novedades)** y la **planilla de cálculo**. Las columnas
+> "Plan Óvalo" de arriba quedan como segunda fuente posible, a confirmar (Q4).
+
+---
+
+## 5.bis. Archivos reales del cliente (analizados 2026-06-25) y lo que implican
+
+> El cliente entregó dos archivos reales. Cambian/expanden el alcance del prompt original:
+> **hay dos fuentes de importación distintas** y la planilla actual **no es solo datos: es un
+> motor de cálculo** que el sistema debe absorber en los estadios de Adjudicación/Pedido/
+> Patentamiento. Archivos pendientes que el cliente anunció: **lista de precios**, **movimiento
+> de cada adherente** y **cuenta corriente**.
+
+### 5.bis.1 `Novedades_NN.csv` — la CARTERA (fuente mensual desde FIS)
+CSV separado por `;`. Es el listado completo de ahorristas tal como se baja de **FIS**. Es la
+misma información que la solapa **ACTUALIZACION** de la planilla. ~1.049 filas en el ejemplo.
+**Columnas reales:**
+`ID_CONCESIONARIO; NOMBRE_CONCESIONARIO; APELLIDO Y NOMBRE; DOMICILIO; CODIGO_POSTAL;
+TELEFONO_PARTICULAR; TELEFONO_LABORAL; CELULAR; EMAIL; NRO_SOLICITUD; NRO_GRUPO; NRO_ORDEN;
+PLAN; MODELO; STATUS; STATUS_DESC; VALOR_MOVIL; DESVIO; ADELANTO; LICITO; PORCENTAJE;
+FECHA_AGRUPO; FECHA_PRENDA; EMITIDAS; PAGA; IMPAGA; CUPON_ELECTRONICO; DEB_CRED`
+
+- **`STATUS` / `STATUS_DESC`** son el estado del adherente en la cartera (códigos): `2`=AHORRISTA
+  AL DIA, `4`=ADJUD DEF AL DIA, `9`=ADJUD PEND AL DIA, etc. → mapean al **estadio** del cliente.
+- **Identificador del adherente = `NRO_GRUPO` + `NRO_ORDEN`** (la admin "concatena grupo/orden").
+  También viene `NRO_SOLICITUD`.
+- ⚠️ **Importante:** esta cartera **NO trae DNI/CUIT**. El DNI llega por el alta de lead/venta o
+  por el export de Plan Óvalo. → La regla de unicidad por documento (§3.6) aplica al alta
+  comercial; el **match de la cartera es por `nro_solicitud` y/o `grupo`+`orden`**, no por DNI.
+
+### 5.bis.2 `Planilla de cálculo patentamiento (adjudicados).xls` — el MOTOR de cálculo
+Workbook con 22 solapas. Las administrativas **solo completan las celdas amarillas**; el resto
+se autocalcula. Solapas clave:
+
+| Solapa | Qué es | Rol en el sistema |
+|---|---|---|
+| **ACTUALIZACION** | La cartera (igual que Novedades). Se pega mensual desde FIS. | Importación de cartera |
+| **Modelo** | Catálogo de planes: `código_plan, %participación, descripción_modelo, valor_móvil, cuotas, financiación, bonificación`. Se cargan los códigos de planes nuevos. | Tabla **plan** (catálogo) |
+| **Precio / Precio2** | Lista de precios: `modelo, versión, SEQ, valor_móvil_final` (+ alícuota, importado/nacional). Se actualiza manual cada mes. | Tabla **lista_precios** |
+| **Bonific** | `código_plan → texto de bonificación`. | Atributo del plan |
+| **req2** | Requisitos por plan (clave `tipo+%+cuotas`) + listado de documentación exigida. | Cálculo de **requisitos** (Adjudicación) |
+| **Gastos de retiro** | Presupuesto de **patentamiento**: formularios, inscripción, **sellado por jurisdicción (Neuquén / Río Negro)**, patente. Valores de arancel editables (amarillo). Se imprime en **PDF** para el cliente. | Motor de **gastos de patentamiento** (Patentamiento) |
+| **Licitación** | Cálculo para asesorar a quien quiere **licitar**. | Asesoramiento de licitación |
+| **Pedido** | Orden de pedido de unidad: grupo, orden, acto de adjudicación, modelo del plan, modelo solicitado, caja, cabina, **SEQ**, colores, declaraciones. | **Hoja de pedido** imprimible (Pedido) |
+| **Adjudicado** | Anexo "pasos de entrega". | Checklist de Entrega |
+| **Hoja seguimiento / GESTORIA / PASE / Cancelado…** | Seguimiento, gestoría y variantes de pago. | Patentamiento / Entrega |
+
+**Mantenimiento mensual del cliente (a replicar como carga del sistema):**
+1. **Cartera** → pegar en ACTUALIZACION (en el sistema: importar Novedades).
+2. **Precios** → actualizar valor de cada modelo (en el sistema: ABM de lista de precios).
+3. **Modelo** → cargar códigos de planes nuevos con cuotas/financiación/bonificación.
+
+**Implicancia de alcance:** la planilla cubre **Adjudicación, Pedido y Patentamiento** con
+cálculos (requisitos, gastos de retiro por jurisdicción, táctico con diferencia de precio y
+descuento en celdas verdes, generación de presupuesto PDF y hoja de pedido). Esto es trabajo
+significativo y cae en **Fase 3** (estadios). Los **valores de arancel/sellado deben ser
+parámetros editables por jurisdicción** (hoy Neuquén/Río Negro; dejar configurable).
 
 ---
 
@@ -334,10 +397,14 @@ mora**.
 | Q5 | Modelo de login multiempresa | ✅ Confirmado (login único con cambio de empresa) |
 | Q2 | Matriz de permisos Rol × Acción (§4.3) | ⏳ Pendiente de aprobación |
 | Q3 | Reglas de la etapa **Agrupamiento** (§6.2) | ⏳ A definir |
-| Q4 | Columnas reales del Excel de Ford + ejemplo (§5) | ⏳ Falta Excel de ejemplo |
+| Q4 | Formatos reales de importación | ✅ Resuelto en parte: tenemos **Novedades/cartera** (§5.bis.1) y la planilla (§5.bis.2). Falta confirmar si además importan el export de **solicitudes Plan Óvalo** y para qué. |
 | Q6 | Herramienta/BSP de WhatsApp (§9) | ⏳ A definir (mientras tanto, proveedor simulado) |
 | — | Alcance de unicidad de documento: ¿global o por empresa? (§3.6) | ⏳ A confirmar |
 | — | Rol "Gerencia/Dirección (lectura)": ¿se incluye? (§4.2) | ⏳ A confirmar |
+| N1 | **Motor de cálculo de la planilla** (gastos de patentamiento, requisitos, licitación, hoja de pedido): ¿se replica dentro del sistema en Fase 3? Es alcance significativo. | ⏳ A confirmar prioridad |
+| N2 | **Jurisdicciones de patentamiento** a cubrir (hoy Neuquén y Río Negro) y quién mantiene los valores de arancel/sellado. | ⏳ A confirmar |
+| N3 | Archivos anunciados aún no recibidos: **lista de precios**, **movimiento de cada adherente**, **cuenta corriente**. | ⏳ Pendientes de envío |
+| N4 | Mapeo de **STATUS de cartera → estadio** del cliente (códigos 2/4/9/…). | ⏳ A definir con el cliente |
 
 ---
 
