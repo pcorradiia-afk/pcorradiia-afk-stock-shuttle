@@ -12,7 +12,7 @@
 | Fase | Descripción | Estado |
 |---|---|---|
 | **Planificación** | Plan de fases, modelo de datos, matriz de permisos | ✅ **Entregado (este archivo) — pendiente de aprobación del cliente** |
-| Fase 0 | Base: Next.js + Supabase, login, multiempresa, usuarios/roles, super admin, impersonar | ⬜ No iniciado |
+| Fase 0 | Base: Next.js + Supabase, login, multiempresa, usuarios/roles, super admin, impersonar | ✅ **Hecho (modo demo)** — app Next.js funcionando, login, selector de empresa, usuarios, matriz de roles e impersonar; esquema SQL + RLS listos en `supabase/`. Falta conectar Supabase real. |
 | Fase 1 | Núcleo: ficha cliente, bitácora, importación Ford, unicidad DNI/N° solicitud, asignación a vendedor | ⬜ No iniciado |
 | Fase 2 | Ventas: recepción, vendedor, presupuestos, planes, cierre, reasignación, supervisión | ⬜ No iniciado |
 | Fase 3 | Administración por estadios (Scoring → … → Entrega) | ⬜ No iniciado |
@@ -447,7 +447,46 @@ mora**.
 
 ---
 
-## 12. Cómo levantar el proyecto (se completa al iniciar Fase 0)
+## 12. Cómo levantar el proyecto
 
-> Pendiente hasta escribir código. Incluirá pasos para alguien **no técnico**: instalación,
-> variables de entorno de Supabase, comando de desarrollo y despliegue en Vercel.
+El código de la app vive en la subcarpeta **`planes-ahorro/`**.
+
+### 12.1 Probar en la computadora (modo demo, sin configurar nada)
+1. Instalar **Node.js 20+** (una sola vez).
+2. Abrir una terminal dentro de `planes-ahorro/` y ejecutar:
+   ```bash
+   npm install      # baja las dependencias (una vez)
+   npm run dev      # levanta la app en http://localhost:3000
+   ```
+3. Abrir el navegador en **http://localhost:3000**. Como todavía no hay Supabase configurado,
+   arranca en **modo demo**: en la pantalla de login aparecen usuarios de ejemplo (super admin,
+   vendedor, administración, terciarizada, etc.). Hacé clic en uno y entrá para ver cómo cambia
+   el acceso de cada rol. El super admin puede **impersonar** a cualquiera y cambiar de empresa.
+
+### 12.2 Conectar el backend real (Supabase) — cuando se decida
+1. Crear un proyecto en https://supabase.com (región São Paulo `sa-east-1`).
+2. En el editor SQL de Supabase, ejecutar `supabase/migrations/0001_fase0.sql` y luego
+   `supabase/seed.sql`.
+3. Copiar `planes-ahorro/.env.example` a `planes-ahorro/.env.local` y completar
+   `NEXT_PUBLIC_SUPABASE_URL` y `NEXT_PUBLIC_SUPABASE_ANON_KEY` (Project Settings → API).
+4. Crear los usuarios en **Supabase Auth** y, con el mismo `id`, insertarlos en la tabla
+   `usuario`, asignarles roles (`usuario_rol`) y empresas (`membresia_empresa`).
+5. Al tener las variables cargadas, la app deja el modo demo y usa Supabase. (La capa de datos
+   que reemplaza a los datos demo se implementa al inicio de Fase 1.)
+
+### 12.3 Publicar en internet (Vercel)
+1. Subir el repositorio a GitHub (ya está).
+2. En https://vercel.com → New Project → elegir el repo, y como **Root Directory** indicar
+   `planes-ahorro`.
+3. Cargar las mismas variables de entorno del paso 12.2 en Vercel.
+4. Deploy. Vercel da una URL pública para usar desde cualquier lado.
+
+### 12.4 Estructura del código (Fase 0)
+```
+planes-ahorro/
+  src/app/                  rutas (login, dashboard, admin/empresas|usuarios|roles)
+  src/components/           AppShell (sidebar, selector de empresa, banner de impersonar) + ui/
+  src/lib/                  tipos, roles+matriz de permisos, datos demo, sesión, cliente Supabase
+  supabase/migrations/      esquema SQL + RLS (Fase 0)
+  supabase/seed.sql         empresas iniciales (CUIT reales) y catálogo de roles
+```
