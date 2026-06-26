@@ -79,10 +79,16 @@ def decidir_respuesta(
 
     # ── 0) RESPUESTA DE ENCUESTA ─────────────────────────────────────────────
     # Tiene prioridad sobre todo: si hay una encuesta abierta, su respuesta manda.
-    if encuestas.hay_encuesta_abierta(numero_cuenta, telefono_cliente):
+    abierta = encuestas.hay_encuesta_abierta(numero_cuenta, telefono_cliente)
+    print(
+        f"🔎 [ENCUESTA?] cuenta={numero_cuenta} cliente={telefono_cliente} "
+        f"abierta={abierta} texto=«{texto}»"
+    )
+    if abierta:
         resp = encuestas.registrar_respuesta(numero_cuenta, telefono_cliente, texto, media)
         if resp is not None:
             return _responder_encuesta(resp, telefono_cliente, numero_cuenta, simular)
+        print("⚠️  [ENCUESTA] había encuesta abierta pero registrar_respuesta devolvió None")
 
     # ── A) RESOLUCIÓN DE LÍNEA ───────────────────────────────────────────────
     if len(lineas) == 1:
@@ -220,6 +226,14 @@ def _responder_encuesta(resp, telefono_cliente: str, numero_cuenta: str, simular
             enviar_pregunta_interactiva(
                 telefono_cliente, numero_cuenta, resp.interactivo, resp.cuerpo
             )
+            # Guardamos la pregunta en el historial para que se vea en el buzón
+            # (la pregunta interactiva no pasa por el TwiML, así que la registramos acá).
+            try:
+                obtener_repo().agregar_historial(
+                    numero_cuenta, telefono_cliente, "assistant", resp.cuerpo or resp.texto
+                )
+            except Exception as exc:  # noqa: BLE001
+                print(f"⚠️  [ENCUESTA] no pude guardar la pregunta en el historial: {exc}")
             return None
         except Exception as exc:  # noqa: BLE001
             print(f"⚠️  [ENCUESTA] No se pudo enviar interactivo, mando texto: {exc}")

@@ -213,6 +213,11 @@ def correr_encuestas_pendientes(
                 reporte.resultados.append(
                     ResultadoEnvioEncuesta(telefono, "enviada", sid, preview)
                 )
+                # Guardamos la 1ª pregunta en el historial para que se vea en el buzón.
+                try:
+                    repo.agregar_historial(numero_origen, telefono, "assistant", preview)
+                except Exception as exc:  # noqa: BLE001
+                    print(f"   ⚠️  no pude guardar la 1ª pregunta en el historial: {exc}")
                 print(f"   ✅ {telefono} · enviada ({sid})")
             else:
                 reporte.simuladas += 1
