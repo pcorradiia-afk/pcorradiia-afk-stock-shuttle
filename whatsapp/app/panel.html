@@ -651,6 +651,7 @@
       sel.innerHTML = '<option value="">Todas</option>' +
         (d.areas || []).map(a => `<option ${a === actual ? 'selected' : ''}>${a}</option>`).join('');
       const cont = $("convLista"); cont.innerHTML = '';
+      if (d.error) { cont.innerHTML = '<p class="nota" style="padding:14px;color:#dc2626;">No se pudieron cargar las conversaciones: ' + d.error + '</p>'; return; }
       if (!(d.conversaciones || []).length) cont.innerHTML = '<p class="nota" style="padding:14px;">No hay conversaciones todavía.</p>';
       else d.conversaciones.forEach(c => cont.appendChild(convItem(c)));
     } catch (e) { alert('No pude cargar las conversaciones: ' + e); }

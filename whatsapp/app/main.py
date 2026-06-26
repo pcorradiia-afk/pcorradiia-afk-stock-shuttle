@@ -662,20 +662,30 @@ def media_proxy(url: str) -> Response:
 @app.get("/conversaciones", dependencies=[Depends(requiere_clave)])
 def listar_conversaciones_ep(area: str = "") -> dict:
     """Lista los chats del número, con su área y si el bot está en pausa (pidió asesor)."""
+    import traceback
+
     from .persistencia import obtener_repo
 
     repo = obtener_repo()
     numero = normalizar_telefono(_SIM_NUMERO)
     sim_tel = normalizar_telefono(_SIM_TELEFONO)
-    convs = [c for c in repo.listar_conversaciones(numero) if c["telefono"] != sim_tel]
-    for c in convs:
-        c["pausado"] = repo.bot_pausado(c["telefono"])
-        c["area"] = repo.area_de(numero, c["telefono"]) or "Sin asignar"
-    areas = sorted({c["area"] for c in convs})
-    if area:
-        convs = [c for c in convs if c["area"] == area]
-    convs.sort(key=lambda c: 0 if c.get("pausado") else 1)  # los que piden asesor, primero
-    return {"conversaciones": convs, "areas": areas}
+    try:
+        convs = [c for c in repo.listar_conversaciones(numero) if c.get("telefono") != sim_tel]
+        # Una sola consulta para pausados y otra para áreas (evita N+1 / timeouts).
+        pausados = repo.telefonos_pausados()
+        areas_map = repo.areas_de(numero)
+        for c in convs:
+            tel = c.get("telefono")
+            c["pausado"] = tel in pausados
+            c["area"] = areas_map.get(tel) or "Sin asignar"
+        areas = sorted({c["area"] for c in convs})
+        if area:
+            convs = [c for c in convs if c["area"] == area]
+        convs.sort(key=lambda c: 0 if c.get("pausado") else 1)  # los que piden asesor, primero
+        return {"conversaciones": convs, "areas": areas}
+    except Exception as exc:  # noqa: BLE001 — devolvemos el error legible, no un 500 crudo
+        traceback.print_exc()
+        return {"conversaciones": [], "areas": [], "error": f"{type(exc).__name__}: {exc}"}
 
 
 @app.get("/conversaciones/{telefono}", dependencies=[Depends(requiere_clave)])

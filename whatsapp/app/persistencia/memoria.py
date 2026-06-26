@@ -120,6 +120,12 @@ class RepositorioMemoria(Repositorio):
     def area_de(self, numero_cuenta: str, telefono: str) -> str | None:
         return self._areas.get((numero_cuenta, telefono))
 
+    def areas_de(self, numero_cuenta: str) -> dict[str, str]:
+        return {tel: area for (nc, tel), area in self._areas.items() if nc == numero_cuenta}
+
+    def telefonos_pausados(self) -> set[str]:
+        return set(self._bot_pausado)
+
     # --- Reiniciar una conversación puntual ---
     def reiniciar_conversacion(self, numero_cuenta: str, telefono: str) -> None:
         self._lineas.pop((numero_cuenta, telefono), None)

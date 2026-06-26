@@ -282,6 +282,25 @@ class RepositorioSupabase(Repositorio):
         )
         return res.data[0]["area"] if res.data else None
 
+    def areas_de(self, numero_cuenta: str) -> dict[str, str]:
+        """Todas las áreas de la cuenta en UNA consulta (telefono → area)."""
+        res = (
+            self._db.table("wsp_conversacion_area")
+            .select("telefono,area")
+            .eq("numero_cuenta", numero_cuenta)
+            .execute()
+        )
+        return {
+            r["telefono"]: r["area"]
+            for r in (res.data or [])
+            if r.get("telefono") and r.get("area")
+        }
+
+    def telefonos_pausados(self) -> set[str]:
+        """Todos los teléfonos con el bot en pausa, en UNA consulta."""
+        res = self._db.table("wsp_bot_pausado").select("telefono").execute()
+        return {r["telefono"] for r in (res.data or []) if r.get("telefono")}
+
     # --- Reiniciar una conversación puntual ---
     def reiniciar_conversacion(self, numero_cuenta: str, telefono: str) -> None:
         for tabla in ("wsp_sesiones", "wsp_encuestas_abiertas", "wsp_historial", "wsp_conversacion_area"):
