@@ -42,7 +42,6 @@ export function PlanCuentas() {
   const importaciones = useImportaciones(empresaIdsActivos);
   const clasif = useClasificacionCuentas();
   const [q, setQ] = useState("");
-  const [deptoFiltro, setDeptoFiltro] = useState("");
   const [repartir, setRepartir] = useState<FilaCuenta | null>(null);
 
   // Clasificación AUTOMÁTICA (sin overrides) para conocer el valor base de cada cuenta.
@@ -60,18 +59,9 @@ export function PlanCuentas() {
     return [...map.values()].sort((a, b) => a.codigo.localeCompare(b.codigo));
   }, [auto.cuentas]);
 
-  // Departamento(s) efectivo(s) de una cuenta: el manual si existe, el del reparto
-  // si está repartida, o el automático. Sirve para filtrar igual que se muestra.
-  const deptosEfectivos = (c: FilaCuenta) => {
-    const ov = clasif[c.codigo];
-    return ov?.reparto ? ov.reparto.deptos : [ov?.depto ?? c.deptoAuto];
-  };
-
-  const filtradas = cuentas.filter((c) => {
-    if (q && !c.codigo.includes(q) && !c.nombre.toLowerCase().includes(q.toLowerCase())) return false;
-    if (deptoFiltro && !deptosEfectivos(c).includes(deptoFiltro)) return false;
-    return true;
-  });
+  const filtradas = cuentas.filter(
+    (c) => !q || c.codigo.includes(q) || c.nombre.toLowerCase().includes(q.toLowerCase()),
+  );
   const conOverride = cuentas.filter((c) => clasif[c.codigo]).length;
 
   const deptoLabel = (k: string) => DEPTOS_OLIAUTO.find((d) => d.key === k)?.label ?? k;
@@ -114,21 +104,9 @@ export function PlanCuentas() {
         action={<Badge variant="secondary">{cuentas.length} cuentas · {conOverride} ajustadas</Badge>}
       />
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[200px] flex-1 sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input placeholder="Buscar por código o descripción…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
-        </div>
-        <Select value={deptoFiltro || "__todos__"} onValueChange={(v) => setDeptoFiltro(v === "__todos__" ? "" : v)}>
-          <SelectTrigger className="h-9 w-[210px]"><SelectValue placeholder="Todos los departamentos" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__todos__">Todos los departamentos</SelectItem>
-            {DEPTOS_OLIAUTO.map((d) => <SelectItem key={d.key} value={d.key}>{d.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        {(q || deptoFiltro) && (
-          <span className="text-xs text-muted-foreground">{filtradas.length} de {cuentas.length}</span>
-        )}
+      <div className="relative mb-3 max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input placeholder="Buscar por código o descripción…" value={q} onChange={(e) => setQ(e.target.value)} className="pl-9" />
       </div>
 
       <Card>
