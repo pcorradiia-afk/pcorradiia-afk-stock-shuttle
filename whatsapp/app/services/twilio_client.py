@@ -203,7 +203,7 @@ def _crear_content(payload: dict) -> str:
 def _content_sid_encuesta(tipo: str, cuerpo: str) -> str:
     """Devuelve (creando/cacheando) el ContentSid de una pregunta interactiva.
 
-    - `escala` → lista tappable con las 5 opciones (ids "5".."1").
+    - `escala` → quick-reply con las 5 opciones 5→1 (se ven 5 y 4 sin tocar nada).
     - `si_no`  → 2 botones de respuesta rápida (ids "si"/"no").
     """
     clave = (tipo, cuerpo)
@@ -223,15 +223,16 @@ def _content_sid_encuesta(tipo: str, cuerpo: str) -> str:
             },
         }
     else:
+        # Quick Reply (igual que la 1ª pregunta): muestra "5 · Muy satisfecho" y
+        # "4 · Satisfecho" a la vista, sin tener que tocar "Elegir puntaje".
         payload = {
             "friendly_name": f"enc_escala_{sufijo}",
             "language": "es",
             "types": {
-                "twilio/list-picker": {
+                "twilio/quick-reply": {
                     "body": cuerpo,
-                    "button": "Elegir puntaje",
-                    "items": [
-                        {"item": etiqueta, "id": idv, "description": ""}
+                    "actions": [
+                        {"title": etiqueta, "id": idv}
                         for idv, etiqueta in _ESCALA_ITEMS
                     ],
                 }
