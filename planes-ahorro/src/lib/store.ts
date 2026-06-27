@@ -4,12 +4,25 @@
 // La forma de los datos y las funciones imitan lo que en producción será la capa Supabase,
 // así que al conectar el backend se reemplaza este archivo sin tocar las pantallas.
 
-import type { Cliente, Comunicacion, Estadio, EstadoCliente, Plan } from "./types";
+import type {
+  Cliente, Comunicacion, Estadio, EstadoCliente, Plan,
+  ObservacionScoring, ResultadoScoring, Alerta, GestionAdmin, RolId, Usuario,
+} from "./types";
 import { USUARIOS } from "./demo-data";
 
 const K_CLIENTES = "pa.clientes";
 const K_COMS = "pa.comunicaciones";
 const K_PLANES = "pa.planes";
+const K_OBS = "pa.observaciones";
+const K_ALERTAS = "pa.alertas";
+
+// Orden de los estadios (CLAUDE.md §6).
+export const ESTADIOS_ORDEN: Estadio[] = [
+  "scoring", "agrupamiento", "gestion_cliente", "adjudicacion", "pedido", "patentamiento", "entrega",
+];
+
+// Estadios habilitados para Administración de perfil TERCIARIZADA (CLAUDE.md §6.8).
+export const ESTADIOS_TERCIARIZADA: Estadio[] = ["agrupamiento", "gestion_cliente"];
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -272,6 +285,127 @@ export function cerrarVenta(clienteId: string): { ok: boolean; faltan?: string[]
     fechaVenta: new Date().toISOString(),
   });
   return { ok: true };
+}
+
+// ===================== Fase 3: estadios de administración =====================
+
+export function estadioSiguiente(e: Estadio): Estadio | null {
+  const i = ESTADIOS_ORDEN.indexOf(e);
+  return i >= 0 && i < ESTADIOS_ORDEN.length - 1 ? ESTADIOS_ORDEN[i + 1] : null;
+}
+
+export function avanzarEstadio(clienteId: string): Estadio | null {
+  const c = getCliente(clienteId);
+  if (!c) return null;
+  const sig = estadioSiguiente(c.estadio);
+  if (sig) actualizarCliente(clienteId, { estadio: sig });
+  return sig;
+}
+
+export function actualizarGestionAdmin(clienteId: string, patch: GestionAdmin) {
+  const c = getCliente(clienteId);
+  if (!c) return;
+  actualizarCliente(clienteId, { gestionAdmin: { ...(c.gestionAdmin || {}), ...patch } });
+}
+
+// --- Scoring ---
+export function listarObservaciones(clienteId: string): ObservacionScoring[] {
+  return leer<ObservacionScoring>(K_OBS)
+    .filter((o) => o.clienteId === clienteId)
+    .sort((a, b) => b.fechaHora.localeCompare(a.fechaHora));
+}
+
+const OBSERVADO: ResultadoScoring[] = [
+  "observado_requisitos_crediticios", "observado_gastos_retiro",
+  "observado_vehiculo_usado", "observado_presupuesto", "observado_otros",
+];
+
+export function registrarScoring(clienteId: string, usuario: Usuario, resultado: ResultadoScoring) {
+  const c = getCliente(clienteId);
+  if (!c) return;
+  const obs: ObservacionScoring = {
+    id: uid(), clienteId, fechaHora: new Date().toISOString(),
+    usuarioId: usuario.id, usuarioNombre: usuario.nombre, resultado,
+    gestionResultado: null, gestionFechaHora: null, gestionUsuarioNombre: null,
+  };
+  const lista = leer<ObservacionScoring>(K_OBS);
+  lista.push(obs);
+  escribir(K_OBS, lista);
+
+  if (OBSERVADO.includes(resultado)) {
+    // Alerta al Analista de Suscripciones, Sup. de Administración y Sup. de Ventas del equipo.
+    crearAlerta({
+      empresaId: c.empresaId,
+      rolesDestino: ["analista_suscripciones", "supervisor_administracion", "supervisor_ventas"],
+      tipo: "scoring_observado",
+      clienteId: c.id,
+      clienteNombre: c.nombreCompleto,
+      mensaje: `Scoring observado (${etiquetaScoring(resultado)}) — requiere gestión.`,
+    });
+  } else if (resultado === "aprobado") {
+    // Aprobado: finaliza scoring y pasa a Agrupamiento.
+    if (c.estadio === "scoring") actualizarCliente(clienteId, { estadio: "agrupamiento" });
+  }
+}
+
+// El Supervisor de ventas gestiona la observación → cliente queda "Gestionado".
+export function gestionarObservacion(obsId: string, usuario: Usuario, resultado: string) {
+  const lista = leer<ObservacionScoring>(K_OBS);
+  const i = lista.findIndex((o) => o.id === obsId);
+  if (i < 0) return;
+  lista[i] = {
+    ...lista[i], gestionResultado: resultado,
+    gestionFechaHora: new Date().toISOString(), gestionUsuarioNombre: usuario.nombre,
+  };
+  escribir(K_OBS, lista);
+  actualizarCliente(lista[i].clienteId, { estado: "gestionado" });
+}
+
+export function etiquetaScoring(r: ResultadoScoring): string {
+  return {
+    observado_requisitos_crediticios: "Observado por requisitos crediticios",
+    observado_gastos_retiro: "Observado por gastos de retiro",
+    observado_vehiculo_usado: "Observado por vehículo usado",
+    observado_presupuesto: "Observado presupuesto",
+    observado_otros: "Observado por otros",
+    aprobado: "Aprobado",
+    pendiente: "Pendiente",
+  }[r];
+}
+
+// --- Alertas (campanita) ---
+export function crearAlerta(input: Omit<Alerta, "id" | "fecha" | "leidaPor">) {
+  const lista = leer<Alerta>(K_ALERTAS);
+  lista.push({ ...input, id: uid(), fecha: new Date().toISOString(), leidaPor: [] });
+  escribir(K_ALERTAS, lista);
+}
+
+export function listarAlertas(usuario: Usuario, empresaId: string | null): Alerta[] {
+  return leer<Alerta>(K_ALERTAS)
+    .filter((a) => (!empresaId || a.empresaId === empresaId) && a.rolesDestino.some((r) => usuario.roles.includes(r)))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+export function contarAlertasNoLeidas(usuario: Usuario, empresaId: string | null): number {
+  return listarAlertas(usuario, empresaId).filter((a) => !a.leidaPor.includes(usuario.id)).length;
+}
+export function marcarAlertaLeida(alertaId: string, usuarioId: string) {
+  const lista = leer<Alerta>(K_ALERTAS);
+  const i = lista.findIndex((a) => a.id === alertaId);
+  if (i < 0 || lista[i].leidaPor.includes(usuarioId)) return;
+  lista[i] = { ...lista[i], leidaPor: [...lista[i].leidaPor, usuarioId] };
+  escribir(K_ALERTAS, lista);
+}
+export function marcarTodasLeidas(usuario: Usuario, empresaId: string | null) {
+  const lista = leer<Alerta>(K_ALERTAS);
+  let cambio = false;
+  lista.forEach((a, i) => {
+    const aplica = (!empresaId || a.empresaId === empresaId) && a.rolesDestino.some((r) => usuario.roles.includes(r));
+    if (aplica && !a.leidaPor.includes(usuario.id)) {
+      lista[i] = { ...a, leidaPor: [...a.leidaPor, usuario.id] };
+      cambio = true;
+    }
+  });
+  if (cambio) escribir(K_ALERTAS, lista);
 }
 
 // --- Importación de la cartera (Novedades) — upsert ---

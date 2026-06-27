@@ -109,6 +109,63 @@ export interface Cliente {
   planId: string | null;
   presupuestoNombre: string | null;
   fechaVenta: string | null;
+  gestionAdmin?: GestionAdmin;
+}
+
+// --------- Fase 3: estadios de administración ---------
+
+export type ResultadoScoring =
+  | "observado_requisitos_crediticios"
+  | "observado_gastos_retiro"
+  | "observado_vehiculo_usado"
+  | "observado_presupuesto"
+  | "observado_otros"
+  | "aprobado"
+  | "pendiente";
+
+export interface ObservacionScoring {
+  id: string;
+  clienteId: string;
+  fechaHora: string;
+  usuarioId: string;
+  usuarioNombre: string;
+  resultado: ResultadoScoring;
+  // Gestión de la observación por el Supervisor de ventas
+  gestionResultado: string | null;
+  gestionFechaHora: string | null;
+  gestionUsuarioNombre: string | null;
+}
+
+export interface Alerta {
+  id: string;
+  empresaId: string;
+  rolesDestino: RolId[]; // a qué roles les aparece
+  tipo: string;
+  clienteId: string | null;
+  clienteNombre: string | null;
+  mensaje: string;
+  leidaPor: string[]; // ids de usuarios que ya la leyeron
+  fecha: string;
+}
+
+// Datos registrados en cada estadio (todos opcionales; se completan a medida que avanza).
+export interface GestionAdmin {
+  agrupamientoFecha?: string | null;
+  agrupamientoNota?: string | null;
+  adjRequisitos?: string | null;
+  adjPagos?: string | null;
+  adjInformado?: boolean;
+  pedidoFecha?: string | null;
+  pedidoModelo?: string | null;
+  pedidoColores?: string | null;
+  patFechaFactura?: string | null;
+  patInformeGastos?: boolean;
+  patCitaFirma?: boolean;
+  patPaseGestoria?: boolean;
+  patFinalizado?: boolean;
+  entregaFechaContacto?: string | null;
+  entregaTurno?: string | null;
+  entregaCerrado?: boolean;
 }
 
 // Catálogo de planes (precargado; el vendedor elige de la lista). Base: solapa "Modelo".

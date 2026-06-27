@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Building2, Users, ShieldCheck, LogOut, UserCog, X, Contact, Upload,
-  Package, TrendingUp,
+  Package, TrendingUp, Bell,
 } from "lucide-react";
 import { useSesion } from "@/lib/session";
 import { tienePermiso, nombreRol, type Permiso } from "@/lib/roles";
 import { EMPRESAS, empresaPorId } from "@/lib/demo-data";
+import { suscribir, contarAlertasNoLeidas, inicializar } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,11 +41,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setEmpresaActiva, logout, dejarDeImpersonar,
   } = useSesion();
 
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     if (!usuarioReal) router.replace("/login");
   }, [usuarioReal, router]);
+  useEffect(() => {
+    const unsub = suscribir(() => setTick((t) => t + 1));
+    inicializar();
+    setTick((t) => t + 1);
+    return unsub;
+  }, []);
 
   if (!usuarioReal || !usuarioActivo) return null;
+
+  const noLeidas = contarAlertasNoLeidas(usuarioActivo, empresaActivaId);
+  void tick; // fuerza recálculo de noLeidas cuando cambian las alertas
 
   const roles = usuarioActivo.roles;
   const items = NAV.filter((i) => !i.permiso || tienePermiso(roles, i.permiso));
@@ -126,9 +137,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </span>
             )}
           </div>
-          <Button variant="ghost" size="sm" onClick={() => { logout(); router.replace("/login"); }}>
-            <LogOut className="h-4 w-4" /> Salir
-          </Button>
+          <div className="flex items-center gap-1">
+            <Link href="/alertas" className="relative inline-flex h-9 w-9 items-center justify-center rounded-md hover:bg-accent" title="Alertas">
+              <Bell className="h-5 w-5" />
+              {noLeidas > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
+                  {noLeidas}
+                </span>
+              )}
+            </Link>
+            <Button variant="ghost" size="sm" onClick={() => { logout(); router.replace("/login"); }}>
+              <LogOut className="h-4 w-4" /> Salir
+            </Button>
+          </div>
         </header>
 
         <main className="flex-1 bg-muted/30 p-4 md:p-6">{children}</main>

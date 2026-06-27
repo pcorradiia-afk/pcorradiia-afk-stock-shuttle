@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, MessageSquarePlus, ShoppingCart, CheckCircle2 } from "lucide-react";
+import { AdministracionEstadio } from "@/components/administracion-estadio";
 
 const TIPOS_CONTACTO = ["Llamado", "WhatsApp", "Email", "Presencial", "Otro"];
 
@@ -88,6 +89,9 @@ export default function FichaClientePage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Administración por estadios */}
+      <AdministracionEstadio cliente={cliente} usuario={usuarioActivo} onCambio={() => setTick((t) => t + 1)} />
 
       {/* Gestión comercial y cierre de venta */}
       <GestionComercial cliente={cliente} usuario={usuarioActivo} />
