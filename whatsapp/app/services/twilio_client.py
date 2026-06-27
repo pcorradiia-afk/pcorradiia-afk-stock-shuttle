@@ -223,16 +223,18 @@ def _content_sid_encuesta(tipo: str, cuerpo: str) -> str:
             },
         }
     else:
-        # Quick Reply (igual que la 1ª pregunta): muestra "5 · Muy satisfecho" y
-        # "4 · Satisfecho" a la vista, sin tener que tocar "Elegir puntaje".
+        # Lista ("Elegir puntaje"): en mensajes de conversación (no plantilla)
+        # WhatsApp permite SOLO 3 botones; con 5 opciones, los Quick Reply se
+        # rechazan y no se entregan. La lista sí admite las 5 (ordenadas 5→1).
         payload = {
             "friendly_name": f"enc_escala_{sufijo}",
             "language": "es",
             "types": {
-                "twilio/quick-reply": {
+                "twilio/list-picker": {
                     "body": cuerpo,
-                    "actions": [
-                        {"title": etiqueta, "id": idv}
+                    "button": "Elegir puntaje",
+                    "items": [
+                        {"item": etiqueta, "id": idv, "description": ""}
                         for idv, etiqueta in _ESCALA_ITEMS
                     ],
                 }
