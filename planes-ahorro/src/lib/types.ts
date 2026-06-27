@@ -103,6 +103,23 @@ export interface Cliente {
   nacidoComo: NacidoComo;
   fechaAlta: string;
   solicitud: Solicitud;
+  // Gestión comercial (Fase 2)
+  pruebaManejo: boolean | null;
+  necesidades: string | null;
+  planId: string | null;
+  presupuestoNombre: string | null;
+  fechaVenta: string | null;
+}
+
+// Catálogo de planes (precargado; el vendedor elige de la lista). Base: solapa "Modelo".
+export interface Plan {
+  id: string;
+  empresaId: string;
+  codigo: string; // ej. R120, 8084, EC100
+  nombre: string;
+  modelo: string;
+  cuotas: number | null;
+  activo: boolean;
 }
 
 export interface Comunicacion {

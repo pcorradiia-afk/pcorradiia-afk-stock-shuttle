@@ -32,22 +32,26 @@ export type Permiso =
   | "solicitud.corregir_nro"
   | "campanias.enviar"
   | "informes.ver"
-  | "auditoria.ver";
+  | "auditoria.ver"
+  | "planes.gestionar"
+  | "venta.cerrar"
+  | "ventas.supervisar";
 
 const PERMISOS_POR_ROL: Record<RolId, Permiso[]> = {
   super_admin: [
     "config.empresas", "config.usuarios", "config.roles", "impersonar",
     "clientes.ver", "clientes.editar", "leads.crear", "leads.reasignar",
     "importar", "solicitud.corregir_nro", "campanias.enviar", "informes.ver", "auditoria.ver",
+    "planes.gestionar", "venta.cerrar", "ventas.supervisar",
   ],
-  recepcion: ["clientes.ver", "clientes.editar", "leads.crear"],
-  vendedor: ["clientes.ver", "clientes.editar", "leads.crear"],
-  supervisor_ventas: ["clientes.ver", "clientes.editar", "leads.crear", "leads.reasignar", "campanias.enviar", "informes.ver"],
-  administracion: ["clientes.ver", "clientes.editar", "importar", "campanias.enviar"],
+  recepcion: ["clientes.ver", "clientes.editar", "leads.crear", "leads.reasignar"],
+  vendedor: ["clientes.ver", "clientes.editar", "leads.crear", "venta.cerrar"],
+  supervisor_ventas: ["clientes.ver", "clientes.editar", "leads.crear", "leads.reasignar", "campanias.enviar", "informes.ver", "venta.cerrar", "ventas.supervisar"],
+  administracion: ["clientes.ver", "clientes.editar", "importar", "campanias.enviar", "planes.gestionar"],
   supervisor_administracion: ["clientes.ver", "clientes.editar", "importar", "solicitud.corregir_nro", "campanias.enviar", "auditoria.ver"],
   entregas: ["clientes.ver", "clientes.editar"],
   analista_suscripciones: ["clientes.ver"],
-  gerencia: ["clientes.ver", "informes.ver", "auditoria.ver"],
+  gerencia: ["clientes.ver", "informes.ver", "auditoria.ver", "ventas.supervisar"],
 };
 
 export function tienePermiso(roles: RolId[], permiso: Permiso): boolean {

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
   LayoutDashboard, Building2, Users, ShieldCheck, LogOut, UserCog, X, Contact, Upload,
+  Package, TrendingUp,
 } from "lucide-react";
 import { useSesion } from "@/lib/session";
 import { tienePermiso, nombreRol, type Permiso } from "@/lib/roles";
@@ -23,6 +24,8 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: "/dashboard", label: "Tablero", icon: LayoutDashboard },
   { href: "/clientes", label: "Ahorristas", icon: Contact, permiso: "clientes.ver" },
+  { href: "/ventas", label: "Supervisión de ventas", icon: TrendingUp, permiso: "ventas.supervisar" },
+  { href: "/planes", label: "Planes", icon: Package, permiso: "clientes.ver" },
   { href: "/importar", label: "Importar cartera", icon: Upload, permiso: "importar" },
   { href: "/admin/empresas", label: "Empresas", icon: Building2, permiso: "config.empresas" },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users, permiso: "config.usuarios" },

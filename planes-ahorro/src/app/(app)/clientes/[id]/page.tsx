@@ -6,14 +6,17 @@ import { useParams } from "next/navigation";
 import { useSesion } from "@/lib/session";
 import {
   inicializar, getCliente, listarComunicaciones, agregarComunicacion, suscribir,
+  listarPlanes, getPlan, vendedoresDeEmpresa, asignarVendedor, actualizarGestionVenta,
+  actualizarCliente, cerrarVenta,
 } from "@/lib/store";
+import { tienePermiso } from "@/lib/roles";
 import { ESTADIO_LABEL, ESTADO_LABEL, ESTADIOS, pesos, fechaHora } from "@/lib/labels";
-import type { Cliente, Comunicacion, Estadio } from "@/lib/types";
+import type { Cliente, Comunicacion, Estadio, TipoDocumento, Usuario } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MessageSquarePlus } from "lucide-react";
+import { ArrowLeft, MessageSquarePlus, ShoppingCart, CheckCircle2 } from "lucide-react";
 
 const TIPOS_CONTACTO = ["Llamado", "WhatsApp", "Email", "Presencial", "Otro"];
 
@@ -86,6 +89,9 @@ export default function FichaClientePage() {
         </Card>
       </div>
 
+      {/* Gestión comercial y cierre de venta */}
+      <GestionComercial cliente={cliente} usuario={usuarioActivo} />
+
       {/* Bitácora */}
       <div className="grid gap-4 lg:grid-cols-3">
         <NuevaComunicacion clienteId={cliente.id} estadioActual={cliente.estadio} usuario={usuarioActivo} />
@@ -118,12 +124,144 @@ export default function FichaClientePage() {
   );
 }
 
+function GestionComercial({ cliente, usuario }: { cliente: Cliente; usuario: Usuario }) {
+  const puedeEditar = tienePermiso(usuario.roles, "clientes.editar");
+  const puedeReasignar = tienePermiso(usuario.roles, "leads.reasignar");
+  const puedeCerrar = tienePermiso(usuario.roles, "venta.cerrar");
+  const vendedores = vendedoresDeEmpresa(cliente.empresaId);
+  const planes = listarPlanes(cliente.empresaId, true);
+
+  const [vendedorId, setVendedorId] = useState(cliente.vendedorId ?? "");
+  const [pruebaManejo, setPrueba] = useState<string>(cliente.pruebaManejo == null ? "" : cliente.pruebaManejo ? "si" : "no");
+  const [necesidades, setNecesidades] = useState(cliente.necesidades ?? "");
+  const [planId, setPlanId] = useState(cliente.planId ?? "");
+  const [presupuesto, setPresupuesto] = useState(cliente.presupuestoNombre ?? "");
+  const [documento, setDocumento] = useState(cliente.documento ?? "");
+  const [tipoDoc, setTipoDoc] = useState<TipoDocumento>(cliente.tipoDocumento ?? "DNI");
+  const [telefono, setTelefono] = useState(cliente.telefono ?? "");
+  const [email, setEmail] = useState(cliente.email ?? "");
+  const [nroSolicitud, setNroSolicitud] = useState(cliente.solicitud.nroSolicitud ?? "");
+  const [msg, setMsg] = useState<{ tipo: "ok" | "err"; texto: string } | null>(null);
+
+  if (!puedeEditar) return null;
+  const vendido = cliente.estado === "vendido";
+
+  const guardar = () => {
+    if (puedeReasignar) asignarVendedor(cliente.id, vendedorId || null);
+    actualizarGestionVenta(cliente.id, {
+      pruebaManejo: pruebaManejo === "" ? null : pruebaManejo === "si",
+      necesidades: necesidades.trim() || null,
+      planId: planId || null,
+      presupuestoNombre: presupuesto.trim() || null,
+    });
+    actualizarCliente(cliente.id, {
+      documento: documento.trim() || null,
+      tipoDocumento: documento.trim() ? tipoDoc : null,
+      telefono: telefono.trim() || null,
+      email: email.trim() || null,
+      solicitud: { ...cliente.solicitud, nroSolicitud: nroSolicitud.trim() || null },
+    });
+    setMsg({ tipo: "ok", texto: "Gestión guardada." });
+  };
+
+  const vender = () => {
+    guardar();
+    const r = cerrarVenta(cliente.id);
+    if (r.ok) setMsg({ tipo: "ok", texto: "¡Venta cerrada! El caso pasó a Administración (Scoring)." });
+    else setMsg({ tipo: "err", texto: `Para cerrar la venta faltan datos obligatorios: ${r.faltan?.join(", ")}.` });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base"><ShoppingCart className="h-4 w-4" /> Gestión comercial</CardTitle>
+        <CardDescription>
+          Datos de la gestión del vendedor. Para <strong>cerrar la venta</strong> son obligatorios:
+          DNI/CUIT, teléfono, email y N° de solicitud.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {vendido && (
+          <div className="flex items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm text-emerald-900">
+            <CheckCircle2 className="h-4 w-4" /> Vendido el {cliente.fechaVenta ? fechaHora(cliente.fechaVenta) : "—"}. Caso en Administración.
+          </div>
+        )}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Campo label="Vendedor asignado">
+            <select value={vendedorId} onChange={(e) => setVendedorId(e.target.value)} disabled={!puedeReasignar}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm disabled:opacity-70">
+              <option value="">Sin asignar</option>
+              {vendedores.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+            </select>
+          </Campo>
+          <Campo label="¿Ofreció prueba de manejo?">
+            <select value={pruebaManejo} onChange={(e) => setPrueba(e.target.value)}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+              <option value="">—</option>
+              <option value="si">Sí</option>
+              <option value="no">No</option>
+            </select>
+          </Campo>
+          <Campo label="Plan ofrecido">
+            <select value={planId} onChange={(e) => setPlanId(e.target.value)}
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+              <option value="">Elegir plan…</option>
+              {planes.map((p) => <option key={p.id} value={p.id}>{p.codigo} · {p.nombre}</option>)}
+            </select>
+          </Campo>
+        </div>
+        <Campo label="Necesidades del cliente">
+          <textarea value={necesidades} onChange={(e) => setNecesidades(e.target.value)} rows={2}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+        </Campo>
+        <Campo label="Presupuesto adjunto (nombre del archivo)">
+          <Input value={presupuesto} onChange={(e) => setPresupuesto(e.target.value)} placeholder="Ej: presupuesto-ranger.pdf" />
+        </Campo>
+
+        <div className="rounded-md border bg-muted/30 p-3">
+          <p className="mb-2 text-sm font-medium">Datos obligatorios para cerrar la venta</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="flex gap-2">
+              <select value={tipoDoc} onChange={(e) => setTipoDoc(e.target.value as TipoDocumento)}
+                className="h-10 rounded-md border border-input bg-background px-2 text-sm">
+                <option value="DNI">DNI</option><option value="CUIT">CUIT</option>
+              </select>
+              <Input value={documento} onChange={(e) => setDocumento(e.target.value)} placeholder="Documento" />
+            </div>
+            <Input value={nroSolicitud} onChange={(e) => setNroSolicitud(e.target.value)} placeholder="N° de solicitud" />
+            <Input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono" />
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
+          </div>
+        </div>
+
+        {msg && (
+          <p className={msg.tipo === "ok" ? "text-sm text-emerald-700" : "text-sm text-destructive"}>{msg.texto}</p>
+        )}
+
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={guardar} variant="outline">Guardar gestión</Button>
+          {puedeCerrar && !vendido && <Button onClick={vender}>Marcar como vendido</Button>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function Dato({ k, v }: { k: string; v: string }) {
   return (
     <div>
       <span className="block text-xs text-muted-foreground">{k}</span>
       <span className="font-medium">{v}</span>
     </div>
+  );
+}
+
+function Campo({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="text-sm font-medium">{label}</span>
+      {children}
+    </label>
   );
 }
 
