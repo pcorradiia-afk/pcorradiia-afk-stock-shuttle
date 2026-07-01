@@ -280,6 +280,27 @@ async def recibir_evento_interno(request: Request, dry_run: bool | None = None) 
     return recibir_evento(evento, dry_run=dry_run)
 
 
+@app.post("/notificaciones/repuestos", dependencies=[Depends(requiere_token)])
+async def notificar_repuesto_ep(request: Request, dry_run: bool | None = None) -> dict:
+    """Avisa a un cliente que llegó su repuesto (lo llama el sistema de posventa).
+
+        POST /notificaciones/repuestos     (cabecera X-API-Token: <token>)
+        {
+          "cliente":  "Juan Pérez",
+          "telefono": "+5492804123456",
+          "repuesto": "Kit de embrague",
+          "orden":    "OR-12345",
+          "vehiculo": "Ford Ranger AB123CD",
+          "sucursal": "Trelew",
+          "retiro":   "Mostrador de Repuestos, Lun a Vie de 8 a 17 h"
+        }
+    """
+    from .services.integracion import notificar_repuesto
+
+    datos = await request.json()
+    return notificar_repuesto(datos, dry_run=dry_run)
+
+
 @app.post("/campanias/adjudicaciones/{id_empresa}", dependencies=[Depends(requiere_clave)])
 def lanzar_adjudicaciones(id_empresa: str, dry_run: bool = True) -> ReporteCampania:
     """Lanza la campaña de adjudicaciones de Planes de Ahorro para una empresa.

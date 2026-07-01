@@ -122,6 +122,67 @@ def recibir_evento(evento: dict, dry_run: bool | None = None) -> dict:
     }
 
 
+_PLANTILLA_REPUESTO = "repuesto_disponible"
+
+
+def notificar_repuesto(datos: dict, dry_run: bool | None = None) -> dict:
+    """Avisa a un cliente que llegó su repuesto (lo llama el sistema de posventa).
+
+    `datos` espera: telefono, repuesto (requeridos) y, opcional, cliente, orden,
+    vehiculo, sucursal, retiro. Manda una plantilla aprobada y deja la conversación
+    registrada en el buzón (área "Repuestos") para que un asesor pueda responder.
+    """
+    id_empresa = datos.get("empresa") or _EMPRESA_DEFECTO
+    telefono = normalizar_telefono(datos.get("telefono"))
+    if not telefono:
+        return {"estado": "error", "detalle": "teléfono inválido o ausente"}
+
+    cliente = str(datos.get("cliente", "")).strip()
+    repuesto = str(datos.get("repuesto", "")).strip()
+    if not repuesto:
+        return {"estado": "error", "detalle": "falta el campo 'repuesto'"}
+    retiro = str(
+        datos.get("retiro") or datos.get("sucursal") or "nuestro local de repuestos"
+    ).strip()
+
+    encontrado = buscar_por_empresa(id_empresa, LINEA_POSVENTA)
+    if encontrado is None:
+        return {"estado": "error", "detalle": f"No hay posventa para '{id_empresa}'."}
+    numero_origen, ctx = encontrado
+
+    config = obtener_config()
+    if dry_run is None:
+        dry_run = config.encuestas_dry_run
+    usar_twilio = (not dry_run) and bool(
+        config.twilio_account_sid and config.twilio_auth_token
+    )
+
+    plantilla = ctx.plantillas.get(_PLANTILLA_REPUESTO)
+    estado, detalle = "simulada", "dry-run o plantilla de repuestos no configurada aún"
+    if usar_twilio and plantilla is not None:
+        try:
+            detalle = enviar_plantilla(
+                telefono, numero_origen, plantilla.sid,
+                {"1": cliente, "2": repuesto, "3": retiro},
+            )
+            estado = "enviada"
+        except Exception as exc:  # noqa: BLE001
+            return {"estado": "error", "detalle": str(exc)}
+
+    # Registramos el aviso en el buzón para que la respuesta del cliente se vea.
+    repo = obtener_repo()
+    try:
+        preview = f"🔧 Aviso de repuesto: {repuesto} (retiro: {retiro})"
+        repo.agregar_historial(numero_origen, telefono, "assistant", preview)
+        repo.fijar_area(numero_origen, telefono, "Repuestos")
+        sesion.elegir_linea(numero_origen, telefono, LINEA_POSVENTA)
+    except Exception as exc:  # noqa: BLE001
+        print(f"⚠️  [REPUESTOS] no se pudo registrar en el buzón: {exc}")
+
+    print(f"📦 [REPUESTOS] {telefono} · {repuesto} → aviso {estado}")
+    return {"estado": estado, "detalle": detalle, "destino": telefono}
+
+
 def enviar_writeback(
     contexto: dict, telefono: str, respuestas: dict, comentario: str = ""
 ) -> None:
