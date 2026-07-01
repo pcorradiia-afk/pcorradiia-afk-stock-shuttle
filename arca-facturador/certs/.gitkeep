@@ -1,0 +1,3 @@
+# Colocá acá tu certificado (.crt) y tu clave privada (.key) de ARCA.
+# Estos archivos NO se commitean (ver .gitignore). Ver README, sección
+# "Generar el certificado en ARCA".

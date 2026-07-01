@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ARCA Facturador · Personal</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>🧾 ARCA Facturador <small>(uso personal)</small></h1>
+      <div id="ambiente" class="badge">cargando…</div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="clientes">Libreta de clientes</button>
+      <button class="tab" data-tab="ajustes">Ajuste de precios</button>
+      <button class="tab" data-tab="emitir">Emitir facturas</button>
+      <button class="tab" data-tab="historial">Comprobantes</button>
+    </nav>
+
+    <main>
+      <!-- ============ CLIENTES ============ -->
+      <section id="clientes" class="panel active">
+        <div class="row-between">
+          <h2>Clientes frecuentes</h2>
+          <button id="btn-nuevo-cliente" class="primary">+ Nuevo cliente</button>
+        </div>
+        <p class="hint">
+          Guardá razón social, documento, condición frente al IVA, email y los ítems habituales con su
+          precio actual. Cada mes reutilizás todo y solo tocás lo que cambió.
+        </p>
+        <div id="lista-clientes" class="cards"></div>
+      </section>
+
+      <!-- ============ AJUSTES ============ -->
+      <section id="ajustes" class="panel">
+        <h2>Ajuste de precios por inflación</h2>
+        <div class="card">
+          <div class="grid">
+            <label>Modo
+              <select id="ajuste-modo">
+                <option value="global">Global (todos los ítems)</option>
+                <option value="seleccion">Por selección (clientes/ítems puntuales)</option>
+              </select>
+            </label>
+            <label>Redondeo
+              <select id="ajuste-redondeo">
+                <option value="peso">Al peso ($1)</option>
+                <option value="decena">A la decena ($10)</option>
+                <option value="centena">A la centena ($100)</option>
+                <option value="ninguno">Sin redondeo</option>
+              </select>
+            </label>
+            <label id="wrap-pct-global">% de aumento
+              <input id="ajuste-pct-global" type="number" step="0.1" value="0" />
+            </label>
+          </div>
+
+          <div id="selecciones" class="hidden">
+            <p class="hint">Agregá una o más selecciones, cada una con su propio %.</p>
+            <div id="lista-selecciones"></div>
+            <button id="btn-add-seleccion" class="ghost">+ Agregar selección</button>
+          </div>
+
+          <div class="row">
+            <button id="btn-preview" class="primary">Ver vista previa (antes → después)</button>
+          </div>
+        </div>
+
+        <div id="preview-ajuste" class="hidden">
+          <h3>Vista previa</h3>
+          <div id="preview-contenido"></div>
+          <div class="card">
+            <label class="check">
+              <input type="checkbox" id="guardar-libreta" checked />
+              Guardar los precios nuevos en la libreta (acumulativo para el mes que viene).
+              <span class="hint">Destildá si el aumento es solo para la factura de este mes.</span>
+            </label>
+            <label>Nota / descripción del ajuste
+              <input id="ajuste-desc" type="text" placeholder="Ej: Aumento julio 2026" />
+            </label>
+            <button id="btn-confirmar-ajuste" class="danger">Confirmar ajuste</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ EMITIR ============ -->
+      <section id="emitir" class="panel">
+        <h2>Emitir facturas del mes</h2>
+        <div class="card">
+          <div class="grid">
+            <label>Período (etiqueta)
+              <input id="emitir-periodo" type="text" placeholder="2026-07" />
+            </label>
+            <label class="check inline">
+              <input type="checkbox" id="emitir-dryrun" checked />
+              Dry-run (probar sin emitir / sin pedir CAE)
+            </label>
+            <label class="check inline">
+              <input type="checkbox" id="emitir-email" />
+              Enviar por email al confirmar
+            </label>
+          </div>
+          <p class="hint">
+            Elegí qué clientes facturar este mes. Revisá los ítems (se toman de la libreta) antes de emitir.
+          </p>
+          <div id="lote" class="cards"></div>
+          <button id="btn-emitir" class="primary">Procesar lote</button>
+        </div>
+        <div id="resultado-emision"></div>
+      </section>
+
+      <!-- ============ HISTORIAL ============ -->
+      <section id="historial" class="panel">
+        <h2>Comprobantes emitidos</h2>
+        <table id="tabla-comprobantes">
+          <thead>
+            <tr>
+              <th>Fecha</th><th>Tipo</th><th>Número</th><th>Cliente</th>
+              <th>Total</th><th>CAE</th><th>Amb.</th><th>PDF</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </section>
+    </main>
+
+    <!-- Modal cliente -->
+    <div id="modal-cliente" class="modal hidden">
+      <div class="modal-box">
+        <h3 id="modal-titulo">Nuevo cliente</h3>
+        <input type="hidden" id="cli-id" />
+        <div class="grid">
+          <label>Razón social <input id="cli-razon" /></label>
+          <label>Tipo doc
+            <select id="cli-doctipo">
+              <option value="80">CUIT</option>
+              <option value="96">DNI</option>
+              <option value="99">Consumidor Final (sin ident.)</option>
+            </select>
+          </label>
+          <label>Número doc <input id="cli-docnro" /></label>
+          <label>Condición IVA
+            <select id="cli-condiva"></select>
+          </label>
+          <label>Email <input id="cli-email" type="email" /></label>
+          <label>Concepto
+            <select id="cli-concepto">
+              <option value="1">Productos</option>
+              <option value="2">Servicios</option>
+              <option value="3">Productos y servicios</option>
+            </select>
+          </label>
+        </div>
+        <h4>Ítems habituales</h4>
+        <table id="cli-items">
+          <thead><tr><th>Descripción</th><th>Cant.</th><th>Precio unit.</th><th></th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <button id="btn-add-item" class="ghost">+ Agregar ítem</button>
+        <div class="row-between">
+          <button id="btn-cancelar-cliente" class="ghost">Cancelar</button>
+          <button id="btn-guardar-cliente" class="primary">Guardar</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
