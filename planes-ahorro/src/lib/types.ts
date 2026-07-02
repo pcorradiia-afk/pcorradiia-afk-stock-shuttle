@@ -88,6 +88,33 @@ export interface Solicitud {
   valorMovil: number | null;
 }
 
+// Datos que llegan de los archivos de adjudicación (Ganadores_Acto y Adjudicatarios_Sin_Pedido).
+export interface DatosAdjudicacion {
+  nroActo?: string | null;
+  tipoAdjudicacion?: string | null; // "Reemplazo Titular", sorteo, licitación…
+  condicional?: string | null;
+  importeOferta?: number | null;
+  fechaAceptacion?: string | null;
+  aging?: number | null; // días de adjudicado sin pedido
+  puedeIngresarPedido?: boolean | null;
+  observaciones?: string | null; // ej. "Adeuda Alícuota + Rq Cred"
+}
+
+// Movimiento de la cuenta corriente de la concesionaria con la administradora (cta_cte_*.txt).
+export interface MovimientoCtaCte {
+  id: string;
+  empresaId: string;
+  concesionario: string;
+  fecha: string; // dd/mm/aaaa
+  codigo: string; // ITP, ADJ, SXS, GPS, F03, …
+  descripcion: string;
+  dc: "D" | "C";
+  importe: number;
+  referencia: string; // 16 dígitos crudos
+  grupo: string | null;
+  orden: string | null;
+}
+
 export interface Cliente {
   id: string;
   empresaId: string;
@@ -103,6 +130,13 @@ export interface Cliente {
   nacidoComo: NacidoComo;
   fechaAlta: string;
   solicitud: Solicitud;
+  // Domicilio (se enriquece con el archivo adh_*)
+  domicilio?: string | null;
+  localidad?: string | null;
+  provincia?: string | null;
+  codigoPostal?: string | null;
+  // Datos de adjudicación (Ganadores_Acto / Adjudicatarios_Sin_Pedido)
+  adjudicacion?: DatosAdjudicacion;
   // Gestión comercial (Fase 2)
   pruebaManejo: boolean | null;
   necesidades: string | null;
