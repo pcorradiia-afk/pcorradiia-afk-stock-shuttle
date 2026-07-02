@@ -66,6 +66,7 @@ export const USUARIOS: Usuario[] = [
   {
     id: "u-tercia", nombre: "Gestión Terciarizada", email: "gestion@terciarizada.com",
     empresaId: "sapac", sucursalId: "sapac-neuquen", equipoId: "sapac-admin-1", tipoPerfil: "terciarizada",
+    gestionId: "gest-terc-1",
     roles: ["administracion"], alcance: ["sapac"], estadios: ["agrupamiento", "gestion_cliente"], activo: true,
   },
 ];

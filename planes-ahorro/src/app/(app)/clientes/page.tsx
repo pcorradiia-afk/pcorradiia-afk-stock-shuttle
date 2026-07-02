@@ -30,8 +30,8 @@ export default function ClientesPage() {
   }, []);
 
   const clientes = useMemo<Cliente[]>(
-    () => (empresaActivaId ? listarClientes(empresaActivaId, { texto, estado, estadio }) : []),
-    [empresaActivaId, texto, estado, estadio, tick]
+    () => (empresaActivaId && usuarioActivo ? listarClientes(empresaActivaId, { texto, estado, estadio }, usuarioActivo) : []),
+    [empresaActivaId, usuarioActivo, texto, estado, estadio, tick]
   );
 
   if (!usuarioActivo) return null;

@@ -38,14 +38,14 @@ export default function InformesPage() {
   );
 
   const clientes = useMemo<Cliente[]>(() => {
-    if (!empresaActivaId) return [];
-    let lista = listarClientes(empresaActivaId);
+    if (!empresaActivaId || !usuarioActivo) return [];
+    let lista = listarClientes(empresaActivaId, {}, usuarioActivo);
     if (desde) lista = lista.filter((c) => c.fechaAlta.slice(0, 10) >= desde);
     if (hasta) lista = lista.filter((c) => c.fechaAlta.slice(0, 10) <= hasta);
     if (vendedorId !== "todos") lista = lista.filter((c) => c.vendedorId === vendedorId);
     if (estado !== "todos") lista = lista.filter((c) => c.estado === estado);
     return lista;
-  }, [empresaActivaId, desde, hasta, vendedorId, estado, tick]);
+  }, [empresaActivaId, usuarioActivo, desde, hasta, vendedorId, estado, tick]);
 
   const embudo = useMemo(
     () => ESTADIOS_ORDEN.map((e) => ({ estadio: e, cantidad: clientes.filter((c) => c.estadio === e).length })),

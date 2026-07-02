@@ -24,6 +24,17 @@ export interface GestionDef {
   columnaDato: string;
   dato: (c: Cliente) => string;
   filtro: (c: Cliente) => boolean;
+  /** Fecha propia de la gestión (para el filtro de rango de fechas). */
+  fechaLabel: string;
+  fechaDe: (c: Cliente) => string | null; // dd/mm/aaaa
+}
+
+/** Convierte "dd/mm/aaaa" en clave comparable "aaaa-mm-dd" (o null). */
+export function claveFecha(f: string | null | undefined): string | null {
+  if (!f) return null;
+  const [d, m, a] = f.split("/");
+  if (!d || !m || !a) return null;
+  return `${a.padStart(4, "0")}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
 }
 
 const DIAS_BIENVENIDA = 60; // A CONFIRMAR: ventana de "recién agrupado"
@@ -52,6 +63,8 @@ export const GESTIONES: GestionDef[] = [
       const d = diasDesde(c.solicitud.fechaAgrupo);
       return d != null && d >= 0 && d <= DIAS_BIENVENIDA;
     },
+    fechaLabel: "fecha de agrupamiento",
+    fechaDe: (c) => c.solicitud.fechaAgrupo ?? null,
   },
   {
     tipo: "mora_temprana",
@@ -60,6 +73,8 @@ export const GESTIONES: GestionDef[] = [
     columnaDato: "Impagas",
     dato: (c) => String(c.solicitud.impagas ?? "—"),
     filtro: (c) => c.solicitud.impagas === 1,
+    fechaLabel: "fecha de agrupamiento",
+    fechaDe: (c) => c.solicitud.fechaAgrupo ?? null,
   },
   {
     tipo: "mora",
@@ -68,6 +83,8 @@ export const GESTIONES: GestionDef[] = [
     columnaDato: "Impagas",
     dato: (c) => String(c.solicitud.impagas ?? "—"),
     filtro: (c) => (c.solicitud.impagas ?? 0) >= 2,
+    fechaLabel: "fecha de agrupamiento",
+    fechaDe: (c) => c.solicitud.fechaAgrupo ?? null,
   },
   {
     tipo: "ganadores",
@@ -76,6 +93,8 @@ export const GESTIONES: GestionDef[] = [
     columnaDato: "Acto",
     dato: (c) => c.adjudicacion?.nroActo ? `${c.adjudicacion.nroActo} · ${c.adjudicacion.tipoAdjudicacion ?? ""}`.trim() : "—",
     filtro: (c) => !!c.adjudicacion?.nroActo,
+    fechaLabel: "fecha de aceptación",
+    fechaDe: (c) => (c.adjudicacion?.fechaAceptacion ?? "").split(" ")[0] || null,
   },
   {
     tipo: "licitaciones",
@@ -84,6 +103,8 @@ export const GESTIONES: GestionDef[] = [
     columnaDato: "Cuotas pagas",
     dato: (c) => `${c.solicitud.pagas ?? "—"} / ${c.solicitud.emitidas ?? "—"}`,
     filtro: (c) => esAhorrista(c) && (c.solicitud.impagas ?? 99) === 0 && !c.adjudicacion?.nroActo,
+    fechaLabel: "fecha de agrupamiento",
+    fechaDe: (c) => c.solicitud.fechaAgrupo ?? null,
   },
   {
     tipo: "adj_sin_pedido",
@@ -96,6 +117,8 @@ export const GESTIONES: GestionDef[] = [
       return `${a.aging ?? "—"} días · ${a.puedeIngresarPedido ? "SÍ" : `NO (${a.observaciones ?? "obs."})`}`;
     },
     filtro: (c) => c.adjudicacion?.puedeIngresarPedido != null,
+    fechaLabel: "fecha de aceptación",
+    fechaDe: (c) => (c.adjudicacion?.fechaAceptacion ?? "").split(" ")[0] || null,
   },
   {
     tipo: "altos_ahorros",
@@ -110,6 +133,8 @@ export const GESTIONES: GestionDef[] = [
       const { pagas, emitidas } = c.solicitud;
       return esAhorrista(c) && pagas != null && !!emitidas && pagas / emitidas >= 0.7;
     },
+    fechaLabel: "fecha de agrupamiento",
+    fechaDe: (c) => c.solicitud.fechaAgrupo ?? null,
   },
 ];
 
