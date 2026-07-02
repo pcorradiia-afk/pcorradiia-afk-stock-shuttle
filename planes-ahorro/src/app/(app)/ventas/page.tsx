@@ -21,8 +21,8 @@ export default function VentasPage() {
   }, []);
 
   const datos = useMemo(() => {
-    if (!empresaActivaId) return { porVendedor: [], pendientes: [], totalLeads: 0, totalVendidos: 0 };
-    const clientes = listarClientes(empresaActivaId);
+    if (!empresaActivaId || !usuarioActivo) return { porVendedor: [], pendientes: [], totalLeads: 0, totalVendidos: 0 };
+    const clientes = listarClientes(empresaActivaId, {}, usuarioActivo);
     const vendedores = vendedoresDeEmpresa(empresaActivaId);
     const porVendedor = vendedores.map((v) => {
       const suyos = clientes.filter((c) => c.vendedorId === v.id);
@@ -37,7 +37,7 @@ export default function VentasPage() {
       totalLeads: clientes.filter((c) => c.estado === "lead").length,
       totalVendidos: clientes.filter((c) => c.estado === "vendido").length,
     };
-  }, [empresaActivaId, tick]);
+  }, [empresaActivaId, usuarioActivo, tick]);
 
   if (!usuarioActivo) return null;
   if (!tienePermiso(usuarioActivo.roles, "ventas.supervisar")) {

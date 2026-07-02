@@ -53,6 +53,7 @@ export default function NuevoLeadPage() {
       email: form.email.trim() || null,
       origenDato: form.origenDato.trim() || null,
       vendedorId: usuarioActivo.roles.includes("vendedor") ? usuarioActivo.id : null,
+      gestionId: usuarioActivo.tipoPerfil === "terciarizada" ? usuarioActivo.gestionId ?? null : null,
     });
     if (r.ok && r.cliente) {
       router.push(`/clientes/${r.cliente.id}`);

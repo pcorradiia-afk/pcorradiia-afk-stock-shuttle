@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSesion } from "@/lib/session";
 import { tienePermiso } from "@/lib/roles";
 import { inicializar, suscribir, listarClientes, listarComunicaciones } from "@/lib/store";
-import { GESTIONES, colaGestion, type GestionTipo } from "@/lib/gestiones";
+import { GESTIONES, colaGestion, claveFecha, type GestionTipo } from "@/lib/gestiones";
 import { exportarExcel } from "@/lib/exportar";
 import { fechaHora } from "@/lib/labels";
 import type { Cliente } from "@/lib/types";
@@ -19,6 +19,9 @@ export default function GestionesPage() {
   const { usuarioActivo, empresaActivaId } = useSesion();
   const [tick, setTick] = useState(0);
   const [tipo, setTipo] = useState<GestionTipo>("bienvenida");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [status, setStatus] = useState("todos");
 
   useEffect(() => {
     const unsub = suscribir(() => setTick((t) => t + 1));
@@ -28,8 +31,7 @@ export default function GestionesPage() {
   }, []);
 
   const clientes = useMemo<Cliente[]>(
-    () => (empresaActivaId ? listarClientes(empresaActivaId) : []),
-    [empresaActivaId, tick]
+    () => (empresaActivaId && usuarioActivo ? listarClientes(empresaActivaId, {}, usuarioActivo) : []),    [empresaActivaId, usuarioActivo, tick]
   );
 
   const conteos = useMemo(
@@ -37,7 +39,25 @@ export default function GestionesPage() {
     [clientes]
   );
   const def = GESTIONES.find((g) => g.tipo === tipo)!;
-  const cola = useMemo(() => colaGestion(clientes, tipo), [clientes, tipo]);
+
+  // Status de cartera presentes en la empresa (para el filtro).
+  const statuses = useMemo(
+    () => Array.from(new Set(clientes.map((c) => c.solicitud.statusDesc).filter(Boolean) as string[])).sort(),
+    [clientes]
+  );
+
+  const cola = useMemo(() => {
+    let lista = colaGestion(clientes, tipo);
+    if (status !== "todos") lista = lista.filter((c) => c.solicitud.statusDesc === status);
+    if (desde || hasta) {
+      lista = lista.filter((c) => {
+        const k = claveFecha(def.fechaDe(c));
+        if (!k) return false; // con rango activo, sin fecha queda fuera
+        return (!desde || k >= desde) && (!hasta || k <= hasta);
+      });
+    }
+    return lista;
+  }, [clientes, tipo, status, desde, hasta, def]);
 
   if (!usuarioActivo) return null;
   if (!tienePermiso(usuarioActivo.roles, "clientes.ver")) {
@@ -56,6 +76,7 @@ export default function GestionesPage() {
           "Orden": c.solicitud.orden ?? "",
           "N° solicitud": c.solicitud.nroSolicitud ?? "",
           "Modelo": c.solicitud.modelo ?? "",
+          "Status cartera": c.solicitud.statusDesc ?? "",
           [def.columnaDato]: def.dato(c),
           "Última gestión (fecha)": ultima ? fechaHora(ultima.fechaHora) : "",
           "Última gestión (detalle)": ultima?.detalle ?? "",
@@ -98,6 +119,32 @@ export default function GestionesPage() {
           </button>
         ))}
       </div>
+
+      {/* Filtros: rango de fechas + status de cartera */}
+      <Card className="p-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="space-y-1 text-sm">
+            <span className="block text-xs font-medium text-muted-foreground">Desde ({def.fechaLabel})</span>
+            <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm" />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="block text-xs font-medium text-muted-foreground">Hasta ({def.fechaLabel})</span>
+            <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm" />
+          </label>
+          <label className="space-y-1 text-sm">
+            <span className="block text-xs font-medium text-muted-foreground">Status de cartera</span>
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+              <option value="todos">Todos</option>
+              {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+          {(desde || hasta || status !== "todos") && (
+            <Button variant="ghost" size="sm" onClick={() => { setDesde(""); setHasta(""); setStatus("todos"); }}>
+              Limpiar filtros
+            </Button>
+          )}
+        </div>
+      </Card>
 
       <Card>
         <CardHeader>

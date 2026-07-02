@@ -7,7 +7,7 @@ import { useSesion } from "@/lib/session";
 import {
   inicializar, getCliente, listarComunicaciones, agregarComunicacion, suscribir,
   listarPlanes, getPlan, vendedoresDeEmpresa, asignarVendedor, actualizarGestionVenta,
-  actualizarCliente, cerrarVenta, buscarPorNroSolicitud,
+  actualizarCliente, cerrarVenta, buscarPorNroSolicitud, puedeVerCliente,
 } from "@/lib/store";
 import { tienePermiso } from "@/lib/roles";
 import { ESTADIO_LABEL, ESTADO_LABEL, ESTADIOS, pesos, fechaHora } from "@/lib/labels";
@@ -42,6 +42,17 @@ export default function FichaClientePage() {
       <Card><CardHeader>
         <CardTitle>Cliente no encontrado</CardTitle>
         <CardDescription><Link href="/clientes" className="underline">Volver al listado</Link></CardDescription>
+      </CardHeader></Card>
+    );
+  }
+  // Regla C5: la visibilidad se aplica también entrando por URL directa.
+  if (!puedeVerCliente(usuarioActivo, cliente)) {
+    return (
+      <Card><CardHeader>
+        <CardTitle>Sin acceso</CardTitle>
+        <CardDescription>
+          Este cliente no pertenece a tu gestión. <Link href="/clientes" className="underline">Volver al listado</Link>
+        </CardDescription>
       </CardHeader></Card>
     );
   }

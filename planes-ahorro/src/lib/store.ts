@@ -120,6 +120,7 @@ function seedSiVacio() {
       id: uid(), empresaId: "sapac", nombreCompleto: "CANDIA VICTOR DAVID",
       documento: "20345678", tipoDocumento: "DNI", telefono: "2945479910",
       email: "vcandia@gmail.com", origenDato: "Lead web", vendedorId: null,
+      gestionId: "gest-terc-1", // cliente de la gestión terciarizada demo
       estado: "lead", estadio: "scoring", nacidoComo: "lead_interno", fechaAlta: hoy,
       pruebaManejo: true, necesidades: "Busca pickup para trabajo rural.", planId: null, presupuestoNombre: null, fechaVenta: null,
       solicitud: { nroSolicitud: null, grupo: null, orden: null, plan: null, modelo: null, statusCartera: null, statusDesc: null, valorMovil: null },
@@ -181,9 +182,36 @@ export interface FiltroClientes {
   estadio?: Estadio | "todos";
 }
 
-export function listarClientes(empresaId: string | null, filtro: FiltroClientes = {}): Cliente[] {
+// Roles con visibilidad amplia dentro de la empresa (no limitada a "lo propio").
+const ROLES_AMPLIOS: RolId[] = [
+  "super_admin", "supervisor_ventas", "recepcion", "administracion",
+  "supervisor_administracion", "gerencia", "entregas", "analista_suscripciones",
+];
+
+/**
+ * Regla C5 (revisión 2026-07-02, espec §4.1 y matriz):
+ * - Terciarizada: solo ve los clientes de SU gestión (gestionId).
+ * - Vendedor (sin otro rol amplio): solo ve sus clientes asignados.
+ * La versión definitiva se refuerza con RLS al conectar Supabase.
+ */
+export function puedeVerCliente(usuario: Usuario, c: Cliente): boolean {
+  if (usuario.tipoPerfil === "terciarizada") {
+    return !!usuario.gestionId && c.gestionId === usuario.gestionId;
+  }
+  const soloVendedor =
+    usuario.roles.includes("vendedor") && !usuario.roles.some((r) => ROLES_AMPLIOS.includes(r));
+  if (soloVendedor) return c.vendedorId === usuario.id;
+  return true;
+}
+
+export function listarClientes(
+  empresaId: string | null,
+  filtro: FiltroClientes = {},
+  usuario?: Usuario
+): Cliente[] {
   let lista = leer<Cliente>(K_CLIENTES);
   if (empresaId) lista = lista.filter((c) => c.empresaId === empresaId);
+  if (usuario) lista = lista.filter((c) => puedeVerCliente(usuario, c));
   const t = filtro.texto?.trim().toLowerCase();
   if (t) {
     lista = lista.filter(
@@ -223,6 +251,7 @@ export interface AltaClienteInput {
   email: string | null;
   origenDato: string | null;
   vendedorId: string | null;
+  gestionId?: string | null; // heredada del usuario terciarizada que lo crea
 }
 
 export function crearCliente(
@@ -249,6 +278,7 @@ export function crearCliente(
     email: input.email,
     origenDato: input.origenDato,
     vendedorId: input.vendedorId,
+    gestionId: input.gestionId ?? null,
     estado: "lead",
     estadio: "scoring",
     nacidoComo: "lead_interno",
@@ -325,12 +355,16 @@ export function cerrarVenta(clienteId: string): { ok: boolean; faltan?: string[]
 
 // --- Importaciones de los demás archivos del sistema actual (CLAUDE.md §5.bis) ---
 
+/** Normaliza grupo/orden para comparar (quita ceros a la izquierda). */
+function normGO(s: string | null): string {
+  return (s || "").replace(/^0+(?=\d)/, "");
+}
+
 function buscarPorGrupoOrden(lista: Cliente[], empresaId: string, grupo: string, orden: string): number {
-  const g = grupo.replace(/^0+/, ""), o = orden.replace(/^0+(?=\d)/, "");
   return lista.findIndex(
     (c) => c.empresaId === empresaId &&
-      (c.solicitud.grupo || "").replace(/^0+/, "") === g &&
-      (c.solicitud.orden || "").replace(/^0+(?=\d)/, "") === o
+      normGO(c.solicitud.grupo) === normGO(grupo) &&
+      normGO(c.solicitud.orden) === normGO(orden)
   );
 }
 
@@ -644,12 +678,15 @@ export function importarCartera(filas: FilaCartera[], empresaId: string): Report
       rep.rechazados.push({ fila: idx + 1, motivo: "Sin N° de solicitud ni grupo/orden", nombre: f.nombreCompleto });
       return;
     }
-    // Match: por N° de solicitud; si no, por grupo+orden (dentro de la empresa).
+    // Match por N° de solicitud O por grupo+orden (C4, revisión 2026-07-02): un cliente
+    // creado por Adjudicatarios/Ganadores (sin N° de solicitud) se actualiza, no se duplica.
     const i = lista.findIndex(
       (c) =>
         c.empresaId === empresaId &&
         ((f.nroSolicitud && c.solicitud.nroSolicitud === f.nroSolicitud) ||
-          (!f.nroSolicitud && c.solicitud.grupo === f.grupo && c.solicitud.orden === f.orden))
+          (f.grupo && f.orden &&
+            normGO(c.solicitud.grupo) === normGO(f.grupo) &&
+            normGO(c.solicitud.orden) === normGO(f.orden)))
     );
     const solicitud = {
       nroSolicitud: f.nroSolicitud,
@@ -676,7 +713,12 @@ export function importarCartera(filas: FilaCartera[], empresaId: string): Report
         telefono: f.telefono ?? lista[i].telefono,
         email: f.email ?? lista[i].email,
         estadio: estadioMasAvanzado(lista[i].estadio, estadioDesdeStatus(f.statusCartera, f.statusDesc)),
-        solicitud: { ...lista[i].solicitud, ...solicitud },
+        solicitud: {
+          ...lista[i].solicitud,
+          ...solicitud,
+          // No borrar el N° de solicitud existente si la fila no trae uno.
+          nroSolicitud: solicitud.nroSolicitud ?? lista[i].solicitud.nroSolicitud,
+        },
       };
       rep.actualizados++;
     } else {

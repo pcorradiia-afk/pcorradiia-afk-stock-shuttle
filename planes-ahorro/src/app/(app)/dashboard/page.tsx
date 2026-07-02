@@ -25,8 +25,8 @@ export default function DashboardPage() {
   }, []);
 
   const datos = useMemo(() => {
-    if (!empresaActivaId) return null;
-    const clientes = listarClientes(empresaActivaId);
+    if (!empresaActivaId || !usuarioActivo) return null;
+    const clientes = listarClientes(empresaActivaId, {}, usuarioActivo);
     const mes = new Date().toISOString().slice(0, 7);
     const obs = listarObservacionesEmpresa(empresaActivaId).filter((o) => o.resultado.startsWith("observado"));
     return {
@@ -36,7 +36,7 @@ export default function DashboardPage() {
       obsAbiertas: obs.filter((o) => !o.gestionResultado).length,
       embudo: ESTADIOS_ORDEN.map((e) => ({ estadio: e, cantidad: clientes.filter((c) => c.estadio === e).length })),
     };
-  }, [empresaActivaId, tick]);
+  }, [empresaActivaId, usuarioActivo, tick]);
 
   if (!usuarioActivo) return null;
 

@@ -54,6 +54,8 @@ export interface Usuario {
   equipoId: string | null;
   tipoPerfil: TipoPerfil;
   roles: RolId[];
+  /** Gestión a la que pertenece (solo perfil terciarizada): aísla qué clientes ve. */
+  gestionId?: string | null;
   /** Empresas que puede operar con un único login (alcance multiempresa). "grupo" = todas. */
   alcance: "grupo" | string[];
   /** Estadios de administración habilitados (solo aplica a rol administración). */
@@ -133,6 +135,8 @@ export interface Cliente {
   email: string | null;
   origenDato: string | null;
   vendedorId: string | null;
+  /** Gestión terciarizada dueña del cliente (null = gestión propia del concesionario). */
+  gestionId?: string | null;
   estado: EstadoCliente;
   estadio: Estadio;
   nacidoComo: NacidoComo;
