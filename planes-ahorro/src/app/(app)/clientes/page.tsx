@@ -12,7 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Upload } from "lucide-react";
+import { Plus, Upload, Download } from "lucide-react";
+import { exportarExcel } from "@/lib/exportar";
 
 export default function ClientesPage() {
   const { usuarioActivo, empresaActivaId } = useSesion();
@@ -45,6 +46,30 @@ export default function ClientesPage() {
           <p className="text-muted-foreground">Clientes y leads de la empresa seleccionada.</p>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() =>
+              exportarExcel(
+                clientes.map((c) => ({
+                  "Nombre": c.nombreCompleto,
+                  "Documento": c.documento ?? "",
+                  "Teléfono": c.telefono ?? "",
+                  "Email": c.email ?? "",
+                  "N° solicitud": c.solicitud.nroSolicitud ?? "",
+                  "Grupo": c.solicitud.grupo ?? "",
+                  "Orden": c.solicitud.orden ?? "",
+                  "Plan": c.solicitud.plan ?? "",
+                  "Modelo": c.solicitud.modelo ?? "",
+                  "Estado": ESTADO_LABEL[c.estado],
+                  "Estadio": ESTADIO_LABEL[c.estadio],
+                  "Fecha de alta": c.fechaAlta.slice(0, 10),
+                })),
+                "ahorristas"
+              )
+            }
+          >
+            <Download className="h-4 w-4" /> Excel
+          </Button>
           {puedeImportar && (
             <Link href="/importar"><Button variant="outline"><Upload className="h-4 w-4" /> Importar cartera</Button></Link>
           )}
