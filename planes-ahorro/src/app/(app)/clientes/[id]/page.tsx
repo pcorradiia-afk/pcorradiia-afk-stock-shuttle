@@ -7,7 +7,7 @@ import { useSesion } from "@/lib/session";
 import {
   inicializar, getCliente, listarComunicaciones, agregarComunicacion, suscribir,
   listarPlanes, getPlan, vendedoresDeEmpresa, asignarVendedor, actualizarGestionVenta,
-  actualizarCliente, cerrarVenta,
+  actualizarCliente, cerrarVenta, buscarPorNroSolicitud,
 } from "@/lib/store";
 import { tienePermiso } from "@/lib/roles";
 import { ESTADIO_LABEL, ESTADO_LABEL, ESTADIOS, pesos, fechaHora } from "@/lib/labels";
@@ -158,7 +158,16 @@ function GestionComercial({ cliente, usuario }: { cliente: Cliente; usuario: Usu
   if (!puedeEditar) return null;
   const vendido = cliente.estado === "vendido";
 
-  const guardar = () => {
+  const guardar = (): boolean => {
+    // Regla §3.6: el N° de solicitud es ÚNICO E IRREPETIBLE.
+    const nro = nroSolicitud.trim();
+    if (nro) {
+      const duenio = buscarPorNroSolicitud(nro);
+      if (duenio && duenio.id !== cliente.id) {
+        setMsg({ tipo: "err", texto: `El N° de solicitud ${nro} ya pertenece a ${duenio.nombreCompleto}. No se guardó: es único e irrepetible.` });
+        return false;
+      }
+    }
     if (puedeReasignar) asignarVendedor(cliente.id, vendedorId || null);
     actualizarGestionVenta(cliente.id, {
       pruebaManejo: pruebaManejo === "" ? null : pruebaManejo === "si",
@@ -171,15 +180,17 @@ function GestionComercial({ cliente, usuario }: { cliente: Cliente; usuario: Usu
       tipoDocumento: documento.trim() ? tipoDoc : null,
       telefono: telefono.trim() || null,
       email: email.trim() || null,
-      solicitud: { ...cliente.solicitud, nroSolicitud: nroSolicitud.trim() || null },
+      solicitud: { ...cliente.solicitud, nroSolicitud: nro || null },
     });
     setMsg({ tipo: "ok", texto: "Gestión guardada." });
+    return true;
   };
 
   const vender = () => {
-    guardar();
+    if (!guardar()) return;
     const r = cerrarVenta(cliente.id);
     if (r.ok) setMsg({ tipo: "ok", texto: "¡Venta cerrada! El caso pasó a Administración (Scoring)." });
+    else if (r.error) setMsg({ tipo: "err", texto: r.error });
     else setMsg({ tipo: "err", texto: `Para cerrar la venta faltan datos obligatorios: ${r.faltan?.join(", ")}.` });
   };
 
