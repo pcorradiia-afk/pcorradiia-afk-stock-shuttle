@@ -429,6 +429,24 @@ mora**.
 
 ---
 
+## 10.bis Revisión técnica externa (2026-07-02) — hallazgos y estado
+
+Se hizo una revisión escéptica completa. Hallazgos priorizados (detalle en la conversación):
+
+| # | Hallazgo | Estado |
+|---|---|---|
+| C1 | Datos personales reales de ahorristas en el seed demo (hoy públicos en Vercel) | ⏸️ **Diferido por decisión del cliente (2026-07-02: "por ahora dejalo así")** — retomar antes de difundir la URL o al conectar Supabase |
+| C2 | Unicidad de N° de solicitud no aplicada en carga manual / cierre de venta | ⬜ Pendiente de decisión |
+| C3 | Reimportar cartera pisa estadios avanzados manualmente (solo debe avanzar, nunca retroceder) | ⬜ Pendiente de decisión |
+| C4 | Duplicados si se importa Adjudicatarios/Ganadores antes que Novedades (match no cae a grupo+orden) | ⬜ Pendiente de decisión |
+| C5 | Terciarizada/vendedor ven todos los clientes de la empresa (falta filtro por gestión/vendedor) | ⬜ Pendiente de decisión |
+| I1–I13 | Corrección N° solicitud sin restricción de rol · sin auditoría en app · alerta scoring no filtra equipo · avance sin Aprobado · efectividad mal calculada · escribir() sin manejo de cuota · DNI dentro de CUIT · recepción no asigna vendedor en alta · presupuesto no es adjunto real · alertas duplicadas al reimportar ganadores · política RLS usuario muy restrictiva + falta esquema SQL de negocio · sin tests de parsers · sin validación concesionario↔empresa | ⬜ Pendientes; I2/I9/I11 conviene resolverlos junto con la conexión a Supabase |
+| M1–M10 | Menores (docs puerto 8080, semántica D/C a confirmar, PUEDE_INGRESAR_PEDIDO=N a Pedido, mes UTC, gerencia sin panel estadios lectura, multi-tab, CSV multilínea, estado stale de formularios, rendimiento localStorage, Next 14 EOL) | ⬜ Pendientes |
+
+**Deploy:** producción en Vercel — https://planes-ahorro-mauve.vercel.app (proyecto `planes-ahorro`,
+Root Directory `planes-ahorro`, framework Next.js vía `vercel.json` propio; el Override de
+Output Directory `dist` del panel fue desactivado — venía heredado del `vercel.json` de Fiorasi).
+
 ## 11. Preguntas abiertas (pendientes de confirmar con el cliente)
 
 | # | Tema | Estado |
