@@ -7,7 +7,7 @@ import { empresaPorId } from "@/lib/demo-data";
 import { nombreRol, tienePermiso } from "@/lib/roles";
 import { MODO_DEMO } from "@/lib/supabase/client";
 import {
-  inicializar, suscribir, listarClientes, listarObservacionesEmpresa, ESTADIOS_ORDEN,
+  inicializar, suscribir, listarClientes, listarObservacionesEmpresa, ESTADIOS_ORDEN, getMeta,
 } from "@/lib/store";
 import { ESTADIO_LABEL } from "@/lib/labels";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +43,8 @@ export default function DashboardPage() {
   const empresaTexto = empresaActivaId
     ? empresaPorId(empresaActivaId)?.nombreComercial ?? ""
     : "";
+  const carteraActualizada = empresaActivaId ? getMeta(`carteraActualizada:${empresaActivaId}`) : null;
+  void tick;
   const maxEmbudo = Math.max(1, ...(datos?.embudo.map((e) => e.cantidad) ?? [1]));
 
   return (
@@ -51,6 +53,9 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold">Tablero</h1>
         <p className="text-muted-foreground">
           Hola {usuarioActivo.nombre.split(" ")[0]} — viendo <strong>{empresaTexto}</strong>.
+          {carteraActualizada && (
+            <span> · Cartera actualizada: {new Date(carteraActualizada).toLocaleDateString("es-AR")}</span>
+          )}
         </p>
       </div>
 

@@ -324,6 +324,30 @@ y domicilio** del adherente.
 
 ---
 
+## 5.ter. Mapa del sistema actual (SIGNOS Gestión) → sistema nuevo (capturas 2026-07-02)
+
+El cliente compartió capturas de los menús de SIGNOS. Equivalencias y estado:
+
+| SIGNOS | Sistema nuevo | Estado |
+|---|---|---|
+| **Opciones de Gestión** (Bienvenida, Altos Ahorros, Ganadores, Incentivo de Licitaciones, Mora Temprana, Mora, Adjudicados sin Pedido) | Página **/gestiones**: colas de llamados por campaña con contador, dato clave, última gestión del anotador y próxima acción | ✅ Hecho (umbrales provisorios, ver abajo) |
+| "Anotador" | **Bitácora** en la ficha del cliente | ✅ |
+| **Bajadas EXCEL** "… con Anotador" | Botón **"Excel con anotador"** en cada gestión (incluye última gestión, próxima acción y quién gestionó) | ✅ |
+| Bajadas: Histórico Grupo-Orden, Pedidos Ingresados, Cesiones, Adj. que vencen próx. 6 meses, Operaciones con Fecha Entrega, Sellados a Recuperar | Backlog — requieren definición de datos/fuente | ⬜ |
+| **Reportes** (Efectividad, gráficos por gestión) | **/informes** (efectividad, embudo, scoring) — falta desglose por gestión | 🟡 |
+| "Fecha Actualización Cartera" (home) | Mostrada en el **Tablero** (se guarda al importar Novedades) | ✅ |
+| "Negocios por Concepto: Pedidos / Facturaciones / Entregas" (home) | Cubierto por el embudo por estadio del Tablero | ✅ |
+| **Archivo 116** | ❓ No sabemos qué es — **preguntar al cliente** | ⬜ |
+
+**Umbrales provisorios de las gestiones (A CONFIRMAR con el cliente):**
+- Bienvenida: agrupado hace ≤ 60 días.
+- Mora temprana: exactamente 1 cuota impaga · Mora: ≥ 2 impagas.
+- Incentivo de licitaciones: ahorrista al día (0 impagas) no adjudicado.
+- Altos ahorros: ≥ 70% de cuotas pagas (definición dudosa — confirmar qué es en SIGNOS).
+
+La cartera ahora captura además: FECHA_AGRUPO, EMITIDAS, PAGA, IMPAGA, LICITO, ADELANTO,
+DEB_CRED (alimentan las colas).
+
 ## 6. Flujo de trabajo y estadios
 
 Orden: **Scoring de ventas → Agrupamiento → Gestión de cliente → Adjudicación → Pedido →

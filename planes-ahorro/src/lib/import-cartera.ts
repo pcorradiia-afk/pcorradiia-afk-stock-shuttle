@@ -22,6 +22,13 @@ export const MAPEO_NOVEDADES: Record<keyof FilaCartera, string[]> = {
   statusCartera: ["STATUS"],
   statusDesc: ["STATUS_DESC"],
   valorMovil: ["VALOR_MOVIL", "Valor movil"],
+  fechaAgrupo: ["FECHA_AGRUPO", "Fecha de Proceso Ovalo"],
+  emitidas: ["EMITIDAS", "Emi"],
+  pagas: ["PAGA", "Pag"],
+  impagas: ["IMPAGA", "Impaga"],
+  licito: ["LICITO", "Lic"],
+  adelanto: ["ADELANTO", "Adelanto"],
+  debCred: ["DEB_CRED"],
 };
 
 function norm(s: string) {
@@ -69,6 +76,13 @@ export function mapearFilas(registros: Registro[], headers: string[]): FilaCarte
     statusCartera: limpiar(get(r, "statusCartera")),
     statusDesc: limpiar(get(r, "statusDesc")),
     valorMovil: parseNumero(get(r, "valorMovil")),
+    fechaAgrupo: limpiar(get(r, "fechaAgrupo"))?.split(" ")[0] ?? null, // "29/02/2024 0:00" → "29/02/2024"
+    emitidas: parseNumero(get(r, "emitidas")),
+    pagas: parseNumero(get(r, "pagas")),
+    impagas: parseNumero(get(r, "impagas")),
+    licito: parseNumero(get(r, "licito")),
+    adelanto: parseNumero(get(r, "adelanto")),
+    debCred: limpiar(get(r, "debCred")),
   }));
 }
 
