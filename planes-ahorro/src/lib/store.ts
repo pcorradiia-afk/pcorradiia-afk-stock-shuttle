@@ -309,6 +309,15 @@ export function actualizarGestionAdmin(clienteId: string, patch: GestionAdmin) {
 }
 
 // --- Scoring ---
+/** Todas las observaciones de los clientes de una empresa (para informes). */
+export function listarObservacionesEmpresa(empresaId: string): (ObservacionScoring & { clienteNombre: string })[] {
+  const clientes = new Map(leer<Cliente>(K_CLIENTES).filter((c) => c.empresaId === empresaId).map((c) => [c.id, c]));
+  return leer<ObservacionScoring>(K_OBS)
+    .filter((o) => clientes.has(o.clienteId))
+    .map((o) => ({ ...o, clienteNombre: clientes.get(o.clienteId)!.nombreCompleto }))
+    .sort((a, b) => b.fechaHora.localeCompare(a.fechaHora));
+}
+
 export function listarObservaciones(clienteId: string): ObservacionScoring[] {
   return leer<ObservacionScoring>(K_OBS)
     .filter((o) => o.clienteId === clienteId)
