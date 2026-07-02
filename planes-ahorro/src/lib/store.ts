@@ -56,6 +56,14 @@ function uid() {
     : "id-" + Math.floor(Math.random() * 1e9).toString(36) + Date.now().toString(36);
 }
 
+/**
+ * Regla C3 (revisión 2026-07-02): una importación puede AVANZAR el estadio de un
+ * cliente pero nunca retrocederlo — el avance manual del equipo no se pisa.
+ */
+function estadioMasAvanzado(actual: Estadio, propuesto: Estadio): Estadio {
+  return ESTADIOS_ORDEN.indexOf(propuesto) > ESTADIOS_ORDEN.indexOf(actual) ? propuesto : actual;
+}
+
 // --- Mapeo provisional STATUS de cartera → estadio (pendiente N4, ver CLAUDE.md) ---
 export function estadioDesdeStatus(status: string | null, desc: string | null): Estadio {
   const d = (desc || "").toUpperCase();
@@ -270,9 +278,9 @@ export function actualizarGestionVenta(clienteId: string, patch: GestionVentaInp
 
 /**
  * Cierre de venta. Obligatorio: DNI/CUIT + teléfono + email + N° de solicitud (CLAUDE.md §4.2).
- * Al marcar vendido, el caso pasa a Administración (estadio scoring).
+ * El N° de solicitud debe ser ÚNICO (regla §3.6). Al marcar vendido, pasa a Administración.
  */
-export function cerrarVenta(clienteId: string): { ok: boolean; faltan?: string[] } {
+export function cerrarVenta(clienteId: string): { ok: boolean; faltan?: string[]; error?: string } {
   const c = getCliente(clienteId);
   if (!c) return { ok: false, faltan: ["cliente"] };
   const faltan: string[] = [];
@@ -281,6 +289,10 @@ export function cerrarVenta(clienteId: string): { ok: boolean; faltan?: string[]
   if (!c.email) faltan.push("email");
   if (!c.solicitud.nroSolicitud) faltan.push("N° de solicitud");
   if (faltan.length) return { ok: false, faltan };
+  const duenio = buscarPorNroSolicitud(c.solicitud.nroSolicitud!);
+  if (duenio && duenio.id !== clienteId) {
+    return { ok: false, error: `El N° de solicitud ${c.solicitud.nroSolicitud} ya pertenece a ${duenio.nombreCompleto}. Es único e irrepetible.` };
+  }
   actualizarCliente(clienteId, {
     estado: "vendido",
     estadio: "scoring",
@@ -318,7 +330,7 @@ export function importarAdjudicatarios(
     if (i >= 0) {
       lista[i] = {
         ...lista[i],
-        estadio: "pedido",
+        estadio: estadioMasAvanzado(lista[i].estadio, "pedido"),
         adjudicacion: { ...(lista[i].adjudicacion || {}), ...adjudicacion },
         solicitud: { ...lista[i].solicitud, modelo: f.modelo ?? lista[i].solicitud.modelo },
       };
@@ -356,7 +368,11 @@ export function importarGanadores(
     const i = buscarPorGrupoOrden(lista, empresaId, f.grupo, f.orden);
     let clienteId: string;
     if (i >= 0) {
-      lista[i] = { ...lista[i], estadio: "adjudicacion", adjudicacion: { ...(lista[i].adjudicacion || {}), ...adjudicacion } };
+      lista[i] = {
+        ...lista[i],
+        estadio: estadioMasAvanzado(lista[i].estadio, "adjudicacion"),
+        adjudicacion: { ...(lista[i].adjudicacion || {}), ...adjudicacion },
+      };
       clienteId = lista[i].id;
       rep.actualizados++;
     } else {
@@ -623,7 +639,7 @@ export function importarCartera(filas: FilaCartera[], empresaId: string): Report
         nombreCompleto: f.nombreCompleto.trim(),
         telefono: f.telefono ?? lista[i].telefono,
         email: f.email ?? lista[i].email,
-        estadio: estadioDesdeStatus(f.statusCartera, f.statusDesc),
+        estadio: estadioMasAvanzado(lista[i].estadio, estadioDesdeStatus(f.statusCartera, f.statusDesc)),
         solicitud: { ...lista[i].solicitud, ...solicitud },
       };
       rep.actualizados++;

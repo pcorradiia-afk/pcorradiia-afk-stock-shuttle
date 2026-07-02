@@ -436,8 +436,8 @@ Se hizo una revisión escéptica completa. Hallazgos priorizados (detalle en la 
 | # | Hallazgo | Estado |
 |---|---|---|
 | C1 | Datos personales reales de ahorristas en el seed demo (hoy públicos en Vercel) | ⏸️ **Diferido por decisión del cliente (2026-07-02: "por ahora dejalo así")** — retomar antes de difundir la URL o al conectar Supabase |
-| C2 | Unicidad de N° de solicitud no aplicada en carga manual / cierre de venta | ⬜ Pendiente de decisión |
-| C3 | Reimportar cartera pisa estadios avanzados manualmente (solo debe avanzar, nunca retroceder) | ⬜ Pendiente de decisión |
+| C2 | Unicidad de N° de solicitud no aplicada en carga manual / cierre de venta | ✅ **Aplicado (2026-07-02)** — validación en `guardar()` de la ficha y en `cerrarVenta()`; verificado en navegador (rechazo con mensaje + caso control) |
+| C3 | Reimportar cartera pisa estadios avanzados manualmente (solo debe avanzar, nunca retroceder) | ✅ **Aplicado (2026-07-02)** — helper `estadioMasAvanzado()` en los importadores de cartera, adjudicatarios y ganadores; verificado en navegador (avance manual a Pedido sobrevive reimportación) |
 | C4 | Duplicados si se importa Adjudicatarios/Ganadores antes que Novedades (match no cae a grupo+orden) | ⬜ Pendiente de decisión |
 | C5 | Terciarizada/vendedor ven todos los clientes de la empresa (falta filtro por gestión/vendedor) | ⬜ Pendiente de decisión |
 | I1–I13 | Corrección N° solicitud sin restricción de rol · sin auditoría en app · alerta scoring no filtra equipo · avance sin Aprobado · efectividad mal calculada · escribir() sin manejo de cuota · DNI dentro de CUIT · recepción no asigna vendedor en alta · presupuesto no es adjunto real · alertas duplicadas al reimportar ganadores · política RLS usuario muy restrictiva + falta esquema SQL de negocio · sin tests de parsers · sin validación concesionario↔empresa | ⬜ Pendientes; I2/I9/I11 conviene resolverlos junto con la conexión a Supabase |
