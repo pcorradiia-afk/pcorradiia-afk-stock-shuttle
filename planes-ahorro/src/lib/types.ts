@@ -86,6 +86,14 @@ export interface Solicitud {
   statusCartera: string | null; // código de FIS (2, 4, 9, ...)
   statusDesc: string | null; // "AHORRISTA AL DIA", etc.
   valorMovil: number | null;
+  // Datos de cuotas/gestión que vienen en la cartera (alimentan las Gestiones)
+  fechaAgrupo?: string | null; // dd/mm/aaaa
+  emitidas?: number | null;
+  pagas?: number | null;
+  impagas?: number | null;
+  licito?: number | null;
+  adelanto?: number | null;
+  debCred?: string | null; // adhesión a débito automático
 }
 
 // Datos que llegan de los archivos de adjudicación (Ganadores_Acto y Adjudicatarios_Sin_Pedido).

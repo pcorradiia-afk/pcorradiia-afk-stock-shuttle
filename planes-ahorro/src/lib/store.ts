@@ -17,6 +17,28 @@ const K_PLANES = "pa.planes";
 const K_OBS = "pa.observaciones";
 const K_ALERTAS = "pa.alertas";
 const K_CTACTE = "pa.ctacte";
+const K_META = "pa.meta";
+
+// Metadatos simples (ej. fecha de última actualización de cartera por empresa).
+export function getMeta(clave: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return (JSON.parse(localStorage.getItem(K_META) || "{}") as Record<string, string>)[clave] ?? null;
+  } catch {
+    return null;
+  }
+}
+export function setMeta(clave: string, valor: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const m = JSON.parse(localStorage.getItem(K_META) || "{}");
+    m[clave] = valor;
+    localStorage.setItem(K_META, JSON.stringify(m));
+    notificar();
+  } catch {
+    /* ignore */
+  }
+}
 
 // Orden de los estadios (CLAUDE.md §6).
 export const ESTADIOS_ORDEN: Estadio[] = [
@@ -592,6 +614,13 @@ export interface FilaCartera {
   statusCartera: string | null;
   statusDesc: string | null;
   valorMovil: number | null;
+  fechaAgrupo: string | null;
+  emitidas: number | null;
+  pagas: number | null;
+  impagas: number | null;
+  licito: number | null;
+  adelanto: number | null;
+  debCred: string | null;
 }
 
 export interface ReporteImportacion {
@@ -631,6 +660,13 @@ export function importarCartera(filas: FilaCartera[], empresaId: string): Report
       statusCartera: f.statusCartera,
       statusDesc: f.statusDesc,
       valorMovil: f.valorMovil,
+      fechaAgrupo: f.fechaAgrupo,
+      emitidas: f.emitidas,
+      pagas: f.pagas,
+      impagas: f.impagas,
+      licito: f.licito,
+      adelanto: f.adelanto,
+      debCred: f.debCred,
     };
     if (i >= 0) {
       // Actualiza: NO pisa documento (la cartera no lo trae) ni vendedor asignado.
@@ -666,5 +702,6 @@ export function importarCartera(filas: FilaCartera[], empresaId: string): Report
   });
 
   escribir(K_CLIENTES, lista);
+  setMeta(`carteraActualizada:${empresaId}`, hoy);
   return rep;
 }
