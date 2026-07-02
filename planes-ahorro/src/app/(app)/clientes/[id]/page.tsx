@@ -72,6 +72,9 @@ export default function FichaClientePage() {
             <Dato k="Email" v={cliente.email ?? "—"} />
             <Dato k="Origen" v={cliente.origenDato ?? "—"} />
             <Dato k="Alta" v={fechaHora(cliente.fechaAlta)} />
+            {cliente.domicilio && (
+              <Dato k="Domicilio" v={`${cliente.domicilio}${cliente.localidad ? `, ${cliente.localidad}` : ""}${cliente.provincia ? ` (${cliente.provincia})` : ""}${cliente.codigoPostal ? ` CP ${cliente.codigoPostal}` : ""}`} />
+            )}
           </CardContent>
         </Card>
 
@@ -86,6 +89,11 @@ export default function FichaClientePage() {
             <Dato k="Modelo" v={cliente.solicitud.modelo ?? "—"} />
             <Dato k="Valor móvil" v={pesos(cliente.solicitud.valorMovil)} />
             <Dato k="Status cartera" v={cliente.solicitud.statusDesc ?? "—"} />
+            {cliente.adjudicacion?.nroActo && <Dato k="Acto de adjudicación" v={`${cliente.adjudicacion.nroActo} (${cliente.adjudicacion.tipoAdjudicacion ?? "—"})`} />}
+            {cliente.adjudicacion?.aging != null && <Dato k="Días sin pedido" v={String(cliente.adjudicacion.aging)} />}
+            {cliente.adjudicacion?.puedeIngresarPedido != null && (
+              <Dato k="¿Puede ingresar pedido?" v={cliente.adjudicacion.puedeIngresarPedido ? "SÍ" : `NO${cliente.adjudicacion.observaciones ? ` — ${cliente.adjudicacion.observaciones}` : ""}`} />
+            )}
           </CardContent>
         </Card>
       </div>

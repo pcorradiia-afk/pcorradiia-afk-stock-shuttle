@@ -143,14 +143,28 @@ export async function leerArchivo(file: File): Promise<{ headers: string[]; regi
   return { headers, registros };
 }
 
-// Detecta el encoding (UTF-16 como el archivo de Ganadores, o UTF-8) y devuelve texto.
-async function leerTexto(file: File): Promise<string> {
-  const buf = new Uint8Array(await file.arrayBuffer());
+// Detecta el encoding y devuelve texto. Los exports de FIS/Plan Óvalo llegan en
+// UTF-8, UTF-16 (con BOM) o incluso UTF-32 sin BOM (ej. Ganadores_Acto): en esos
+// casos los bytes nulos intercalados se descartan tras decodificar como Latin-1.
+export function decodificarTexto(buf: Uint8Array): string {
   if (buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xfe) {
-    return new TextDecoder("utf-16le").decode(buf);
+    return new TextDecoder("utf-16le").decode(buf).replace(/\u0000/g, "");
   }
   if (buf.length >= 2 && buf[0] === 0xfe && buf[1] === 0xff) {
-    return new TextDecoder("utf-16be").decode(buf);
+    return new TextDecoder("utf-16be").decode(buf).replace(/\u0000/g, "");
   }
-  return new TextDecoder("utf-8").decode(buf);
+  // Contar bytes nulos: si abundan, es UTF-16/32 sin BOM → Latin-1 + descartar nulos.
+  let ceros = 0;
+  const muestra = Math.min(buf.length, 4000);
+  for (let i = 0; i < muestra; i++) if (buf[i] === 0) ceros++;
+  if (ceros > muestra * 0.2) {
+    return new TextDecoder("latin1").decode(buf).replace(/\u0000/g, "");
+  }
+  const utf8 = new TextDecoder("utf-8", { fatal: false }).decode(buf);
+  // Si la decodificación UTF-8 rompió acentos (�), reintentar como Latin-1.
+  return utf8.includes("�") ? new TextDecoder("latin1").decode(buf) : utf8;
+}
+
+async function leerTexto(file: File): Promise<string> {
+  return decodificarTexto(new Uint8Array(await file.arrayBuffer()));
 }

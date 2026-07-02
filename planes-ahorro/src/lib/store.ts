@@ -7,6 +7,7 @@
 import type {
   Cliente, Comunicacion, Estadio, EstadoCliente, Plan,
   ObservacionScoring, ResultadoScoring, Alerta, GestionAdmin, RolId, Usuario,
+  MovimientoCtaCte,
 } from "./types";
 import { USUARIOS } from "./demo-data";
 
@@ -15,6 +16,7 @@ const K_COMS = "pa.comunicaciones";
 const K_PLANES = "pa.planes";
 const K_OBS = "pa.observaciones";
 const K_ALERTAS = "pa.alertas";
+const K_CTACTE = "pa.ctacte";
 
 // Orden de los estadios (CLAUDE.md §6).
 export const ESTADIOS_ORDEN: Estadio[] = [
@@ -285,6 +287,150 @@ export function cerrarVenta(clienteId: string): { ok: boolean; faltan?: string[]
     fechaVenta: new Date().toISOString(),
   });
   return { ok: true };
+}
+
+// --- Importaciones de los demás archivos del sistema actual (CLAUDE.md §5.bis) ---
+
+function buscarPorGrupoOrden(lista: Cliente[], empresaId: string, grupo: string, orden: string): number {
+  const g = grupo.replace(/^0+/, ""), o = orden.replace(/^0+(?=\d)/, "");
+  return lista.findIndex(
+    (c) => c.empresaId === empresaId &&
+      (c.solicitud.grupo || "").replace(/^0+/, "") === g &&
+      (c.solicitud.orden || "").replace(/^0+(?=\d)/, "") === o
+  );
+}
+
+/** Adjudicatarios sin pedido: work-list del estadio Pedido. Actualiza (o crea) por grupo+orden. */
+export function importarAdjudicatarios(
+  filas: { grupo: string; orden: string; nombre: string; status: string | null; modelo: string | null; plan: string | null; fechaAceptacion: string | null; observaciones: string | null; aging: number | null; puedeIngresarPedido: boolean }[],
+  empresaId: string
+): ReporteImportacion {
+  const lista = leer<Cliente>(K_CLIENTES);
+  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
+  const hoy = new Date().toISOString();
+  filas.forEach((f, idx) => {
+    if (!f.nombre) { rep.rechazados.push({ fila: idx + 1, motivo: "Sin nombre", nombre: "—" }); return; }
+    const adjudicacion = {
+      fechaAceptacion: f.fechaAceptacion, aging: f.aging,
+      puedeIngresarPedido: f.puedeIngresarPedido, observaciones: f.observaciones,
+    };
+    const i = buscarPorGrupoOrden(lista, empresaId, f.grupo, f.orden);
+    if (i >= 0) {
+      lista[i] = {
+        ...lista[i],
+        estadio: "pedido",
+        adjudicacion: { ...(lista[i].adjudicacion || {}), ...adjudicacion },
+        solicitud: { ...lista[i].solicitud, modelo: f.modelo ?? lista[i].solicitud.modelo },
+      };
+      rep.actualizados++;
+    } else {
+      lista.push({
+        id: uid(), empresaId, nombreCompleto: f.nombre, documento: null, tipoDocumento: null,
+        telefono: null, email: null, origenDato: "Importación adjudicatarios", vendedorId: null,
+        estado: "cartera", estadio: "pedido", nacidoComo: "importado_cartera", fechaAlta: hoy,
+        solicitud: { nroSolicitud: null, grupo: f.grupo, orden: f.orden, plan: f.plan, modelo: f.modelo, statusCartera: f.status, statusDesc: null, valorMovil: null },
+        adjudicacion,
+        pruebaManejo: null, necesidades: null, planId: null, presupuestoNombre: null, fechaVenta: null,
+      });
+      rep.creados++;
+    }
+  });
+  escribir(K_CLIENTES, lista);
+  return rep;
+}
+
+/** Ganadores de acto (sorteo/licitación): pasa a Adjudicación y avisa a Administración. */
+export function importarGanadores(
+  filas: { nroActo: string; grupo: string; orden: string; nombre: string; plan: string | null; modelo: string | null; tipoAdjudicacion: string | null; condicional: string | null; importeOferta: number | null }[],
+  empresaId: string
+): ReporteImportacion {
+  const lista = leer<Cliente>(K_CLIENTES);
+  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
+  const hoy = new Date().toISOString();
+  filas.forEach((f, idx) => {
+    if (!f.nombre) { rep.rechazados.push({ fila: idx + 1, motivo: "Sin nombre", nombre: "—" }); return; }
+    const adjudicacion = {
+      nroActo: f.nroActo, tipoAdjudicacion: f.tipoAdjudicacion,
+      condicional: f.condicional, importeOferta: f.importeOferta,
+    };
+    const i = buscarPorGrupoOrden(lista, empresaId, f.grupo, f.orden);
+    let clienteId: string;
+    if (i >= 0) {
+      lista[i] = { ...lista[i], estadio: "adjudicacion", adjudicacion: { ...(lista[i].adjudicacion || {}), ...adjudicacion } };
+      clienteId = lista[i].id;
+      rep.actualizados++;
+    } else {
+      clienteId = uid();
+      lista.push({
+        id: clienteId, empresaId, nombreCompleto: f.nombre, documento: null, tipoDocumento: null,
+        telefono: null, email: null, origenDato: "Importación ganadores", vendedorId: null,
+        estado: "cartera", estadio: "adjudicacion", nacidoComo: "importado_cartera", fechaAlta: hoy,
+        solicitud: { nroSolicitud: null, grupo: f.grupo, orden: f.orden, plan: f.plan, modelo: f.modelo, statusCartera: null, statusDesc: null, valorMovil: null },
+        adjudicacion,
+        pruebaManejo: null, necesidades: null, planId: null, presupuestoNombre: null, fechaVenta: null,
+      });
+      rep.creados++;
+    }
+    crearAlerta({
+      empresaId, rolesDestino: ["administracion", "supervisor_administracion"],
+      tipo: "ganador_acto", clienteId, clienteNombre: f.nombre,
+      mensaje: `Ganador del acto ${f.nroActo} (${f.tipoAdjudicacion ?? "adjudicación"}) — informar al cliente.`,
+    });
+  });
+  escribir(K_CLIENTES, lista);
+  return rep;
+}
+
+/** Movimientos de la cta cte de la concesionaria (evita duplicados exactos). */
+export function importarCtaCte(movs: Omit<MovimientoCtaCte, "id" | "empresaId">[], empresaId: string): ReporteImportacion {
+  const lista = leer<MovimientoCtaCte>(K_CTACTE);
+  const clave = (m: { fecha: string; codigo: string; importe: number; referencia: string; dc: string }) =>
+    `${m.fecha}|${m.codigo}|${m.importe}|${m.referencia}|${m.dc}`;
+  const existentes = new Set(lista.filter((m) => m.empresaId === empresaId).map(clave));
+  const rep: ReporteImportacion = { total: movs.length, creados: 0, actualizados: 0, rechazados: [] };
+  movs.forEach((m, idx) => {
+    if (existentes.has(clave(m))) {
+      rep.rechazados.push({ fila: idx + 1, motivo: "Duplicado (ya importado)", nombre: `${m.codigo} ${m.fecha}` });
+      return;
+    }
+    existentes.add(clave(m));
+    lista.push({ ...m, id: uid(), empresaId });
+    rep.creados++;
+  });
+  escribir(K_CTACTE, lista);
+  return rep;
+}
+
+export function listarCtaCte(empresaId: string): MovimientoCtaCte[] {
+  return leer<MovimientoCtaCte>(K_CTACTE)
+    .filter((m) => m.empresaId === empresaId)
+    .sort((a, b) => b.fecha.split("/").reverse().join("").localeCompare(a.fecha.split("/").reverse().join("")) || a.codigo.localeCompare(b.codigo));
+}
+
+/** adh: enriquece domicilio/localidad/provincia/CP de clientes existentes (no crea nuevos). */
+export function importarAdh(
+  filas: { grupo: string; orden: string; nombre: string; codigoPostal: string | null; domicilio: string | null; localidad: string | null; provincia: string | null }[],
+  empresaId: string
+): ReporteImportacion {
+  const lista = leer<Cliente>(K_CLIENTES);
+  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
+  filas.forEach((f, idx) => {
+    const i = buscarPorGrupoOrden(lista, empresaId, f.grupo, f.orden);
+    if (i < 0) {
+      rep.rechazados.push({ fila: idx + 1, motivo: `Grupo ${f.grupo}/orden ${f.orden} no está en la cartera`, nombre: f.nombre });
+      return;
+    }
+    lista[i] = {
+      ...lista[i],
+      domicilio: f.domicilio ?? lista[i].domicilio,
+      localidad: f.localidad ?? lista[i].localidad,
+      provincia: f.provincia ?? lista[i].provincia,
+      codigoPostal: f.codigoPostal ?? lista[i].codigoPostal,
+    };
+    rep.actualizados++;
+  });
+  escribir(K_CLIENTES, lista);
+  return rep;
 }
 
 // ===================== Fase 3: estadios de administración =====================
