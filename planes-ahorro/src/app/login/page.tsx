@@ -15,11 +15,16 @@ export default function LoginPage() {
   const router = useRouter();
   const { login } = useSesion();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
 
-  const ingresar = (e: React.FormEvent) => {
+  const ingresar = async (e: React.FormEvent) => {
     e.preventDefault();
-    const r = login(email);
+    setEnviando(true);
+    setError(null);
+    const r = await login(email, password);
+    setEnviando(false);
     if (r.ok) router.replace("/dashboard");
     else setError(r.error ?? "No se pudo iniciar sesión.");
   };
@@ -35,7 +40,9 @@ export default function LoginPage() {
         <Card>
           <CardHeader>
             <CardTitle>Ingresar</CardTitle>
-            <CardDescription>Accedé con tu email corporativo.</CardDescription>
+            <CardDescription>
+              {MODO_DEMO ? "Accedé con tu email corporativo." : "Accedé con tu email y contraseña."}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={ingresar} className="space-y-3">
@@ -46,8 +53,23 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 autoFocus
               />
+              {!MODO_DEMO && (
+                <Input
+                  type="password"
+                  placeholder="Contraseña"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              )}
               {error && <p className="text-sm text-destructive">{error}</p>}
-              <Button type="submit" className="w-full">Ingresar</Button>
+              <Button type="submit" className="w-full" disabled={enviando}>
+                {enviando ? "Ingresando…" : "Ingresar"}
+              </Button>
+              {!MODO_DEMO && (
+                <p className="text-xs text-muted-foreground">
+                  ¿Olvidaste la contraseña? Pedile al administrador que te la restablezca desde Supabase.
+                </p>
+              )}
             </form>
           </CardContent>
         </Card>
