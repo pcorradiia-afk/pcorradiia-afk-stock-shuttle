@@ -7,7 +7,7 @@ import { useSesion } from "@/lib/session";
 import {
   inicializar, getCliente, listarComunicaciones, agregarComunicacion, suscribir,
   listarPlanes, getPlan, vendedoresDeEmpresa, asignarVendedor, actualizarGestionVenta,
-  actualizarCliente, cerrarVenta, buscarPorNroSolicitud, puedeVerCliente,
+  actualizarCliente, cerrarVenta, buscarPorNroSolicitud, puedeVerCliente, listarTareas,
 } from "@/lib/store";
 import { tienePermiso } from "@/lib/roles";
 import { ESTADIO_LABEL, ESTADO_LABEL, ESTADIOS, pesos, fechaHora } from "@/lib/labels";
@@ -62,6 +62,17 @@ export default function FichaClientePage() {
       <Link href="/clientes" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline">
         <ArrowLeft className="h-4 w-4" /> Volver a ahorristas
       </Link>
+
+      {/* Aviso de tarea de call center pendiente para este usuario */}
+      {listarTareas(cliente.empresaId, { asignadoId: usuarioActivo.id, estado: "pendiente" })
+        .filter((t) => t.clienteId === cliente.id)
+        .slice(0, 1)
+        .map((t) => (
+          <div key={t.id} className="rounded-md border border-blue-300 bg-blue-50 p-3 text-sm text-blue-900">
+            📋 Tenés una tarea pendiente sobre este cliente (<strong>{t.gestionTipo}</strong>, asignada por {t.creadaPorNombre}).
+            Al registrar el contacto en la bitácora se completa sola.
+          </div>
+        ))}
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>

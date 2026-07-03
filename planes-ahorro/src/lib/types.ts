@@ -225,6 +225,23 @@ export interface Plan {
   activo: boolean;
 }
 
+// Tarea de call center: un cliente asignado a un colaborador dentro de una gestión.
+// Se completa sola cuando el colaborador registra un contacto en la bitácora.
+export interface Tarea {
+  id: string;
+  empresaId: string;
+  clienteId: string;
+  clienteNombre: string;
+  gestionTipo: string; // tipo de gestión (bienvenida, mora, …) u "otro"
+  asignadoId: string;
+  asignadoNombre: string;
+  creadaPorNombre: string;
+  fechaAsignacion: string;
+  estado: "pendiente" | "completada";
+  fechaCompletada: string | null;
+  resultado: string | null;
+}
+
 export interface Comunicacion {
   id: string;
   clienteId: string;

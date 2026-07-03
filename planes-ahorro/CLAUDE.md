@@ -328,6 +328,15 @@ y domicilio** del adherente.
 
 El cliente compartió capturas de los menús de SIGNOS. Equivalencias y estado:
 
+**Módulo Call Center (pedido del cliente 2026-07-03):** página **/call-center** con
+(1) **Asignar tareas**: un supervisor (super admin / sup. ventas / sup. administración, permiso
+`callcenter.asignar`) reparte N clientes de una gestión a un colaborador — sin duplicar
+pendientes del mismo tipo; (2) **Mis tareas**: cola personal de cada colaborador; la tarea se
+**completa sola** al registrar el contacto en la bitácora (o manualmente); la ficha muestra un
+aviso de tarea pendiente; (3) **Rendimiento del equipo**: llamados por colaborador **por día**
+(últimos 7), tareas pendientes/completadas, última actividad y **export "Excel actividad"**
+con toda la bitácora de la empresa. Tabla `Tarea` en el store.
+
 | SIGNOS | Sistema nuevo | Estado |
 |---|---|---|
 | **Opciones de Gestión** (Bienvenida, Altos Ahorros, Ganadores, Incentivo de Licitaciones, Mora Temprana, Mora, Adjudicados sin Pedido) | Página **/gestiones**: colas de llamados por campaña con contador, dato clave, última gestión del anotador y próxima acción | ✅ Hecho (umbrales provisorios, ver abajo) |

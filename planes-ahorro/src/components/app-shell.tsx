@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Building2, Users, ShieldCheck, LogOut, UserCog, X, Contact, Upload,
-  Package, TrendingUp, Bell, BarChart3, Landmark, PhoneCall,
+  Package, TrendingUp, Bell, BarChart3, Landmark, PhoneCall, Headphones,
 } from "lucide-react";
 import { useSesion } from "@/lib/session";
 import { tienePermiso, nombreRol, type Permiso } from "@/lib/roles";
@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
   { href: "/dashboard", label: "Tablero", icon: LayoutDashboard },
   { href: "/clientes", label: "Ahorristas", icon: Contact, permiso: "clientes.ver" },
   { href: "/gestiones", label: "Gestiones", icon: PhoneCall, permiso: "clientes.ver" },
+  { href: "/call-center", label: "Call center", icon: Headphones, permiso: "clientes.ver" },
   { href: "/ventas", label: "Supervisión de ventas", icon: TrendingUp, permiso: "ventas.supervisar" },
   { href: "/informes", label: "Informes", icon: BarChart3, permiso: "informes.ver" },
   { href: "/planes", label: "Planes", icon: Package, permiso: "clientes.ver" },
