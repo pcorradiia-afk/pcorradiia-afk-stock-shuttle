@@ -7,7 +7,7 @@
 import type {
   Cliente, Comunicacion, Estadio, EstadoCliente, Plan,
   ObservacionScoring, ResultadoScoring, Alerta, GestionAdmin, RolId, Usuario,
-  MovimientoCtaCte,
+  MovimientoCtaCte, Tarea,
 } from "./types";
 import { USUARIOS } from "./demo-data";
 
@@ -311,6 +311,88 @@ export function agregarComunicacion(input: Omit<Comunicacion, "id" | "fechaHora"
   const lista = leer<Comunicacion>(K_COMS);
   lista.push({ ...input, id: uid(), fechaHora: new Date().toISOString() });
   escribir(K_COMS, lista);
+  // Call center: registrar el contacto completa automáticamente las tareas
+  // pendientes de ese colaborador sobre ese cliente.
+  completarTareasPorContacto(input.clienteId, input.usuarioId, `${input.tipoContacto}: ${input.detalle.slice(0, 80)}`);
+}
+
+/** Comunicaciones de todos los clientes de una empresa (para métricas de call center). */
+export function listarComunicacionesEmpresa(empresaId: string): (Comunicacion & { clienteNombre: string })[] {
+  const clientes = new Map(leer<Cliente>(K_CLIENTES).filter((c) => c.empresaId === empresaId).map((c) => [c.id, c]));
+  return leer<Comunicacion>(K_COMS)
+    .filter((x) => clientes.has(x.clienteId))
+    .map((x) => ({ ...x, clienteNombre: clientes.get(x.clienteId)!.nombreCompleto }))
+    .sort((a, b) => b.fechaHora.localeCompare(a.fechaHora));
+}
+
+// ===================== Call center: tareas asignadas =====================
+const K_TAREAS = "pa.tareas";
+
+export function colaboradoresDeEmpresa(empresaId: string): Usuario[] {
+  return USUARIOS.filter(
+    (u) => u.activo && (u.empresaId === empresaId || u.alcance === "grupo" ||
+      (Array.isArray(u.alcance) && u.alcance.includes(empresaId)))
+  );
+}
+
+export function listarTareas(
+  empresaId: string,
+  f: { asignadoId?: string; estado?: Tarea["estado"] } = {}
+): Tarea[] {
+  return leer<Tarea>(K_TAREAS)
+    .filter((t) => t.empresaId === empresaId &&
+      (!f.asignadoId || t.asignadoId === f.asignadoId) &&
+      (!f.estado || t.estado === f.estado))
+    .sort((a, b) => b.fechaAsignacion.localeCompare(a.fechaAsignacion));
+}
+
+/** Asigna tareas para una lista de clientes. Evita duplicar pendientes del mismo tipo. */
+export function crearTareas(
+  clientes: Cliente[],
+  gestionTipo: string,
+  asignado: Usuario,
+  creadaPor: Usuario,
+  empresaId: string
+): number {
+  const lista = leer<Tarea>(K_TAREAS);
+  const yaPendientes = new Set(
+    lista.filter((t) => t.empresaId === empresaId && t.estado === "pendiente" && t.gestionTipo === gestionTipo)
+      .map((t) => t.clienteId)
+  );
+  const hoy = new Date().toISOString();
+  let creadas = 0;
+  for (const c of clientes) {
+    if (yaPendientes.has(c.id)) continue;
+    lista.push({
+      id: uid(), empresaId, clienteId: c.id, clienteNombre: c.nombreCompleto,
+      gestionTipo, asignadoId: asignado.id, asignadoNombre: asignado.nombre,
+      creadaPorNombre: creadaPor.nombre, fechaAsignacion: hoy,
+      estado: "pendiente", fechaCompletada: null, resultado: null,
+    });
+    creadas++;
+  }
+  if (creadas) escribir(K_TAREAS, lista);
+  return creadas;
+}
+
+export function completarTarea(tareaId: string, resultado: string) {
+  const lista = leer<Tarea>(K_TAREAS);
+  const i = lista.findIndex((t) => t.id === tareaId);
+  if (i < 0 || lista[i].estado === "completada") return;
+  lista[i] = { ...lista[i], estado: "completada", fechaCompletada: new Date().toISOString(), resultado };
+  escribir(K_TAREAS, lista);
+}
+
+function completarTareasPorContacto(clienteId: string, usuarioId: string, resultado: string) {
+  const lista = leer<Tarea>(K_TAREAS);
+  let cambio = false;
+  lista.forEach((t, i) => {
+    if (t.clienteId === clienteId && t.asignadoId === usuarioId && t.estado === "pendiente") {
+      lista[i] = { ...t, estado: "completada", fechaCompletada: new Date().toISOString(), resultado };
+      cambio = true;
+    }
+  });
+  if (cambio) escribir(K_TAREAS, lista);
 }
 
 // --- Gestión comercial (Fase 2) ---
