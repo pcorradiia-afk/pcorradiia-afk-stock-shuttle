@@ -29,12 +29,19 @@ export default function DashboardPage() {
     const clientes = listarClientes(empresaActivaId, {}, usuarioActivo);
     const mes = new Date().toISOString().slice(0, 7);
     const obs = listarObservacionesEmpresa(empresaActivaId).filter((o) => o.resultado.startsWith("observado"));
+    // Distribución por status de cartera (como la tabla dinámica del cliente, 2026-07-03).
+    const porStatus = new Map<string, number>();
+    clientes.forEach((c) => {
+      const s = c.solicitud.statusDesc ?? "Sin status (lead interno)";
+      porStatus.set(s, (porStatus.get(s) ?? 0) + 1);
+    });
     return {
       total: clientes.length,
       leadsMes: clientes.filter((c) => c.estado === "lead" && c.fechaAlta.startsWith(mes)).length,
       ventasMes: clientes.filter((c) => c.estado === "vendido" && (c.fechaVenta || "").startsWith(mes)).length,
       obsAbiertas: obs.filter((o) => !o.gestionResultado).length,
       embudo: ESTADIOS_ORDEN.map((e) => ({ estadio: e, cantidad: clientes.filter((c) => c.estadio === e).length })),
+      porStatus: Array.from(porStatus.entries()).sort((a, b) => a[0].localeCompare(b[0])),
     };
   }, [empresaActivaId, usuarioActivo, tick]);
 
@@ -112,6 +119,33 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Cartera por status</CardTitle>
+          <CardDescription>Distribución según el status de FIS (última importación de Novedades).</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {(!datos || datos.porStatus.length === 0) ? (
+            <p className="text-sm text-muted-foreground">Sin datos: importá la cartera Novedades.</p>
+          ) : (
+            <div className="space-y-2" role="img" aria-label="Cartera por status de FIS">
+              {(() => {
+                const max = Math.max(1, ...datos.porStatus.map(([, n]) => n));
+                return datos.porStatus.map(([s, n]) => (
+                  <div key={s} className="flex items-center gap-3">
+                    <span className="w-56 shrink-0 text-sm text-muted-foreground">{s}</span>
+                    <div className="h-5 flex-1 rounded-sm bg-muted" title={`${s}: ${n}`}>
+                      <div className="h-5 rounded-sm bg-primary" style={{ width: `${(n / max) * 100}%`, minWidth: n > 0 ? "0.5rem" : 0 }} />
+                    </div>
+                    <span className="w-12 shrink-0 text-right text-sm font-semibold tabular-nums">{n}</span>
+                  </div>
+                ));
+              })()}
+            </div>
+          )}
         </CardContent>
       </Card>
 
