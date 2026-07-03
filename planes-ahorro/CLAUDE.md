@@ -486,7 +486,7 @@ Output Directory `dist` del panel fue desactivado — venía heredado del `verce
 | N1 | **Motor de cálculo de la planilla** (gastos de patentamiento, requisitos, licitación, hoja de pedido): ¿se replica dentro del sistema en Fase 3? Es alcance significativo. | ⏳ A confirmar prioridad |
 | N2 | **Jurisdicciones de patentamiento** a cubrir (hoy Neuquén y Río Negro) y quién mantiene los valores de arancel/sellado. | ⏳ A confirmar |
 | N3 | Archivos recibidos (2026-06-25): cartera **Novedades** (§5.bis.1), **planilla** (§5.bis.2), **Adjudicatarios sin pedido** (§5.bis.3), **Ganadores de acto** (§5.bis.4), **cta cte concesionario** (§5.bis.5), **movimiento por adherente** (§5.bis.6). Falta: **lista de precios** como archivo aparte (por ahora se toma de la solapa Precio). | ✅ En su mayoría recibidos |
-| N4 | Mapeo de **STATUS de cartera → estadio** del cliente (códigos 2/4/9/…). | ⏳ A definir con el cliente |
+| N4 | Mapeo de **STATUS de cartera → estadio** del cliente. **Status reales confirmados por el cliente (2026-07-03, tabla dinámica):** ADJUD DEF C/DESV (36) · ADJUD DEF AL DIA (297) · ADJUD PEND AL DIA (9) · AHORRISTA AL DIA (520) · AHORRISTA EN MORA (27) · RESCINDIDO (161). La gestión **Mora** ahora usa el status oficial "AHORRISTA EN MORA"; "Mora temprana" = AL DIA con impagas ≥1 (a confirmar). Falta decidir: ¿RESCINDIDO se excluye de gestiones/embudo o tiene cola propia? | 🟡 Parcial |
 | N5 | **Layout posicional** del archivo `adh_*.txt` (§5.bis.6): hace falta el diseño de registro para parsearlo. | ⏳ Pedir al cliente |
 | N6 | `cta_cte_*.txt` es la cuenta de la **concesionaria con la administradora**, no del cliente. ¿Entra en alcance (finanzas/conciliación) o queda fuera? | ⏳ A confirmar |
 

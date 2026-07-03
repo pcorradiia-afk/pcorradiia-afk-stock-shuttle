@@ -20,6 +20,7 @@ export default function ClientesPage() {
   const [texto, setTexto] = useState("");
   const [estado, setEstado] = useState<FiltroClientes["estado"]>("todos");
   const [estadio, setEstadio] = useState<FiltroClientes["estadio"]>("todos");
+  const [status, setStatus] = useState("todos");
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
@@ -29,9 +30,18 @@ export default function ClientesPage() {
     return unsub;
   }, []);
 
-  const clientes = useMemo<Cliente[]>(
+  const todos = useMemo<Cliente[]>(
     () => (empresaActivaId && usuarioActivo ? listarClientes(empresaActivaId, { texto, estado, estadio }, usuarioActivo) : []),
     [empresaActivaId, usuarioActivo, texto, estado, estadio, tick]
+  );
+  // Status de cartera presentes (para el filtro), calculados sin el filtro de status aplicado.
+  const statuses = useMemo(
+    () => Array.from(new Set(todos.map((c) => c.solicitud.statusDesc).filter(Boolean) as string[])).sort(),
+    [todos]
+  );
+  const clientes = useMemo<Cliente[]>(
+    () => (status === "todos" ? todos : todos.filter((c) => c.solicitud.statusDesc === status)),
+    [todos, status]
   );
 
   if (!usuarioActivo) return null;
@@ -60,6 +70,7 @@ export default function ClientesPage() {
                   "Orden": c.solicitud.orden ?? "",
                   "Plan": c.solicitud.plan ?? "",
                   "Modelo": c.solicitud.modelo ?? "",
+                  "Status cartera": c.solicitud.statusDesc ?? "",
                   "Estado": ESTADO_LABEL[c.estado],
                   "Estadio": ESTADIO_LABEL[c.estadio],
                   "Fecha de alta": c.fechaAlta.slice(0, 10),
@@ -95,6 +106,10 @@ export default function ClientesPage() {
             <option value="todos">Todos los estadios</option>
             {ESTADIOS.map((e) => <option key={e} value={e}>{ESTADIO_LABEL[e]}</option>)}
           </select>
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm">
+            <option value="todos">Todos los status de cartera</option>
+            {statuses.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
         </div>
       </Card>
 
@@ -106,6 +121,7 @@ export default function ClientesPage() {
               <TableHead>Documento</TableHead>
               <TableHead>N° solicitud</TableHead>
               <TableHead>Plan / Modelo</TableHead>
+              <TableHead>Status cartera</TableHead>
               <TableHead>Estado</TableHead>
               <TableHead>Estadio</TableHead>
             </TableRow>
@@ -121,13 +137,14 @@ export default function ClientesPage() {
                 <TableCell className="text-muted-foreground">
                   {c.solicitud.plan ?? "—"}{c.solicitud.modelo ? ` / ${c.solicitud.modelo}` : ""}
                 </TableCell>
+                <TableCell className="text-xs text-muted-foreground">{c.solicitud.statusDesc ?? "—"}</TableCell>
                 <TableCell><Badge variant="secondary">{ESTADO_LABEL[c.estado]}</Badge></TableCell>
                 <TableCell><Badge variant="outline">{ESTADIO_LABEL[c.estadio]}</Badge></TableCell>
               </TableRow>
             ))}
             {clientes.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                   No hay ahorristas para los filtros actuales.
                 </TableCell>
               </TableRow>
