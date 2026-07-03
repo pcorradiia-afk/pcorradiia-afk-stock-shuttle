@@ -10,6 +10,7 @@ import {
   inicializar, suscribir, listarClientes, listarObservacionesEmpresa, ESTADIOS_ORDEN, getMeta,
 } from "@/lib/store";
 import { ESTADIO_LABEL } from "@/lib/labels";
+import { esRescindido } from "@/lib/gestiones";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
@@ -40,7 +41,11 @@ export default function DashboardPage() {
       leadsMes: clientes.filter((c) => c.estado === "lead" && c.fechaAlta.startsWith(mes)).length,
       ventasMes: clientes.filter((c) => c.estado === "vendido" && (c.fechaVenta || "").startsWith(mes)).length,
       obsAbiertas: obs.filter((o) => !o.gestionResultado).length,
-      embudo: ESTADIOS_ORDEN.map((e) => ({ estadio: e, cantidad: clientes.filter((c) => c.estadio === e).length })),
+      // Embudo de proceso: solo clientes activos (los rescindidos van en "Cartera por status").
+      embudo: ESTADIOS_ORDEN.map((e) => ({
+        estadio: e,
+        cantidad: clientes.filter((c) => c.estadio === e && !esRescindido(c)).length,
+      })),
       porStatus: Array.from(porStatus.entries()).sort((a, b) => a[0].localeCompare(b[0])),
     };
   }, [empresaActivaId, usuarioActivo, tick]);
@@ -98,7 +103,7 @@ export default function DashboardPage() {
         <CardHeader>
           <CardTitle className="text-base">Embudo por estadio</CardTitle>
           <CardDescription>
-            Cantidad de clientes en cada etapa.{" "}
+            Clientes activos en cada etapa (sin rescindidos).{" "}
             {tienePermiso(usuarioActivo.roles, "informes.ver") && (
               <Link href="/informes" className="text-primary underline">Ver informes completos →</Link>
             )}

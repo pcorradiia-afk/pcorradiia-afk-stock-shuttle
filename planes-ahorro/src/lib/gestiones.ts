@@ -140,7 +140,12 @@ export const GESTIONES: GestionDef[] = [
   },
 ];
 
+/** RESCINDIDOS: excluidos de todas las gestiones (decisión del cliente 2026-07-03).
+ *  Quedan visibles en Informes → "Rescindidos" para una eventual reactivación. */
+export const esRescindido = (c: Cliente) =>
+  (c.solicitud.statusDesc || "").toUpperCase().includes("RESCIND");
+
 export function colaGestion(clientes: Cliente[], tipo: GestionTipo): Cliente[] {
   const def = GESTIONES.find((g) => g.tipo === tipo)!;
-  return clientes.filter(def.filtro);
+  return clientes.filter((c) => !esRescindido(c)).filter(def.filtro);
 }
