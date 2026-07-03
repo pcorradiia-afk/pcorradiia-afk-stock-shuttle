@@ -41,7 +41,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const {
-    usuarioReal, usuarioActivo, impersonando, empresaActivaId,
+    usuarioReal, usuarioActivo, impersonando, empresaActivaId, cargandoDatos,
     setEmpresaActiva, logout, dejarDeImpersonar,
   } = useSesion();
 
@@ -139,6 +139,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="text-xs text-muted-foreground">
                 CUIT {empresaPorId(empresaActivaId)?.cuit}
               </span>
+            )}
+            {cargandoDatos && (
+              <span className="animate-pulse text-xs font-medium text-primary">Sincronizando…</span>
             )}
           </div>
           <div className="flex items-center gap-1">

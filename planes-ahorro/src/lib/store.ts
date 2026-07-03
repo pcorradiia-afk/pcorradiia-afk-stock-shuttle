@@ -10,6 +10,8 @@ import type {
   MovimientoCtaCte, Tarea,
 } from "./types";
 import { USUARIOS } from "./demo-data";
+import { remote } from "./remote";
+import { MODO_DEMO } from "./supabase/client";
 
 const K_CLIENTES = "pa.clientes";
 const K_COMS = "pa.comunicaciones";
@@ -28,13 +30,14 @@ export function getMeta(clave: string): string | null {
     return null;
   }
 }
-export function setMeta(clave: string, valor: string) {
+export function setMeta(clave: string, valor: string, empresaId?: string) {
   if (typeof window === "undefined") return;
   try {
     const m = JSON.parse(localStorage.getItem(K_META) || "{}");
     m[clave] = valor;
     localStorage.setItem(K_META, JSON.stringify(m));
     notificar();
+    if (empresaId) remote.meta(empresaId, clave, valor);
   } catch {
     /* ignore */
   }
@@ -147,7 +150,38 @@ function seedSiVacio() {
 }
 
 export function inicializar() {
-  seedSiVacio();
+  if (MODO_DEMO) seedSiVacio(); // con Supabase, los datos llegan de la nube
+}
+
+// --- Usuarios (demo: constantes; con Supabase: caché cargada al iniciar sesión) ---
+let USUARIOS_CACHE: Usuario[] = USUARIOS;
+export function setUsuariosCache(us: Usuario[]) {
+  USUARIOS_CACHE = us;
+  notificar();
+}
+export function listarUsuariosCache(): Usuario[] {
+  return USUARIOS_CACHE;
+}
+
+/** Reemplaza la caché local con los datos bajados de Supabase (una empresa por vez). */
+export function reemplazarDatosEmpresa(
+  datos: Record<string, unknown[]>,
+  metas: { clave: string; valor: string }[]
+) {
+  if (typeof window === "undefined") return;
+  const mapa: Record<string, string> = {
+    clientes: K_CLIENTES, comunicaciones: K_COMS, planes: K_PLANES,
+    observaciones: K_OBS, alertas: K_ALERTAS, tareas: K_TAREAS, ctacte: K_CTACTE,
+  };
+  for (const [clave, key] of Object.entries(mapa)) {
+    localStorage.setItem(key, JSON.stringify(datos[clave] ?? []));
+  }
+  try {
+    const m = JSON.parse(localStorage.getItem(K_META) || "{}");
+    metas.forEach(({ clave, valor }) => { m[clave] = valor; });
+    localStorage.setItem(K_META, JSON.stringify(m));
+  } catch { /* ignore */ }
+  notificar();
 }
 
 // --- Catálogo de planes ---
@@ -165,12 +199,13 @@ export function crearPlan(input: Omit<Plan, "id">): Plan {
   const lista = leer<Plan>(K_PLANES);
   lista.push(plan);
   escribir(K_PLANES, lista);
+  remote.planes(input.empresaId, [plan]);
   return plan;
 }
 
 // --- Vendedores de una empresa (para asignar / reasignar) ---
 export function vendedoresDeEmpresa(empresaId: string) {
-  return USUARIOS.filter(
+  return USUARIOS_CACHE.filter(
     (u) => u.activo && u.empresaId === empresaId && u.roles.includes("vendedor")
   );
 }
@@ -309,8 +344,11 @@ export function listarComunicaciones(clienteId: string): Comunicacion[] {
 
 export function agregarComunicacion(input: Omit<Comunicacion, "id" | "fechaHora">) {
   const lista = leer<Comunicacion>(K_COMS);
-  lista.push({ ...input, id: uid(), fechaHora: new Date().toISOString() });
+  const nueva: Comunicacion = { ...input, id: uid(), fechaHora: new Date().toISOString() };
+  lista.push(nueva);
   escribir(K_COMS, lista);
+  const duenio = getCliente(input.clienteId);
+  if (duenio) remote.comunicaciones(duenio.empresaId, [nueva]);
   // Call center: registrar el contacto completa automáticamente las tareas
   // pendientes de ese colaborador sobre ese cliente.
   completarTareasPorContacto(input.clienteId, input.usuarioId, `${input.tipoContacto}: ${input.detalle.slice(0, 80)}`);
@@ -329,7 +367,7 @@ export function listarComunicacionesEmpresa(empresaId: string): (Comunicacion & 
 const K_TAREAS = "pa.tareas";
 
 export function colaboradoresDeEmpresa(empresaId: string): Usuario[] {
-  return USUARIOS.filter(
+  return USUARIOS_CACHE.filter(
     (u) => u.activo && (u.empresaId === empresaId || u.alcance === "grupo" ||
       (Array.isArray(u.alcance) && u.alcance.includes(empresaId)))
   );
@@ -361,6 +399,7 @@ export function crearTareas(
   );
   const hoy = new Date().toISOString();
   let creadas = 0;
+  const nuevasTareas: Tarea[] = [];
   for (const c of clientes) {
     if (yaPendientes.has(c.id)) continue;
     lista.push({
@@ -369,9 +408,13 @@ export function crearTareas(
       creadaPorNombre: creadaPor.nombre, fechaAsignacion: hoy,
       estado: "pendiente", fechaCompletada: null, resultado: null,
     });
+    nuevasTareas.push(lista[lista.length - 1]);
     creadas++;
   }
-  if (creadas) escribir(K_TAREAS, lista);
+  if (creadas) {
+    escribir(K_TAREAS, lista);
+    remote.tareas(empresaId, nuevasTareas);
+  }
   return creadas;
 }
 
@@ -381,18 +424,24 @@ export function completarTarea(tareaId: string, resultado: string) {
   if (i < 0 || lista[i].estado === "completada") return;
   lista[i] = { ...lista[i], estado: "completada", fechaCompletada: new Date().toISOString(), resultado };
   escribir(K_TAREAS, lista);
+  remote.tareas(lista[i].empresaId, [lista[i]]);
 }
 
 function completarTareasPorContacto(clienteId: string, usuarioId: string, resultado: string) {
   const lista = leer<Tarea>(K_TAREAS);
   let cambio = false;
+  const completadasT: Tarea[] = [];
   lista.forEach((t, i) => {
     if (t.clienteId === clienteId && t.asignadoId === usuarioId && t.estado === "pendiente") {
       lista[i] = { ...t, estado: "completada", fechaCompletada: new Date().toISOString(), resultado };
+      completadasT.push(lista[i]);
       cambio = true;
     }
   });
-  if (cambio) escribir(K_TAREAS, lista);
+  if (cambio) {
+    escribir(K_TAREAS, lista);
+    completadasT.forEach((t) => remote.tareas(t.empresaId, [t]));
+  }
 }
 
 // --- Gestión comercial (Fase 2) ---
@@ -458,6 +507,7 @@ export function importarAdjudicatarios(
   const lista = leer<Cliente>(K_CLIENTES);
   const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
   const hoy = new Date().toISOString();
+  const tocados: Cliente[] = [];
   filas.forEach((f, idx) => {
     if (!f.nombre) { rep.rechazados.push({ fila: idx + 1, motivo: "Sin nombre", nombre: "—" }); return; }
     const adjudicacion = {
@@ -472,6 +522,7 @@ export function importarAdjudicatarios(
         adjudicacion: { ...(lista[i].adjudicacion || {}), ...adjudicacion },
         solicitud: { ...lista[i].solicitud, modelo: f.modelo ?? lista[i].solicitud.modelo },
       };
+      tocados.push(lista[i]);
       rep.actualizados++;
     } else {
       lista.push({
@@ -482,10 +533,12 @@ export function importarAdjudicatarios(
         adjudicacion,
         pruebaManejo: null, necesidades: null, planId: null, presupuestoNombre: null, fechaVenta: null,
       });
+      tocados.push(lista[lista.length - 1]);
       rep.creados++;
     }
   });
   escribir(K_CLIENTES, lista);
+  remote.clientes(empresaId, tocados);
   return rep;
 }
 
@@ -497,6 +550,7 @@ export function importarGanadores(
   const lista = leer<Cliente>(K_CLIENTES);
   const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
   const hoy = new Date().toISOString();
+  const tocadosG: Cliente[] = [];
   filas.forEach((f, idx) => {
     if (!f.nombre) { rep.rechazados.push({ fila: idx + 1, motivo: "Sin nombre", nombre: "—" }); return; }
     const adjudicacion = {
@@ -512,6 +566,7 @@ export function importarGanadores(
         adjudicacion: { ...(lista[i].adjudicacion || {}), ...adjudicacion },
       };
       clienteId = lista[i].id;
+      tocadosG.push(lista[i]);
       rep.actualizados++;
     } else {
       clienteId = uid();
@@ -523,6 +578,7 @@ export function importarGanadores(
         adjudicacion,
         pruebaManejo: null, necesidades: null, planId: null, presupuestoNombre: null, fechaVenta: null,
       });
+      tocadosG.push(lista[lista.length - 1]);
       rep.creados++;
     }
     crearAlerta({
@@ -532,6 +588,7 @@ export function importarGanadores(
     });
   });
   escribir(K_CLIENTES, lista);
+  remote.clientes(empresaId, tocadosG);
   return rep;
 }
 
@@ -542,16 +599,20 @@ export function importarCtaCte(movs: Omit<MovimientoCtaCte, "id" | "empresaId">[
     `${m.fecha}|${m.codigo}|${m.importe}|${m.referencia}|${m.dc}`;
   const existentes = new Set(lista.filter((m) => m.empresaId === empresaId).map(clave));
   const rep: ReporteImportacion = { total: movs.length, creados: 0, actualizados: 0, rechazados: [] };
+  const nuevosMovs: MovimientoCtaCte[] = [];
   movs.forEach((m, idx) => {
     if (existentes.has(clave(m))) {
       rep.rechazados.push({ fila: idx + 1, motivo: "Duplicado (ya importado)", nombre: `${m.codigo} ${m.fecha}` });
       return;
     }
     existentes.add(clave(m));
-    lista.push({ ...m, id: uid(), empresaId });
+    const nuevo = { ...m, id: uid(), empresaId };
+    lista.push(nuevo);
+    nuevosMovs.push(nuevo);
     rep.creados++;
   });
   escribir(K_CTACTE, lista);
+  remote.ctacte(empresaId, nuevosMovs);
   return rep;
 }
 
@@ -568,6 +629,7 @@ export function importarAdh(
 ): ReporteImportacion {
   const lista = leer<Cliente>(K_CLIENTES);
   const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
+  const tocadosAdh: Cliente[] = [];
   filas.forEach((f, idx) => {
     const i = buscarPorGrupoOrden(lista, empresaId, f.grupo, f.orden);
     if (i < 0) {
@@ -581,9 +643,11 @@ export function importarAdh(
       provincia: f.provincia ?? lista[i].provincia,
       codigoPostal: f.codigoPostal ?? lista[i].codigoPostal,
     };
+    tocadosAdh.push(lista[i]);
     rep.actualizados++;
   });
   escribir(K_CLIENTES, lista);
+  remote.clientes(empresaId, tocadosAdh);
   return rep;
 }
 
@@ -640,6 +704,7 @@ export function registrarScoring(clienteId: string, usuario: Usuario, resultado:
   const lista = leer<ObservacionScoring>(K_OBS);
   lista.push(obs);
   escribir(K_OBS, lista);
+  remote.observaciones(c.empresaId, [obs]);
 
   if (OBSERVADO.includes(resultado)) {
     // Alerta al Analista de Suscripciones, Sup. de Administración y Sup. de Ventas del equipo.
@@ -667,6 +732,8 @@ export function gestionarObservacion(obsId: string, usuario: Usuario, resultado:
     gestionFechaHora: new Date().toISOString(), gestionUsuarioNombre: usuario.nombre,
   };
   escribir(K_OBS, lista);
+  const cliObs = getCliente(lista[i].clienteId);
+  if (cliObs) remote.observaciones(cliObs.empresaId, [lista[i]]);
   actualizarCliente(lista[i].clienteId, { estado: "gestionado" });
 }
 
@@ -685,8 +752,10 @@ export function etiquetaScoring(r: ResultadoScoring): string {
 // --- Alertas (campanita) ---
 export function crearAlerta(input: Omit<Alerta, "id" | "fecha" | "leidaPor">) {
   const lista = leer<Alerta>(K_ALERTAS);
-  lista.push({ ...input, id: uid(), fecha: new Date().toISOString(), leidaPor: [] });
+  const nueva: Alerta = { ...input, id: uid(), fecha: new Date().toISOString(), leidaPor: [] };
+  lista.push(nueva);
   escribir(K_ALERTAS, lista);
+  remote.alertas(input.empresaId, [nueva]);
 }
 
 export function listarAlertas(usuario: Usuario, empresaId: string | null): Alerta[] {
@@ -703,18 +772,24 @@ export function marcarAlertaLeida(alertaId: string, usuarioId: string) {
   if (i < 0 || lista[i].leidaPor.includes(usuarioId)) return;
   lista[i] = { ...lista[i], leidaPor: [...lista[i].leidaPor, usuarioId] };
   escribir(K_ALERTAS, lista);
+  remote.alertas(lista[i].empresaId, [lista[i]]);
 }
 export function marcarTodasLeidas(usuario: Usuario, empresaId: string | null) {
   const lista = leer<Alerta>(K_ALERTAS);
   let cambio = false;
+  const tocadas: Alerta[] = [];
   lista.forEach((a, i) => {
     const aplica = (!empresaId || a.empresaId === empresaId) && a.rolesDestino.some((r) => usuario.roles.includes(r));
     if (aplica && !a.leidaPor.includes(usuario.id)) {
       lista[i] = { ...a, leidaPor: [...a.leidaPor, usuario.id] };
+      tocadas.push(lista[i]);
       cambio = true;
     }
   });
-  if (cambio) escribir(K_ALERTAS, lista);
+  if (cambio) {
+    escribir(K_ALERTAS, lista);
+    tocadas.forEach((a) => remote.alertas(a.empresaId, [a]));
+  }
 }
 
 // --- Importación de la cartera (Novedades) — upsert ---
