@@ -1,0 +1,23 @@
+# Dependencias
+node_modules/
+dist/
+
+# Variables de entorno (contienen CUIT, credenciales, etc.)
+.env
+.env.local
+.env.*.local
+
+# ⚠️ Certificado y clave privada de ARCA: NUNCA se commitean
+certs/*.crt
+certs/*.key
+certs/*.pem
+certs/*.p12
+certs/*.pfx
+
+# Base de datos local, tickets de acceso cacheados, PDFs y logs generados
+data/*.db
+data/*.db-*
+data/ta-*.xml
+data/comprobantes/
+data/logs/
+*.log
