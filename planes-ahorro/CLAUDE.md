@@ -324,6 +324,30 @@ y domicilio** del adherente.
 
 ---
 
+## 5.bis.7 Herramienta "Anexo Adjudicado" del cliente (HTML, 2026-07-03) → Cotizador
+
+El cliente entregó una herramienta HTML propia que digitaliza la planilla de adjudicados.
+**Resuelve gran parte de N1**: sus reglas quedaron portadas al sistema en `src/lib/cotizador.ts`
++ página **/cotizador** (con acceso directo desde la ficha en estadio Adjudicación).
+
+**Fórmulas portadas (verificadas con paridad exacta contra la herramienta, caso 11405/6):**
+- `pagas = round(emitidas + adelanto + licitadas)` · `aVencer = totCuotas − pagas`
+- VM del plan = precio vigente del modelo (promo si hay, si no lista).
+- Alícuota extraordinaria: plan 70/30 → 30% VM · plan 80/20 → 20% VM, ambas × 1,0125.
+- `saldo = ((VM − alícuota) / totCuotas) × aVencer` · `derecho adj. = VM × 1,21% + $1`
+- Gestoría: tabla exacta por precio (`gest`) o ratio — **Neuquén 2,33%/3,03%, Río Negro
+  2,95%/3,65%** (nacional/importado). Inscripción = gestoría + $5.000 + $4.950 fijos.
+- Sellado: **NQN 1,4% / RN 2%** del precio. Prenda: **2,8% del saldo** (0 si cancelado).
+- Diferencia de modelo = precio SEQ − VM (0 si mismo modelo; variante con precio promo).
+- Extra = max(0, alícuota pendiente + diferencia). Totales: concesionario = gastos + flete +
+  derecho + extra; cliente (si patenta él) = $280.650 fijos + flete + derecho + extra.
+- Requisitos/documentación: 12 textos según combinación `pagas + %plan + cuotas` (tabla `req`).
+
+**Datos:** `src/data/cotizador-db.json` (act 3.700 planes por grupo/orden, 114 códigos de plan,
+58 precios/SEQ, tabla gestoría, requisitos — **sin datos personales**). Actualización embebida:
+**07/07/2026**; se refresca reemplazando el JSON (a futuro: derivarlo de las importaciones de
+cartera + lista de precios). Jurisdicciones configurables en `PARAMS` (N2).
+
 ## 5.ter. Mapa del sistema actual (SIGNOS Gestión) → sistema nuevo (capturas 2026-07-02)
 
 El cliente compartió capturas de los menús de SIGNOS. Equivalencias y estado:

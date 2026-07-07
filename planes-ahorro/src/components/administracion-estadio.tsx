@@ -184,10 +184,20 @@ function EstadioForm({ cliente, estadio, onCambio }: { cliente: Cliente; estadio
         </p>
       )}
       {estadio === "adjudicacion" && (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {campoTexto("Requisitos crediticios informados", "adjRequisitos")}
-          {campoTexto("Pagos a realizar", "adjPagos")}
-          {check("Informado al cliente", "adjInformado")}
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {campoTexto("Requisitos crediticios informados", "adjRequisitos")}
+            {campoTexto("Pagos a realizar", "adjPagos")}
+            {check("Informado al cliente", "adjInformado")}
+          </div>
+          {cliente.solicitud.grupo && cliente.solicitud.orden && (
+            <a
+              href={`/cotizador?grupo=${encodeURIComponent(cliente.solicitud.grupo)}&orden=${encodeURIComponent(cliente.solicitud.orden)}`}
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary underline"
+            >
+              Abrir cotizador del adjudicado (requisitos, alícuota y gastos) →
+            </a>
+          )}
         </div>
       )}
       {estadio === "pedido" && (
