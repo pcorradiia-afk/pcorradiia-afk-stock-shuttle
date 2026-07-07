@@ -6,8 +6,9 @@ import { useSesion } from "@/lib/session";
 import { tienePermiso } from "@/lib/roles";
 import {
   inicializar, suscribir, listarClientes, vendedoresDeEmpresa,
-  listarObservacionesEmpresa, ESTADIOS_ORDEN, etiquetaScoring, getPlan,
+  listarObservacionesEmpresa, ESTADIOS_ORDEN, etiquetaScoring, getPlan, listarComunicaciones,
 } from "@/lib/store";
+import { esRescindido } from "@/lib/gestiones";
 import { exportarExcel } from "@/lib/exportar";
 import { ESTADIO_LABEL, ESTADO_LABEL, fechaHora } from "@/lib/labels";
 import type { Cliente } from "@/lib/types";
@@ -48,8 +49,17 @@ export default function InformesPage() {
   }, [empresaActivaId, usuarioActivo, desde, hasta, vendedorId, estado, tick]);
 
   const embudo = useMemo(
-    () => ESTADIOS_ORDEN.map((e) => ({ estadio: e, cantidad: clientes.filter((c) => c.estadio === e).length })),
+    () => ESTADIOS_ORDEN.map((e) => ({
+      estadio: e,
+      cantidad: clientes.filter((c) => c.estadio === e && !esRescindido(c)).length,
+    })),
     [clientes]
+  );
+
+  // Rescindidos: fuera de gestiones y embudo, pero listados acá para una eventual reactivación.
+  const rescindidos = useMemo(
+    () => (empresaActivaId && usuarioActivo ? listarClientes(empresaActivaId, {}, usuarioActivo).filter(esRescindido) : []),
+    [empresaActivaId, usuarioActivo, tick]
   );
   const maxEmbudo = Math.max(1, ...embudo.map((e) => e.cantidad));
 
@@ -278,6 +288,80 @@ export default function InformesPage() {
               )}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      {/* Rescindidos (fuera de gestiones por decisión del cliente; acá para reactivación) */}
+      <Card>
+        <CardHeader className="flex-row items-start justify-between space-y-0">
+          <div>
+            <CardTitle className="text-base">Rescindidos — {rescindidos.length}</CardTitle>
+            <CardDescription>
+              Contratos rescindidos según FIS. No aparecen en las gestiones ni en el embudo;
+              esta lista sirve para una eventual campaña de reactivación.
+            </CardDescription>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={rescindidos.length === 0}
+            onClick={() =>
+              exportarExcel(
+                rescindidos.map((c) => {
+                  const ultima = listarComunicaciones(c.id)[0];
+                  return {
+                    "Nombre": c.nombreCompleto,
+                    "Teléfono": c.telefono ?? "",
+                    "Email": c.email ?? "",
+                    "Grupo": c.solicitud.grupo ?? "",
+                    "Orden": c.solicitud.orden ?? "",
+                    "N° solicitud": c.solicitud.nroSolicitud ?? "",
+                    "Modelo": c.solicitud.modelo ?? "",
+                    "Cuotas pagas": c.solicitud.pagas ?? "",
+                    "Cuotas emitidas": c.solicitud.emitidas ?? "",
+                    "Fecha agrupamiento": c.solicitud.fechaAgrupo ?? "",
+                    "Última gestión": ultima ? fechaHora(ultima.fechaHora) : "",
+                    "Detalle última gestión": ultima?.detalle ?? "",
+                  };
+                }),
+                "rescindidos-reactivacion"
+              )
+            }
+          >
+            <Download className="h-4 w-4" /> Excel
+          </Button>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Cliente</TableHead>
+                <TableHead>Teléfono</TableHead>
+                <TableHead>Grupo/Orden</TableHead>
+                <TableHead>Modelo</TableHead>
+                <TableHead>Cuotas pagas</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rescindidos.slice(0, 15).map((c) => (
+                <TableRow key={c.id}>
+                  <TableCell className="font-medium">
+                    <Link href={`/clientes/${c.id}`} className="hover:underline">{c.nombreCompleto}</Link>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{c.telefono ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{c.solicitud.grupo ?? "—"}/{c.solicitud.orden ?? "—"}</TableCell>
+                  <TableCell className="text-muted-foreground">{c.solicitud.modelo ?? "—"}</TableCell>
+                  <TableCell>{c.solicitud.pagas ?? "—"} / {c.solicitud.emitidas ?? "—"}</TableCell>
+                </TableRow>
+              ))}
+              {rescindidos.length === 0 && (
+                <TableRow><TableCell colSpan={5} className="py-6 text-center text-muted-foreground">No hay rescindidos en la cartera.</TableCell></TableRow>
+              )}
+            </TableBody>
+          </Table>
+          {rescindidos.length > 15 && (
+            <p className="mt-2 text-sm text-muted-foreground">Mostrando 15 de {rescindidos.length}. Bajá el Excel para la lista completa.</p>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useSesion } from "@/lib/session";
 import { tienePermiso, nombreRol } from "@/lib/roles";
-import { USUARIOS, empresaPorId } from "@/lib/demo-data";
+import { empresaPorId } from "@/lib/demo-data";
+import { listarUsuariosCache } from "@/lib/store";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,7 +53,7 @@ export default function UsuariosPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {USUARIOS.map((u) => (
+            {listarUsuariosCache().map((u) => (
               <TableRow key={u.id}>
                 <TableCell className="font-medium">{u.nombre}</TableCell>
                 <TableCell className="text-muted-foreground">{u.email}</TableCell>

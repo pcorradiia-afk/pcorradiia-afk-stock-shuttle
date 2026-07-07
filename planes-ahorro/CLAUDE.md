@@ -12,7 +12,7 @@
 | Fase | Descripción | Estado |
 |---|---|---|
 | **Planificación** | Plan de fases, modelo de datos, matriz de permisos | ✅ **Entregado (este archivo) — pendiente de aprobación del cliente** |
-| Fase 0 | Base: Next.js + Supabase, login, multiempresa, usuarios/roles, super admin, impersonar | ✅ **Hecho (modo demo)** — app Next.js funcionando, login, selector de empresa, usuarios, matriz de roles e impersonar; esquema SQL + RLS listos en `supabase/`. Falta conectar Supabase real. |
+| Fase 0 | Base: Next.js + Supabase, login, multiempresa, usuarios/roles, super admin, impersonar | ✅ **Hecho — integración Supabase COMPLETA en el código (2026-07-03)**: esquema total en `supabase/migrations/0001_esquema_completo.sql` (organización + negocio en jsonb con columnas generadas para unicidad de N° solicitud/documento + RLS por empresa/terciarizada/vendedor + función `alta_usuario()`), login real con contraseña (Supabase Auth) y restauración de sesión, carga de datos por empresa a caché local (`sync.ts`), **write-through** de cada mutación a la nube (`remote.ts`, solo filas tocadas, con aviso si falla), usuarios desde la base (caché), indicador "Sincronizando…". **Sin variables de entorno sigue en modo demo** (regresión verificada). **Pendiente del cliente:** crear el proyecto Supabase y seguir `SETUP-SUPABASE.md` (15 min). Nota: los datos demo no migran solos — se reimportan los archivos; concurrencia v1 = último guardado gana por ficha. |
 | Fase 1 | Núcleo: ficha cliente, bitácora, importación Ford, unicidad DNI/N° solicitud, asignación a vendedor | ✅ **Hecho (modo demo)** — listado de ahorristas con filtros, ficha + **bitácora** cronológica, alta de lead con **documento único** (sugiere el existente), **importación de LOS 5 ARCHIVOS del sistema actual** con detección automática de tipo (2026-07-02, pedido del cliente): **Novedades** (cartera, upsert por N° solicitud/grupo+orden), **Adjudicatarios sin pedido** (→ estadio Pedido con aging/observaciones/puede-pedir), **Ganadores de acto** (→ Adjudicación + alerta a Administración; soporta UTF-16/32), **cta_cte** (posicional 82 chars → módulo Cuenta corriente con resumen por concepto y export) y **adh** (posicional 269 chars, layout empírico BETA → enriquece domicilio/localidad/provincia/CP de clientes existentes; teléfono omitido por ambigüedad — pedir diseño de registro, N5). Falta backend real y remapeo manual de columnas. |
 | Fase 2 | Ventas: recepción, vendedor, presupuestos, planes, cierre, reasignación, supervisión | ✅ **Hecho (modo demo)** — **catálogo de planes** (ABM), **asignación/reasignación** de vendedor, **gestión comercial** del vendedor (prueba de manejo, necesidades, plan, presupuesto), **cierre de venta** con datos obligatorios (DNI/CUIT + tel + email + N° solicitud) que pasa el caso a Administración (scoring), y **tablero de supervisión de ventas** (por vendedor, efectividad, leads pendientes). |
 | Fase 3 | Administración por estadios (Scoring → … → Entrega) | 🟡 **Parcial (modo demo)** — panel de **estadios** en la ficha, **Scoring** con resultados y **alertas** (campanita + /alertas) al observar, **gestión de la observación** por Sup. de ventas, formularios de Adjudicación/Pedido/Patentamiento/Entrega, **avance entre estadios**, accesos por `acceso_estadio` y restricción **terciarizada**. Pendiente: reglas de **Agrupamiento** (N3/§6.2, hoy mínimo) y el **motor de cálculo** de patentamiento/requisitos (N1). |
@@ -352,6 +352,15 @@ cartera + lista de precios). Jurisdicciones configurables en `PARAMS` (N2).
 
 El cliente compartió capturas de los menús de SIGNOS. Equivalencias y estado:
 
+**Módulo Call Center (pedido del cliente 2026-07-03):** página **/call-center** con
+(1) **Asignar tareas**: un supervisor (super admin / sup. ventas / sup. administración, permiso
+`callcenter.asignar`) reparte N clientes de una gestión a un colaborador — sin duplicar
+pendientes del mismo tipo; (2) **Mis tareas**: cola personal de cada colaborador; la tarea se
+**completa sola** al registrar el contacto en la bitácora (o manualmente); la ficha muestra un
+aviso de tarea pendiente; (3) **Rendimiento del equipo**: llamados por colaborador **por día**
+(últimos 7), tareas pendientes/completadas, última actividad y **export "Excel actividad"**
+con toda la bitácora de la empresa. Tabla `Tarea` en el store.
+
 | SIGNOS | Sistema nuevo | Estado |
 |---|---|---|
 | **Opciones de Gestión** (Bienvenida, Altos Ahorros, Ganadores, Incentivo de Licitaciones, Mora Temprana, Mora, Adjudicados sin Pedido) | Página **/gestiones**: colas de llamados por campaña con contador, dato clave, última gestión del anotador y próxima acción | ✅ Hecho (umbrales provisorios, ver abajo) |
@@ -510,7 +519,7 @@ Output Directory `dist` del panel fue desactivado — venía heredado del `verce
 | N1 | **Motor de cálculo de la planilla** (gastos de patentamiento, requisitos, licitación, hoja de pedido): ¿se replica dentro del sistema en Fase 3? Es alcance significativo. | ⏳ A confirmar prioridad |
 | N2 | **Jurisdicciones de patentamiento** a cubrir (hoy Neuquén y Río Negro) y quién mantiene los valores de arancel/sellado. | ⏳ A confirmar |
 | N3 | Archivos recibidos (2026-06-25): cartera **Novedades** (§5.bis.1), **planilla** (§5.bis.2), **Adjudicatarios sin pedido** (§5.bis.3), **Ganadores de acto** (§5.bis.4), **cta cte concesionario** (§5.bis.5), **movimiento por adherente** (§5.bis.6). Falta: **lista de precios** como archivo aparte (por ahora se toma de la solapa Precio). | ✅ En su mayoría recibidos |
-| N4 | Mapeo de **STATUS de cartera → estadio** del cliente (códigos 2/4/9/…). | ⏳ A definir con el cliente |
+| N4 | Mapeo de **STATUS de cartera → estadio** del cliente. **Status reales confirmados por el cliente (2026-07-03, tabla dinámica):** ADJUD DEF C/DESV (36) · ADJUD DEF AL DIA (297) · ADJUD PEND AL DIA (9) · AHORRISTA AL DIA (520) · AHORRISTA EN MORA (27) · RESCINDIDO (161). La gestión **Mora** ahora usa el status oficial "AHORRISTA EN MORA"; "Mora temprana" = AL DIA con impagas ≥1 (a confirmar). **RESCINDIDO (decisión del cliente 2026-07-03):** excluidos de todas las gestiones y del embudo; listados en **Informes → "Rescindidos"** con Excel (datos de contacto + cuotas pagas) para una eventual campaña de reactivación. | 🟡 Parcial |
 | N5 | **Layout posicional** del archivo `adh_*.txt` (§5.bis.6): hace falta el diseño de registro para parsearlo. | ⏳ Pedir al cliente |
 | N6 | `cta_cte_*.txt` es la cuenta de la **concesionaria con la administradora**, no del cliente. ¿Entra en alcance (finanzas/conciliación) o queda fuera? | ⏳ A confirmar |
 

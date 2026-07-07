@@ -69,20 +69,22 @@ export const GESTIONES: GestionDef[] = [
   {
     tipo: "mora_temprana",
     titulo: "Mora temprana (del mes)",
-    descripcion: "Clientes con exactamente 1 cuota impaga: recordatorio suave. (Umbral A CONFIRMAR)",
+    descripcion: "Ahorristas AL DÍA según FIS pero con cuota(s) impaga(s): recordatorio antes de que pasen a mora. (Criterio A CONFIRMAR)",
     columnaDato: "Impagas",
     dato: (c) => String(c.solicitud.impagas ?? "—"),
-    filtro: (c) => c.solicitud.impagas === 1,
+    filtro: (c) =>
+      (c.solicitud.statusDesc || "").toUpperCase().includes("AHORRISTA AL DIA") &&
+      (c.solicitud.impagas ?? 0) >= 1,
     fechaLabel: "fecha de agrupamiento",
     fechaDe: (c) => c.solicitud.fechaAgrupo ?? null,
   },
   {
     tipo: "mora",
     titulo: "Mora",
-    descripcion: "Clientes con 2 o más cuotas impagas: gestión de mora. (Umbral A CONFIRMAR)",
+    descripcion: "Clientes con status \"AHORRISTA EN MORA\" en la cartera de FIS (status oficial, 2026-07-03).",
     columnaDato: "Impagas",
     dato: (c) => String(c.solicitud.impagas ?? "—"),
-    filtro: (c) => (c.solicitud.impagas ?? 0) >= 2,
+    filtro: (c) => (c.solicitud.statusDesc || "").toUpperCase().includes("EN MORA"),
     fechaLabel: "fecha de agrupamiento",
     fechaDe: (c) => c.solicitud.fechaAgrupo ?? null,
   },
@@ -138,7 +140,12 @@ export const GESTIONES: GestionDef[] = [
   },
 ];
 
+/** RESCINDIDOS: excluidos de todas las gestiones (decisión del cliente 2026-07-03).
+ *  Quedan visibles en Informes → "Rescindidos" para una eventual reactivación. */
+export const esRescindido = (c: Cliente) =>
+  (c.solicitud.statusDesc || "").toUpperCase().includes("RESCIND");
+
 export function colaGestion(clientes: Cliente[], tipo: GestionTipo): Cliente[] {
   const def = GESTIONES.find((g) => g.tipo === tipo)!;
-  return clientes.filter(def.filtro);
+  return clientes.filter((c) => !esRescindido(c)).filter(def.filtro);
 }

@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Building2, Users, ShieldCheck, LogOut, UserCog, X, Contact, Upload,
-  Package, TrendingUp, Bell, BarChart3, Landmark, PhoneCall, Calculator,
+  Package, TrendingUp, Bell, BarChart3, Landmark, PhoneCall, Headphones, Calculator,
 } from "lucide-react";
 import { useSesion } from "@/lib/session";
 import { tienePermiso, nombreRol, type Permiso } from "@/lib/roles";
@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
   { href: "/dashboard", label: "Tablero", icon: LayoutDashboard },
   { href: "/clientes", label: "Ahorristas", icon: Contact, permiso: "clientes.ver" },
   { href: "/gestiones", label: "Gestiones", icon: PhoneCall, permiso: "clientes.ver" },
+  { href: "/call-center", label: "Call center", icon: Headphones, permiso: "clientes.ver" },
   { href: "/cotizador", label: "Cotizador adjudicados", icon: Calculator, permiso: "clientes.ver" },
   { href: "/ventas", label: "Supervisión de ventas", icon: TrendingUp, permiso: "ventas.supervisar" },
   { href: "/informes", label: "Informes", icon: BarChart3, permiso: "informes.ver" },
@@ -41,7 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const {
-    usuarioReal, usuarioActivo, impersonando, empresaActivaId,
+    usuarioReal, usuarioActivo, impersonando, empresaActivaId, cargandoDatos,
     setEmpresaActiva, logout, dejarDeImpersonar,
   } = useSesion();
 
@@ -139,6 +140,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span className="text-xs text-muted-foreground">
                 CUIT {empresaPorId(empresaActivaId)?.cuit}
               </span>
+            )}
+            {cargandoDatos && (
+              <span className="animate-pulse text-xs font-medium text-primary">Sincronizando…</span>
             )}
           </div>
           <div className="flex items-center gap-1">
