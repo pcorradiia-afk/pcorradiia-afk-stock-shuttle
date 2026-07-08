@@ -14,7 +14,7 @@ insert into public.perfiles (email, nombre, rol_id, scope, empresa_ids, cargo, a
 values (
   'nicolas.romero.dit@gmail.com',
   'Nicolás Romero',
-  'controller',   -- rol: importar, analizar y armar tableros. Cambiá a 'superadmin' si querés que administre usuarios/empresas.
+  'superadmin',   -- acceso total: configurar empresas, usuarios y roles (igual que Fernando y Diego).
   'grupo',        -- alcance: ve todas las empresas del grupo.
   '{}',           -- si scope = 'empresas', poné acá los ids, ej: '{e1,e2}'. Con scope 'grupo' se ignora.
   'Control de gestión · IA y automatización',
