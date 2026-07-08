@@ -132,14 +132,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (vivo) setCargando(false);
       });
 
-    const { data: sub } = sb.auth.onAuthStateChange(async (evento, session) => {
+    const { data: sub } = sb.auth.onAuthStateChange((evento, session) => {
       if (evento === "SIGNED_OUT") {
         if (vivo) setUsuario(null);
         return;
       }
       if (evento === "SIGNED_IN") {
-        const u = await cargarPerfil(session?.user?.email);
-        if (vivo) setUsuario(u);
+        // IMPORTANTE: el callback de onAuthStateChange corre con el lock interno
+        // de gotrue tomado. Si acá adentro esperamos (await) otra consulta a
+        // Supabase (que necesita ese mismo lock), se produce un deadlock y
+        // signInWithPassword nunca resuelve → el login queda "pensando".
+        // Por eso diferimos el trabajo fuera del callback con setTimeout(0).
+        const email = session?.user?.email;
+        setTimeout(() => {
+          void cargarPerfil(email).then((u) => {
+            if (vivo) setUsuario(u);
+          });
+        }, 0);
       }
     });
 
@@ -176,7 +185,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function loginReal(email: string, password: string): Promise<string | null> {
     const sb = getSupabase();
     if (!sb) return "Supabase no está configurado.";
-    const { data, error } = await sb.auth.signInWithPassword({ email: email.trim(), password });
+    // Failsafe: si la red o Supabase no responden, no dejamos el botón girando
+    // para siempre; abortamos a los 20s para que el usuario pueda reintentar.
+    let timer: ReturnType<typeof setTimeout>;
+    const timeout = new Promise<never>((_, rej) => {
+      timer = setTimeout(() => rej(new Error("__timeout__")), 20000);
+    });
+    let data: Awaited<ReturnType<typeof sb.auth.signInWithPassword>>["data"];
+    let error: Awaited<ReturnType<typeof sb.auth.signInWithPassword>>["error"];
+    try {
+      const res = await Promise.race([
+        sb.auth.signInWithPassword({ email: email.trim(), password }),
+        timeout,
+      ]);
+      data = res.data;
+      error = res.error;
+    } catch {
+      return "Sin respuesta del servidor. Revisá tu conexión e intentá de nuevo.";
+    } finally {
+      clearTimeout(timer!);
+    }
     if (error) {
       return error.message === "Invalid login credentials"
         ? "Email o contraseña incorrectos."
