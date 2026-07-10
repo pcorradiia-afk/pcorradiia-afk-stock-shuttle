@@ -7,6 +7,7 @@
 // src/data/cotizador-db.json y se refrescan reemplazando ese archivo (mensual).
 
 import DB_JSON from "@/data/cotizador-db.json";
+import { getMeta } from "./store";
 
 export interface CotizadorDB {
   act: Record<string, [number, number, string, number, string]>; // "grupo/orden" → [adelanto, licitadas, pct, emitidas, codPlan]
@@ -66,13 +67,36 @@ function valorMovilDe(desc: string): number {
   return 0;
 }
 
+/**
+ * Actualización vigente: si la empresa importó la cartera (Novedades), esos datos
+ * pisan a los embebidos (y lo que no esté en la cartera cae a la base embebida).
+ */
+export function actualizacionVigente(empresaId?: string | null): { act: CotizadorDB["act"]; fecha: string; importada: boolean } {
+  if (empresaId) {
+    try {
+      const raw = getMeta(`cotizadorAct:${empresaId}`);
+      if (raw) {
+        const overlay = JSON.parse(raw) as CotizadorDB["act"];
+        if (overlay && Object.keys(overlay).length > 0) {
+          const iso = getMeta(`carteraActualizada:${empresaId}`);
+          const fecha = iso ? new Date(iso).toLocaleDateString("es-AR") : FECHA_DATOS;
+          return { act: { ...DB.act, ...overlay }, fecha, importada: true };
+        }
+      }
+    } catch {
+      /* cae a la base embebida */
+    }
+  }
+  return { act: DB.act, fecha: FECHA_DATOS, importada: false };
+}
+
 /** Busca el plan por grupo/orden en la actualización vigente. */
-export function buscarPlan(grupo: string, orden: string): { ok: true; plan: PlanAdjudicado } | { ok: false; error: string } {
-  const g = grupo.trim();
+export function buscarPlan(grupo: string, orden: string, empresaId?: string | null): { ok: true; plan: PlanAdjudicado } | { ok: false; error: string } {
+  const g = grupo.trim().replace(/^0+(?=\d)/, "");
   const o = orden.trim().replace(/^0+(?=\d)/, "");
   if (!g || !o) return { ok: false, error: "Ingresá grupo y orden." };
   const key = `${g}/${o}`;
-  const a = DB.act[key];
+  const a = actualizacionVigente(empresaId).act[key];
   if (!a) return { ok: false, error: `No se encontró el plan ${key} en la actualización vigente.` };
   const [adelanto, lic, pct, emi, codPlan] = a;
   const m = DB.mods[codPlan];

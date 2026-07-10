@@ -28,6 +28,7 @@ export const MAPEO_NOVEDADES: Record<keyof FilaCartera, string[]> = {
   impagas: ["IMPAGA", "Impaga"],
   licito: ["LICITO", "Lic"],
   adelanto: ["ADELANTO", "Adelanto"],
+  porcentaje: ["PORCENTAJE", "Porcentaje"],
   debCred: ["DEB_CRED"],
 };
 
@@ -82,6 +83,7 @@ export function mapearFilas(registros: Registro[], headers: string[]): FilaCarte
     impagas: parseNumero(get(r, "impagas")),
     licito: parseNumero(get(r, "licito")),
     adelanto: parseNumero(get(r, "adelanto")),
+    porcentaje: parseNumero(get(r, "porcentaje")),
     debCred: limpiar(get(r, "debCred")),
   }));
 }

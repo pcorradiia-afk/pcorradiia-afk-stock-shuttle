@@ -381,6 +381,14 @@ con toda la bitácora de la empresa. Tabla `Tarea` en el store.
 La cartera ahora captura además: FECHA_AGRUPO, EMITIDAS, PAGA, IMPAGA, LICITO, ADELANTO,
 DEB_CRED (alimentan las colas).
 
+### 5.bis.8 Cotizador del adjudicado — actualización automática (2026-07-10)
+La importación mensual de **Novedades** ahora también refresca la base del Cotizador
+(`meta.cotizadorAct:{empresaId}`: grupo/orden → adelanto, licitadas, %, emitidas, código de
+modelo; sincronizada por la nube). El Cotizador combina esa cartera importada (prioridad) con
+la base embebida `src/data/cotizador-db.json` (fallback) y muestra fecha y fuente. **Sigue
+embebido** (recambio técnico mensual): catálogo de modelos/planes nuevos, lista de precios,
+SEQ, gestoría y textos de requisitos.
+
 ## 6. Flujo de trabajo y estadios
 
 Orden: **Scoring de ventas → Agrupamiento → Gestión de cliente → Adjudicación → Pedido →

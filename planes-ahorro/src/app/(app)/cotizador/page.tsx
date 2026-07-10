@@ -4,9 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useSesion } from "@/lib/session";
 import { tienePermiso } from "@/lib/roles";
 import {
-  DB, FECHA_DATOS, buscarPlan, cotizarSeq, seqDelPlan,
+  DB, buscarPlan, cotizarSeq, seqDelPlan, actualizacionVigente,
   type PlanAdjudicado, type Provincia,
 } from "@/lib/cotizador";
+import { suscribir } from "@/lib/store";
 import { pesos } from "@/lib/labels";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,7 +18,9 @@ import { Calculator, Search, Printer } from "lucide-react";
 const $n = (v: number | null | undefined) => (v == null ? "—" : pesos(Math.round(v)));
 
 export default function CotizadorPage() {
-  const { usuarioActivo } = useSesion();
+  const { usuarioActivo, empresaActivaId } = useSesion();
+  const [tick, setTick] = useState(0);
+  useEffect(() => suscribir(() => setTick((t) => t + 1)), []);
   const [grupo, setGrupo] = useState("");
   const [orden, setOrden] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +43,7 @@ export default function CotizadorPage() {
 
   const ejecutarBusqueda = (g: string, o: string) => {
     setError(null);
-    const r = buscarPlan(g, o);
+    const r = buscarPlan(g, o, empresaActivaId);
     if (!r.ok) { setError(r.error); setPlan(null); return; }
     setPlan(r.plan);
     setAlicPagada(false);
@@ -51,6 +54,11 @@ export default function CotizadorPage() {
   const cotizaciones = useMemo(
     () => (plan ? seqs.map((s) => cotizarSeq(plan, s, { prov, cancelado, alicuotaPagada: alicPagada })) : []),
     [plan, seqs, prov, cancelado, alicPagada]
+  );
+
+  const fuente = useMemo(
+    () => actualizacionVigente(empresaActivaId),
+    [empresaActivaId, tick]
   );
 
   const opcionesSeq = useMemo(
@@ -70,7 +78,10 @@ export default function CotizadorPage() {
           <h1 className="flex items-center gap-2 text-2xl font-bold"><Calculator className="h-6 w-6" /> Cotizador del adjudicado</h1>
           <p className="text-muted-foreground">
             Requisitos, alícuota, cambio de modelo y gastos de patentamiento por jurisdicción.
-            Datos de la actualización del <strong>{FECHA_DATOS}</strong>.
+            Datos de la actualización del <strong>{fuente.fecha}</strong>{" "}
+            {fuente.importada
+              ? <Badge variant="success">cartera importada</Badge>
+              : <Badge variant="secondary">planilla embebida — importá el Novedades para actualizar</Badge>}.
           </p>
         </div>
         {plan && (
@@ -201,7 +212,7 @@ export default function CotizadorPage() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            Los valores son estimativos, sujetos a disponibilidad y a la actualización vigente ({FECHA_DATOS}).
+            Los valores son estimativos, sujetos a disponibilidad y a la actualización vigente ({fuente.fecha}).
             Parámetros: gestoría Neuquén 2,33%/3,03% y Río Negro 2,95%/3,65% (nacional/importado) con tabla
             exacta cuando existe, sellado 1,4%/2%, prenda 2,8% del saldo, adicional gestoría {$n(5000)} y
             gastos fijos {$n(4950)}.

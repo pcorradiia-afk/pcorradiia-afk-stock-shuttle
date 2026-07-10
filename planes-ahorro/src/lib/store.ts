@@ -811,6 +811,7 @@ export interface FilaCartera {
   impagas: number | null;
   licito: number | null;
   adelanto: number | null;
+  porcentaje: number | null;
   debCred: string | null;
 }
 
@@ -901,6 +902,19 @@ export function importarCartera(filas: FilaCartera[], empresaId: string): Report
   });
 
   escribir(K_CLIENTES, lista);
-  setMeta(`carteraActualizada:${empresaId}`, hoy);
+  setMeta(`carteraActualizada:${empresaId}`, hoy, empresaId);
+
+  // La misma cartera actualiza la base del Cotizador del adjudicado:
+  // "grupo/orden" → [adelanto, licitadas, pct, emitidas, codPlan] (formato de cotizador-db).
+  const actCotizador: Record<string, [number, number, string, number, string]> = {};
+  for (const f of filas) {
+    if (!f.grupo || !f.orden || !f.modelo) continue;
+    const key = `${normGO(f.grupo)}/${normGO(f.orden)}`;
+    const pct = f.porcentaje == null ? "100,00" : f.porcentaje.toFixed(2).replace(".", ",");
+    actCotizador[key] = [f.adelanto ?? 0, f.licito ?? 0, pct, f.emitidas ?? 0, f.modelo];
+  }
+  if (Object.keys(actCotizador).length) {
+    setMeta(`cotizadorAct:${empresaId}`, JSON.stringify(actCotizador), empresaId);
+  }
   return rep;
 }
