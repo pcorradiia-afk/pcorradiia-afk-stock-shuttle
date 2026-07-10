@@ -53,14 +53,13 @@ import { cn } from "@/lib/utils";
 const OPERATIVOS: { key: string; label: string; color: string }[] = [
   { key: "0km", label: "Unidades 0km", color: "#2563eb" },
   { key: "usados", label: "Unidades usados", color: "#7c3aed" },
-  { key: "planes_susc", label: "Suscripciones de planes", color: "#16a34a" },
-  { key: "planes_ent", label: "Entregas de planes", color: "#059669" },
+  { key: "planes", label: "Planes de Ahorro", color: "#16a34a" },
   { key: "unidades", label: "Unidades · g. comunes", color: "#0ea5e9" },
   { key: "repuestos", label: "Repuestos", color: "#ca8a04" },
   { key: "posventa", label: "Servicios / Taller", color: "#0891b2" },
 ];
 // Destinos del prorrateo de los gastos comunes de Unidades (depto "unidades").
-const DESTINOS_PRORRATEO = ["0km", "usados", "planes_susc", "planes_ent"] as const;
+const DESTINOS_PRORRATEO = ["0km", "usados", "planes"] as const;
 // Columnas que se muestran: "unidades" (comunes) se prorratea y desaparece.
 const OPERATIVOS_VIEW = OPERATIVOS.filter((d) => d.key !== "unidades");
 const NO_OPERATIVOS: { key: string; label: string }[] = [
@@ -133,8 +132,9 @@ export function Rentabilidad() {
     if (key === "0km" && ventas.payload?.unidades) {
       return `${num(ventas.payload.unidades)} un · ${moneyShort(ventas.payload.precioProm)} prom`;
     }
-    if (key === "planes_susc" && uPlanes.suscripciones) return `${uPlanes.suscripciones} susc`;
-    if (key === "planes_ent" && uPlanes.entregas) return `${uPlanes.entregas} entr`;
+    if (key === "planes" && (uPlanes.suscripciones || uPlanes.entregas)) {
+      return `${uPlanes.suscripciones} susc · ${uPlanes.entregas} entr`;
+    }
     return "";
   };
 
@@ -237,23 +237,12 @@ export function Rentabilidad() {
   const pesos = (per: string | null): Record<string, number> => {
     if (criterio.modo === "manual") {
       const t = criterio.pct["0km"] + criterio.pct.usados + criterio.pct.planes || 1;
-      // El peso manual de "planes" se reparte entre suscripciones y entregas
-      // según las ventas de cada uno (50/50 si todavía no hay ventas cargadas).
-      const pl = criterio.pct.planes / t;
-      const vs = Math.max(0, celda("planes_susc", per).ingresos);
-      const ve = Math.max(0, celda("planes_ent", per).ingresos);
-      const tv = vs + ve;
-      return {
-        "0km": criterio.pct["0km"] / t,
-        usados: criterio.pct.usados / t,
-        planes_susc: tv ? pl * (vs / tv) : pl / 2,
-        planes_ent: tv ? pl * (ve / tv) : pl / 2,
-      };
+      return { "0km": criterio.pct["0km"] / t, usados: criterio.pct.usados / t, planes: criterio.pct.planes / t };
     }
     const v = DESTINOS_PRORRATEO.map((k) => Math.max(0, celda(k, per).ingresos));
-    const tot = v.reduce((a, b) => a + b, 0);
-    if (!tot) return { "0km": 1, usados: 0, planes_susc: 0, planes_ent: 0 };
-    return Object.fromEntries(DESTINOS_PRORRATEO.map((k, i) => [k, v[i] / tot]));
+    const tot = v[0] + v[1] + v[2];
+    if (!tot) return { "0km": 1, usados: 0, planes: 0 };
+    return { "0km": v[0] / tot, usados: v[1] / tot, planes: v[2] / tot };
   };
 
   // Gastos comunes de Unidades por subrubro para el período/modo mostrado.
@@ -279,11 +268,15 @@ export function Rentabilidad() {
   // Reparto de los gastos comunes a 0km/usados/planes aplicando la regla de cada
   // subrubro (solo 0km, solo usados, % ventas 0km+usados, % ventas las tres).
   const prorrateoComunes = (per: string | null): Record<string, { gastos: number; gastosVar: number }> => {
-    const out: Record<string, { gastos: number; gastosVar: number }> = {};
-    for (const d of DESTINOS_PRORRATEO) out[d] = { gastos: 0, gastosVar: 0 };
+    const out: Record<string, { gastos: number; gastosVar: number }> = {
+      "0km": { gastos: 0, gastosVar: 0 }, usados: { gastos: 0, gastosVar: 0 }, planes: { gastos: 0, gastosVar: 0 },
+    };
     const subs = comunesDe(per);
-    const ventasDest: Record<string, number> = {};
-    for (const d of DESTINOS_PRORRATEO) ventasDest[d] = Math.max(0, celda(d, per).ingresos);
+    const ventasDest: Record<string, number> = {
+      "0km": Math.max(0, celda("0km", per).ingresos),
+      usados: Math.max(0, celda("usados", per).ingresos),
+      planes: Math.max(0, celda("planes", per).ingresos),
+    };
     if (Object.keys(subs).length === 0) {
       // Sin desglose: prorrateo global (importación vieja).
       const w = pesos(per);
@@ -296,10 +289,7 @@ export function Rentabilidad() {
     }
     for (const [rub, c] of Object.entries(subs)) {
       const regla = reglaDe(reglas, rub, c.nombre ?? "");
-      const destsRaw = REGLAS.find((r) => r.key === regla)?.destinos ?? ["0km"];
-      // La regla apunta a "planes" como un todo: se expande a suscripciones +
-      // entregas y el importe se reparte entre ambos por sus ventas.
-      const dests = destsRaw.flatMap((d) => (d === "planes" ? ["planes_susc", "planes_ent"] : [d]));
+      const dests = REGLAS.find((r) => r.key === regla)?.destinos ?? ["0km"];
       const totV = dests.reduce((a, d) => a + ventasDest[d], 0);
       for (const d of dests) {
         const w = dests.length === 1 ? 1 : totV ? ventasDest[d] / totV : 1 / dests.length;
@@ -314,7 +304,7 @@ export function Rentabilidad() {
   const celdaAjustada = (key: string, per: string | null): CeldaPL => {
     const base = celda(key, per);
     if (key === "unidades") return vacia();
-    if ((DESTINOS_PRORRATEO as readonly string[]).includes(key)) {
+    if (key === "0km" || key === "usados" || key === "planes") {
       const add = prorrateoComunes(per)[key];
       return {
         ingresos: base.ingresos,

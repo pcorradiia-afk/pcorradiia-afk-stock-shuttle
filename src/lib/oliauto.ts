@@ -15,8 +15,7 @@ export interface DeptoDef {
 export const DEPTOS_OLIAUTO: DeptoDef[] = [
   { key: "0km", label: "Unidades 0km" },
   { key: "usados", label: "Unidades usados" },
-  { key: "planes_susc", label: "Suscripciones de planes" },
-  { key: "planes_ent", label: "Entregas de planes" },
+  { key: "planes", label: "Planes de Ahorro" },
   { key: "unidades", label: "Unidades (gastos comunes)" },
   { key: "repuestos", label: "Repuestos" },
   { key: "posventa", label: "Servicios / Posventa" },
@@ -30,7 +29,7 @@ export function deptoDeCuenta(codigo: string): string | null {
   if (!c.startsWith("5")) return null; // solo cuentas de resultado
   if (c.startsWith("511") || c.startsWith("513")) return "0km";
   if (c.startsWith("512") || c.startsWith("514")) return "usados";
-  if (c.startsWith("516")) return "planes_susc"; // planes de ahorro: default Suscripciones; las Entregas se reasignan a mano en Plan de cuentas
+  if (c.startsWith("516")) return "planes"; // comisiones/incentivos planes de ahorro y gestoría
   if (c.startsWith("517")) return "0km"; // financiación de vehículos → otros ingresos 0km
   if (c.startsWith("51")) return "unidades"; // 515/518/519 gastos comunes del depto
   if (c.startsWith("52")) return "repuestos";
@@ -40,9 +39,6 @@ export function deptoDeCuenta(codigo: string): string | null {
   if (c.startsWith("57") || c.startsWith("58")) return "varios";
   return null;
 }
-
-/** ¿El depto es alguno de los dos de Planes de Ahorro (suscripciones/entregas)? */
-export const esPlanes = (depto: string) => depto === "planes_susc" || depto === "planes_ent";
 
 function num(v: unknown): number {
   const n = parseFloat(String(v ?? "").replace(/[^0-9.-]/g, ""));
@@ -311,7 +307,7 @@ export function parseBalanceParcial(aoa: unknown[][], headerRow: number): Balanc
       let linea: LineaCuenta;
       if (nat === "venta") { cd.ingresos += -val; tot.ingresos += -val; linea = "venta"; }
       else if (nat === "costo") { cd.costos += val; tot.costos += val; linea = "costo"; }
-      else if (nat === "mixto" && esPlanes(depto)) {
+      else if (nat === "mixto" && depto === "planes") {
         // En Planes de Ahorro las comisiones/incentivos (acreedoras) son la venta
         // del depto; los débitos (sellos, derechos, etc.) van a gastos.
         if (val < 0) { cd.ingresos += -val; tot.ingresos += -val; linea = "venta"; }
