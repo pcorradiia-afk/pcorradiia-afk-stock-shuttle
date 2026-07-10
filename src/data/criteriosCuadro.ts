@@ -56,7 +56,7 @@ export interface AjusteExtra {
   id: string;
   /** 'YYYY-MM' al que impacta. */
   periodo: string;
-  /** Depto del cuadro ("0km"|"usados"|"planes"|"repuestos"|"posventa"|"admin"). */
+  /** Depto del cuadro ("0km"|"usados"|"planes_susc"|"planes_ent"|"repuestos"|"posventa"|"admin"). */
   depto: string;
   linea: LineaCuadro;
   concepto: string;
