@@ -7,7 +7,8 @@ import {
   DB, buscarPlan, cotizarSeq, seqDelPlan, actualizacionVigente,
   type PlanAdjudicado, type Provincia,
 } from "@/lib/cotizador";
-import { suscribir } from "@/lib/store";
+import { suscribir, listarClientes } from "@/lib/store";
+import type { Cliente } from "@/lib/types";
 import { pesos } from "@/lib/labels";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +24,7 @@ export default function CotizadorPage() {
   useEffect(() => suscribir(() => setTick((t) => t + 1)), []);
   const [grupo, setGrupo] = useState("");
   const [orden, setOrden] = useState("");
+  const [busqueda, setBusqueda] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<PlanAdjudicado | null>(null);
   const [prov, setProv] = useState<Provincia>("nqn");
@@ -55,6 +57,30 @@ export default function CotizadorPage() {
     () => (plan ? seqs.map((s) => cotizarSeq(plan, s, { prov, cancelado, alicuotaPagada: alicPagada })) : []),
     [plan, seqs, prov, cancelado, alicPagada]
   );
+
+  const resultados = useMemo<Cliente[]>(() => {
+    const t = busqueda.trim().toLowerCase();
+    if (t.length < 3 || !empresaActivaId || !usuarioActivo) return [];
+    return listarClientes(empresaActivaId, {}, usuarioActivo)
+      .filter((c) => c.solicitud.grupo && c.solicitud.orden)
+      .filter((c) =>
+        c.nombreCompleto.toLowerCase().includes(t) ||
+        (c.documento || "").toLowerCase().includes(t) ||
+        (c.solicitud.nroSolicitud || "").toLowerCase().includes(t) ||
+        (c.telefono || "").replace(/\D/g, "").includes(t.replace(/\D/g, "") || "\u0000")
+      )
+      .slice(0, 8);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busqueda, empresaActivaId, usuarioActivo, tick]);
+
+  const elegirCliente = (c: Cliente) => {
+    const g = c.solicitud.grupo!;
+    const o = c.solicitud.orden!;
+    setGrupo(g);
+    setOrden(o);
+    setBusqueda("");
+    ejecutarBusqueda(g, o);
+  };
 
   const fuente = useMemo(
     () => actualizacionVigente(empresaActivaId),
@@ -91,6 +117,40 @@ export default function CotizadorPage() {
 
       {/* Buscador */}
       <Card className="p-4">
+        <div className="mb-3 space-y-1">
+          <span className="block text-xs font-medium text-muted-foreground">
+            Buscar cliente (apellido, DNI, N° de solicitud o teléfono)
+          </span>
+          <div className="relative max-w-xl">
+            <Input
+              value={busqueda}
+              onChange={(e) => setBusqueda(e.target.value)}
+              placeholder="Ej: ZAPELLA, 20123456, 1353689…"
+            />
+            {resultados.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full rounded-md border bg-card shadow-md">
+                {resultados.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => elegirCliente(c)}
+                    className="flex w-full items-center justify-between gap-2 border-b px-3 py-2 text-left text-sm last:border-0 hover:bg-accent"
+                  >
+                    <span className="font-medium">{c.nombreCompleto}</span>
+                    <span className="shrink-0 text-xs text-muted-foreground">
+                      {c.solicitud.grupo}/{c.solicitud.orden}{c.solicitud.statusDesc ? ` · ${c.solicitud.statusDesc}` : ""}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {busqueda.trim().length >= 3 && resultados.length === 0 && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Sin coincidencias en la cartera importada de esta empresa.
+              </p>
+            )}
+          </div>
+        </div>
         <form
           onSubmit={(e) => { e.preventDefault(); ejecutarBusqueda(grupo, orden); }}
           className="flex flex-wrap items-end gap-3"
