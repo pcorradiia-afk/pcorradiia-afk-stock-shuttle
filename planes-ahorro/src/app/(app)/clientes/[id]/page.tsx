@@ -8,6 +8,7 @@ import {
   inicializar, getCliente, listarComunicaciones, agregarComunicacion, suscribir,
   listarPlanes, getPlan, vendedoresDeEmpresa, asignarVendedor, actualizarGestionVenta,
   actualizarCliente, cerrarVenta, buscarPorNroSolicitud, puedeVerCliente, listarTareas,
+  setOptInWhatsApp,
 } from "@/lib/store";
 import { tienePermiso } from "@/lib/roles";
 import { ESTADIO_LABEL, ESTADO_LABEL, ESTADIOS, pesos, fechaHora } from "@/lib/labels";
@@ -97,6 +98,7 @@ export default function FichaClientePage() {
             {cliente.domicilio && (
               <Dato k="Domicilio" v={`${cliente.domicilio}${cliente.localidad ? `, ${cliente.localidad}` : ""}${cliente.provincia ? ` (${cliente.provincia})` : ""}${cliente.codigoPostal ? ` CP ${cliente.codigoPostal}` : ""}`} />
             )}
+            <OptInWhatsApp cliente={cliente} />
           </CardContent>
         </Card>
 
@@ -358,5 +360,30 @@ function NuevaComunicacion({
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+function OptInWhatsApp({ cliente }: { cliente: Cliente }) {
+  const [canal, setCanal] = useState("verbal / llamado");
+  const o = cliente.waOptIn;
+  return (
+    <div className="rounded-md border p-2">
+      <span className="block text-xs text-muted-foreground">WhatsApp (consentimiento)</span>
+      {o?.ok ? (
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-sm">
+          <Badge variant="success">opt-in ✓</Badge>
+          <span className="text-xs text-muted-foreground">{fechaHora(o.fecha)} · {o.canal}</span>
+          <Button size="sm" variant="ghost" onClick={() => setOptInWhatsApp(cliente.id, false, o.canal)}>Revocar</Button>
+        </div>
+      ) : (
+        <div className="mt-1 flex flex-wrap items-center gap-2">
+          <Badge variant="outline">sin opt-in — no se le puede enviar</Badge>
+          <Input value={canal} onChange={(e) => setCanal(e.target.value)} placeholder="canal (formulario, llamado…)" className="h-8 w-44 text-xs" />
+          <Button size="sm" variant="outline" onClick={() => setOptInWhatsApp(cliente.id, true, canal.trim() || "sin especificar")}>
+            Registrar opt-in
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

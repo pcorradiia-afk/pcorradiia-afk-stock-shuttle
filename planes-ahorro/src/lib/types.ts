@@ -149,6 +149,8 @@ export interface Cliente {
   codigoPostal?: string | null;
   // Datos de adjudicación (Ganadores_Acto / Adjudicatarios_Sin_Pedido)
   adjudicacion?: DatosAdjudicacion;
+  /** Consentimiento WhatsApp (sin opt-in NO se le puede enviar — regla §9.2). */
+  waOptIn?: { ok: boolean; fecha: string; canal: string } | null;
   // Gestión comercial (Fase 2)
   pruebaManejo: boolean | null;
   necesidades: string | null;
@@ -212,6 +214,54 @@ export interface GestionAdmin {
   entregaFechaContacto?: string | null;
   entregaTurno?: string | null;
   entregaCerrado?: boolean;
+}
+
+// --------- Fase 4: campañas de WhatsApp ---------
+
+export type CategoriaPlantilla = "marketing" | "utility" | "authentication";
+
+export interface PlantillaWhatsApp {
+  id: string;
+  empresaId: string;
+  nombre: string;
+  categoria: CategoriaPlantilla;
+  idioma: string; // "es_AR"
+  cuerpo: string; // texto con variables {{nombre}}, {{modelo}}, {{grupo}}, {{orden}}
+  aprobadaMeta: boolean; // los envíos proactivos requieren plantilla pre-aprobada por Meta
+  activo: boolean;
+}
+
+export interface CampaniaWhatsApp {
+  id: string;
+  empresaId: string;
+  nombre: string;
+  plantillaId: string;
+  plantillaNombre: string;
+  categoria: CategoriaPlantilla;
+  segmento: string; // gestión (bienvenida/mora/…) o "cartera"
+  segmentoLabel: string;
+  fecha: string;
+  creadaPorNombre: string;
+  totalSegmento: number;
+  sinTelefono: number;
+  sinOptIn: number;
+  enviados: number;
+  costoEstimado: number;
+  estado: "enviada_simulada" | "enviada";
+}
+
+export interface EnvioWhatsApp {
+  id: string;
+  empresaId: string;
+  campaniaId: string;
+  clienteId: string;
+  clienteNombre: string;
+  telefono: string;
+  mensaje: string;
+  estado: "enviado" | "entregado" | "leido" | "error";
+  detalle: string;
+  fecha: string;
+  costoEstimado: number;
 }
 
 // Catálogo de planes (precargado; el vendedor elige de la lista). Base: solapa "Modelo".

@@ -33,6 +33,9 @@ export const remote = {
   alertas: (empresaId: string, filas: { id: string }[]) => upsert("alerta", empresaId, filas),
   tareas: (empresaId: string, filas: { id: string }[]) => upsert("tarea", empresaId, filas),
   ctacte: (empresaId: string, filas: { id: string }[]) => upsert("movimiento_ctacte", empresaId, filas),
+  plantillasWa: (empresaId: string, filas: { id: string }[]) => upsert("plantilla_wa", empresaId, filas),
+  campaniasWa: (empresaId: string, filas: { id: string }[]) => upsert("campania_wa", empresaId, filas),
+  enviosWa: (empresaId: string, filas: { id: string }[]) => upsert("envio_wa", empresaId, filas),
   meta: async (empresaId: string, clave: string, valor: string) => {
     if (MODO_DEMO) return;
     const sb = getSupabase();

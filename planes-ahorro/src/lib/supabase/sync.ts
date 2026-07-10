@@ -15,6 +15,9 @@ const TABLAS = [
   ["alerta", "alertas"],
   ["tarea", "tareas"],
   ["movimiento_ctacte", "ctacte"],
+  ["plantilla_wa", "plantillasWa"],
+  ["campania_wa", "campaniasWa"],
+  ["envio_wa", "enviosWa"],
 ] as const;
 
 /** Descarga todos los datos de una empresa y reemplaza la caché local. */
@@ -30,7 +33,9 @@ export async function cargarEmpresa(empresaId: string): Promise<boolean> {
     for (let desde = 0; ; desde += 1000) {
       const { data, error } = await sb.from(tabla).select("data").eq("empresa_id", empresaId).range(desde, desde + 999);
       if (error) {
+        // Tabla aún no creada (migración pendiente): seguir sin esa tabla.
         console.error(`[cargar ${tabla}]`, error.message);
+        if (/does not exist|42P01/i.test(error.message)) break;
         return false;
       }
       filas.push(...(data ?? []).map((r: { data: unknown }) => r.data));

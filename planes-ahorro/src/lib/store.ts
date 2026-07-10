@@ -5,6 +5,7 @@
 // así que al conectar el backend se reemplaza este archivo sin tocar las pantallas.
 
 import type {
+  PlantillaWhatsApp, CampaniaWhatsApp, EnvioWhatsApp, CategoriaPlantilla,
   Cliente, Comunicacion, Estadio, EstadoCliente, Plan,
   ObservacionScoring, ResultadoScoring, Alerta, GestionAdmin, RolId, Usuario,
   MovimientoCtaCte, Tarea,
@@ -19,6 +20,9 @@ const K_PLANES = "pa.planes";
 const K_OBS = "pa.observaciones";
 const K_ALERTAS = "pa.alertas";
 const K_CTACTE = "pa.ctacte";
+const K_PLANTILLAS_WA = "pa.plantillasWa";
+const K_CAMPANIAS_WA = "pa.campaniasWa";
+const K_ENVIOS_WA = "pa.enviosWa";
 const K_META = "pa.meta";
 
 // Metadatos simples (ej. fecha de última actualización de cartera por empresa).
@@ -172,6 +176,7 @@ export function reemplazarDatosEmpresa(
   const mapa: Record<string, string> = {
     clientes: K_CLIENTES, comunicaciones: K_COMS, planes: K_PLANES,
     observaciones: K_OBS, alertas: K_ALERTAS, tareas: K_TAREAS, ctacte: K_CTACTE,
+    plantillasWa: K_PLANTILLAS_WA, campaniasWa: K_CAMPANIAS_WA, enviosWa: K_ENVIOS_WA,
   };
   for (const [clave, key] of Object.entries(mapa)) {
     localStorage.setItem(key, JSON.stringify(datos[clave] ?? []));
@@ -917,4 +922,123 @@ export function importarCartera(filas: FilaCartera[], empresaId: string): Report
     setMeta(`cotizadorAct:${empresaId}`, JSON.stringify(actCotizador), empresaId);
   }
   return rep;
+}
+
+// ===================== Fase 4: campañas de WhatsApp =====================
+
+import { getEnviador, renderPlantilla, COSTO_CATEGORIA } from "./whatsapp";
+import { colaGestion, esRescindido, GESTIONES, type GestionTipo } from "./gestiones";
+
+export function listarPlantillasWa(empresaId: string): PlantillaWhatsApp[] {
+  return leer<PlantillaWhatsApp>(K_PLANTILLAS_WA)
+    .filter((t) => t.empresaId === empresaId)
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+
+export function crearPlantillaWa(input: Omit<PlantillaWhatsApp, "id">): PlantillaWhatsApp {
+  const t: PlantillaWhatsApp = { ...input, id: uid() };
+  const lista = leer<PlantillaWhatsApp>(K_PLANTILLAS_WA);
+  lista.push(t);
+  escribir(K_PLANTILLAS_WA, lista);
+  remote.plantillasWa(input.empresaId, [t]);
+  return t;
+}
+
+/** Registra o revoca el consentimiento (opt-in). Sin opt-in NO se envía (§9.2). */
+export function setOptInWhatsApp(clienteId: string, ok: boolean, canal: string) {
+  const c = getCliente(clienteId);
+  if (!c) return;
+  actualizarCliente(clienteId, { waOptIn: { ok, fecha: new Date().toISOString(), canal } });
+}
+
+export type SegmentoCampania = GestionTipo | "cartera";
+
+export const SEGMENTOS_CAMPANIA: { valor: SegmentoCampania; label: string }[] = [
+  ...GESTIONES.map((g) => ({ valor: g.tipo as SegmentoCampania, label: g.titulo })),
+  { valor: "cartera", label: "Toda la cartera (sin rescindidos)" },
+];
+
+export interface PreviaCampania {
+  totalSegmento: number;
+  sinTelefono: number;
+  sinOptIn: number;
+  destinatarios: Cliente[];
+  costoEstimado: number;
+}
+
+/** Calcula destinatarios: segmento → con teléfono → con opt-in (regla dura §9.2). */
+export function previaCampania(
+  empresaId: string,
+  usuario: Usuario,
+  segmento: SegmentoCampania,
+  categoria: CategoriaPlantilla
+): PreviaCampania {
+  const todos = listarClientes(empresaId, {}, usuario);
+  const base = segmento === "cartera" ? todos.filter((c) => !esRescindido(c)) : colaGestion(todos, segmento);
+  const conTel = base.filter((c) => (c.telefono || "").replace(/\D/g, "").length >= 6);
+  const destinatarios = conTel.filter((c) => c.waOptIn?.ok === true);
+  return {
+    totalSegmento: base.length,
+    sinTelefono: base.length - conTel.length,
+    sinOptIn: conTel.length - destinatarios.length,
+    destinatarios,
+    costoEstimado: destinatarios.length * COSTO_CATEGORIA[categoria],
+  };
+}
+
+/** Envía la campaña con el proveedor configurado (hoy: simulado) y la registra. */
+export async function enviarCampania(args: {
+  empresaId: string;
+  usuario: Usuario;
+  nombre: string;
+  plantilla: PlantillaWhatsApp;
+  segmento: SegmentoCampania;
+}): Promise<CampaniaWhatsApp> {
+  const { empresaId, usuario, nombre, plantilla, segmento } = args;
+  const previa = previaCampania(empresaId, usuario, segmento, plantilla.categoria);
+  const enviador = getEnviador();
+  const hoy = new Date().toISOString();
+  const segmentoLabel = SEGMENTOS_CAMPANIA.find((x) => x.valor === segmento)?.label ?? segmento;
+
+  const campania: CampaniaWhatsApp = {
+    id: uid(), empresaId, nombre,
+    plantillaId: plantilla.id, plantillaNombre: plantilla.nombre, categoria: plantilla.categoria,
+    segmento, segmentoLabel, fecha: hoy, creadaPorNombre: usuario.nombre,
+    totalSegmento: previa.totalSegmento, sinTelefono: previa.sinTelefono, sinOptIn: previa.sinOptIn,
+    enviados: 0, costoEstimado: previa.costoEstimado,
+    estado: enviador.esSimulado ? "enviada_simulada" : "enviada",
+  };
+
+  const envios: EnvioWhatsApp[] = [];
+  for (const c of previa.destinatarios) {
+    const mensaje = renderPlantilla(plantilla.cuerpo, c);
+    const r = await enviador.enviar(c.telefono!, mensaje);
+    envios.push({
+      id: uid(), empresaId, campaniaId: campania.id, clienteId: c.id,
+      clienteNombre: c.nombreCompleto, telefono: c.telefono!, mensaje,
+      estado: r.estado, detalle: r.detalle, fecha: hoy,
+      costoEstimado: COSTO_CATEGORIA[plantilla.categoria],
+    });
+  }
+  campania.enviados = envios.filter((e) => e.estado === "enviado").length;
+
+  const camps = leer<CampaniaWhatsApp>(K_CAMPANIAS_WA);
+  camps.push(campania);
+  escribir(K_CAMPANIAS_WA, camps);
+  const todosEnvios = leer<EnvioWhatsApp>(K_ENVIOS_WA);
+  todosEnvios.push(...envios);
+  escribir(K_ENVIOS_WA, todosEnvios);
+  remote.campaniasWa(empresaId, [campania]);
+  remote.enviosWa(empresaId, envios);
+  return campania;
+}
+
+export function listarCampanias(empresaId: string): CampaniaWhatsApp[] {
+  return leer<CampaniaWhatsApp>(K_CAMPANIAS_WA)
+    .filter((c) => c.empresaId === empresaId)
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+
+export function listarEnviosCampania(campaniaId: string): EnvioWhatsApp[] {
+  return leer<EnvioWhatsApp>(K_ENVIOS_WA).filter((e) => e.campaniaId === campaniaId);
 }
