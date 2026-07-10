@@ -521,6 +521,21 @@ renderizadas. Pendientes del canal: número emisor de **Fiorasi** (agregar
 aprobado por Meta + plantillas aprobadas** (el sandbox solo alcanza teléfonos que hicieron
 "join").
 
+## 10.quater Gestión de usuarios desde la app (2026-07-10) ✅
+El super admin ahora crea usuarios y los activa/desactiva desde **/admin/usuarios** (botón
+"Nuevo usuario": nombre, email, contraseña inicial, empresa, tipo concesionario/terciarizada
+con su gestión, roles y opción multiempresa). Implementación: ruta servidor `/api/usuarios`
+que primero valida que quien pide sea super admin (JWT de Supabase) y recién entonces usa la
+**SERVICE ROLE KEY** (secreta, solo servidor) para crear la credencial en Auth y llamar a
+`alta_usuario()`. Repetir el alta con el mismo email actualiza perfil/roles sin tocar la
+contraseña. Desactivar corta el acceso (login y restauración de sesión verifican `activo`)
+sin borrar historial. En modo demo el alta queda oculta.
+**Seguridad:** `0003_seguridad_alta_usuario.sql` revoca `alta_usuario()` a `authenticated`
+(en 0001 solo se revocaba `anon`: cualquier usuario logueado podía auto-asignarse
+super_admin) y la reserva a `service_role`. **Pendiente del cliente:** correr 0003 en el SQL
+Editor y cargar `SUPABASE_SERVICE_ROLE_KEY` en Vercel (Sensitive) + Redeploy; sin ella la
+pantalla avisa "Falta configurar SUPABASE_SERVICE_ROLE_KEY".
+
 ## 11. Preguntas abiertas (pendientes de confirmar con el cliente)
 
 | # | Tema | Estado |
