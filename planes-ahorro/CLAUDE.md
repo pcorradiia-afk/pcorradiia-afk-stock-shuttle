@@ -512,6 +512,15 @@ Se hizo una revisión escéptica completa. Hallazgos priorizados (detalle en la 
 Root Directory `planes-ahorro`, framework Next.js vía `vercel.json` propio; el Override de
 Output Directory `dist` del panel fue desactivado — venía heredado del `vercel.json` de Fiorasi).
 
+## 10.ter Hito (2026-07-10): primer WhatsApp real enviado ✅
+Circuito completo verificado EN PRODUCCIÓN por el cliente: opt-in en ficha → campaña
+segmentada (exclusión automática de clientes sin opt-in) → envío vía **Twilio sandbox**
+desde el número de **Pedro Corradi** → mensaje recibido en el celular con variables
+renderizadas. Pendientes del canal: número emisor de **Fiorasi** (agregar
+`TWILIO_WHATSAPP_FROM_SAPAC` al tenerlo), y para enviar a clientes reales: **sender propio
+aprobado por Meta + plantillas aprobadas** (el sandbox solo alcanza teléfonos que hicieron
+"join").
+
 ## 11. Preguntas abiertas (pendientes de confirmar con el cliente)
 
 | # | Tema | Estado |
