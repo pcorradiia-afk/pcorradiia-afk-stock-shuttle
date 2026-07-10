@@ -7,7 +7,7 @@ import {
   suscribir, listarPlantillasWa, crearPlantillaWa, previaCampania, enviarCampania,
   listarCampanias, listarEnviosCampania, SEGMENTOS_CAMPANIA, type SegmentoCampania,
 } from "@/lib/store";
-import { CATEGORIA_LABEL, COSTO_CATEGORIA, VARIABLES_AYUDA, getEnviador, renderPlantilla } from "@/lib/whatsapp";
+import { CATEGORIA_LABEL, COSTO_CATEGORIA, VARIABLES_AYUDA, getEnviador, renderPlantilla, estadoProveedor } from "@/lib/whatsapp";
 import { exportarExcel } from "@/lib/exportar";
 import { fechaHora, pesos } from "@/lib/labels";
 import type { CategoriaPlantilla, PlantillaWhatsApp } from "@/lib/types";
@@ -137,6 +137,13 @@ function Campanias({ empresaId, tick, usuario }: { empresaId: string; tick: numb
   const [segmento, setSegmento] = useState<SegmentoCampania>("mora");
   const [enviando, setEnviando] = useState(false);
   const [ok, setOk] = useState<string | null>(null);
+  const [proveedor, setProveedor] = useState<{ puedeEnviar: boolean; detalle: string } | null>(null);
+
+  useEffect(() => {
+    let vivo = true;
+    estadoProveedor(empresaId).then((r) => { if (vivo) setProveedor(r); });
+    return () => { vivo = false; };
+  }, [empresaId]);
 
   const plantilla: PlantillaWhatsApp | undefined = plantillas.find((t) => t.id === plantillaId);
   const previa = useMemo(
@@ -177,6 +184,11 @@ function Campanias({ empresaId, tick, usuario }: { empresaId: string; tick: numb
             </select>
           </div>
 
+          {proveedor && !proveedor.puedeEnviar && (
+            <p className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/5 p-2 text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4" /> {proveedor.detalle} Las campañas de esta empresa quedan bloqueadas hasta configurarlo.
+            </p>
+          )}
           {plantilla?.categoria === "marketing" && (
             <p className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-900">
               <AlertTriangle className="h-4 w-4" /> Plantilla de <strong>Marketing</strong>: es la categoría más cara. Para recordatorios usá Utility.
@@ -203,7 +215,7 @@ function Campanias({ empresaId, tick, usuario }: { empresaId: string; tick: numb
           )}
 
           <div className="flex items-center gap-3">
-            <Button onClick={enviar} disabled={!plantilla || !previa || previa.destinatarios.length === 0 || enviando}>
+            <Button onClick={enviar} disabled={!plantilla || !previa || previa.destinatarios.length === 0 || enviando || (proveedor ? !proveedor.puedeEnviar : false)}>
               <Send className="h-4 w-4" /> {enviando ? "Enviando…" : "Enviar campaña"}
             </Button>
             {ok && <span className="text-sm text-emerald-700">{ok}</span>}

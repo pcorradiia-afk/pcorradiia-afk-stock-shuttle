@@ -8,14 +8,33 @@ import { normalizarTelefonoAR } from "@/lib/telefono";
 
 const ROLES_AUTORIZADOS = ["super_admin", "administracion", "supervisor_administracion", "supervisor_ventas"];
 
+// Número emisor POR EMPRESA (cada concesionaria tiene su propio WhatsApp Business):
+// TWILIO_WHATSAPP_FROM_PC (Pedro Corradi), TWILIO_WHATSAPP_FROM_SAPAC (Fiorasi);
+// TWILIO_WHATSAPP_FROM queda como comodín si algún día usan uno solo.
+function fromDeEmpresa(empresaId: string): string | null {
+  const porEmpresa = process.env[`TWILIO_WHATSAPP_FROM_${empresaId.toUpperCase()}`];
+  return porEmpresa || process.env.TWILIO_WHATSAPP_FROM || null;
+}
+
+/** GET: estado de configuración (para que la UI avise qué empresa puede enviar). */
+export async function GET() {
+  const configurado = !!(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN);
+  return NextResponse.json({
+    proveedor: configurado ? "twilio" : "sin-configurar",
+    empresas: {
+      pc: configurado && !!fromDeEmpresa("pc"),
+      sapac: configurado && !!fromDeEmpresa("sapac"),
+    },
+  });
+}
+
 export async function POST(req: NextRequest) {
   const sid = process.env.TWILIO_ACCOUNT_SID;
   const token = process.env.TWILIO_AUTH_TOKEN;
-  const from = process.env.TWILIO_WHATSAPP_FROM; // ej: "whatsapp:+14155238886"
   const supaUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supaAnon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!sid || !token || !from) {
+  if (!sid || !token) {
     return NextResponse.json({ estado: "error", detalle: "Twilio no está configurado en el servidor (TWILIO_*)." }, { status: 501 });
   }
   if (!supaUrl || !supaAnon) {
@@ -39,12 +58,29 @@ export async function POST(req: NextRequest) {
   }
 
   // --- Datos del envío ---
-  let body: { telefono?: string; mensaje?: string };
+  let body: { telefono?: string; mensaje?: string; empresaId?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ estado: "error", detalle: "Cuerpo inválido." }, { status: 400 });
   }
+  const empresaId = (body.empresaId ?? "").trim();
+  if (!empresaId) return NextResponse.json({ estado: "error", detalle: "Falta la empresa." }, { status: 400 });
+
+  // El usuario debe pertenecer a la empresa por la que envía.
+  const { data: membresias } = await sb.from("membresia_empresa").select("empresa_id").eq("usuario_id", userData.user.id);
+  if (!(membresias ?? []).some((m: { empresa_id: string }) => m.empresa_id === empresaId)) {
+    return NextResponse.json({ estado: "error", detalle: "No tenés acceso a esa empresa." }, { status: 403 });
+  }
+
+  const from = fromDeEmpresa(empresaId);
+  if (!from) {
+    return NextResponse.json({
+      estado: "error",
+      detalle: `La empresa "${empresaId}" todavía no tiene número emisor de WhatsApp configurado (TWILIO_WHATSAPP_FROM_${empresaId.toUpperCase()}).`,
+    });
+  }
+
   const e164 = normalizarTelefonoAR(body.telefono ?? "");
   const mensaje = (body.mensaje ?? "").trim();
   if (!e164) return NextResponse.json({ estado: "error", detalle: `Teléfono inválido: ${body.telefono ?? ""}` });

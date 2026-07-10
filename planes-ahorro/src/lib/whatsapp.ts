@@ -17,7 +17,7 @@ export interface ResultadoEnvio {
 export interface EnviadorWhatsApp {
   nombre: string;
   esSimulado: boolean;
-  enviar(telefono: string, mensaje: string): Promise<ResultadoEnvio>;
+  enviar(telefono: string, mensaje: string, empresaId: string): Promise<ResultadoEnvio>;
 }
 
 class ProveedorSimulado implements EnviadorWhatsApp {
@@ -35,7 +35,7 @@ class ProveedorSimulado implements EnviadorWhatsApp {
 class ProveedorTwilio implements EnviadorWhatsApp {
   nombre = "Twilio (WhatsApp Business)";
   esSimulado = false;
-  async enviar(telefono: string, mensaje: string): Promise<ResultadoEnvio> {
+  async enviar(telefono: string, mensaje: string, empresaId: string): Promise<ResultadoEnvio> {
     try {
       const sesion = await getSupabase()?.auth.getSession();
       const jwt = sesion?.data.session?.access_token;
@@ -43,7 +43,7 @@ class ProveedorTwilio implements EnviadorWhatsApp {
       const resp = await fetch("/api/whatsapp/enviar", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
-        body: JSON.stringify({ telefono, mensaje }),
+        body: JSON.stringify({ telefono, mensaje, empresaId }),
       });
       const data = (await resp.json()) as ResultadoEnvio;
       return { estado: data.estado === "enviado" ? "enviado" : "error", detalle: data.detalle ?? `HTTP ${resp.status}` };
@@ -87,3 +87,20 @@ export function renderPlantilla(cuerpo: string, c: Cliente): string {
 }
 
 export const VARIABLES_AYUDA = "{{nombre}}, {{primer_nombre}}, {{modelo}}, {{grupo}}, {{orden}}";
+
+/** Estado de configuración por empresa (para avisar en la UI qué empresa puede enviar). */
+export async function estadoProveedor(empresaId: string): Promise<{ puedeEnviar: boolean; detalle: string }> {
+  const enviador = getEnviador();
+  if (enviador.esSimulado) return { puedeEnviar: true, detalle: "Proveedor simulado: registra sin enviar." };
+  try {
+    const resp = await fetch("/api/whatsapp/enviar", { method: "GET" });
+    const data = (await resp.json()) as { proveedor: string; empresas: Record<string, boolean> };
+    if (data.proveedor !== "twilio") return { puedeEnviar: false, detalle: "Twilio no está configurado en el servidor." };
+    if (!data.empresas[empresaId]) {
+      return { puedeEnviar: false, detalle: "Esta empresa todavía no tiene número emisor de WhatsApp configurado." };
+    }
+    return { puedeEnviar: true, detalle: "Twilio configurado para esta empresa." };
+  } catch {
+    return { puedeEnviar: false, detalle: "No se pudo verificar la configuración del proveedor." };
+  }
+}

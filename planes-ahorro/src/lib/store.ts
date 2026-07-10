@@ -1012,7 +1012,7 @@ export async function enviarCampania(args: {
   const envios: EnvioWhatsApp[] = [];
   for (const c of previa.destinatarios) {
     const mensaje = renderPlantilla(plantilla.cuerpo, c);
-    const r = await enviador.enviar(c.telefono!, mensaje);
+    const r = await enviador.enviar(c.telefono!, mensaje, empresaId);
     envios.push({
       id: uid(), empresaId, campaniaId: campania.id, clienteId: c.id,
       clienteNombre: c.nombreCompleto, telefono: c.telefono!, mensaje,
