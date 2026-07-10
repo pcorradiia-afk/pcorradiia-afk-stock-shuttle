@@ -77,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <aside className="hidden w-64 flex-col border-r bg-card md:flex">
         <div className="border-b p-4">
           <p className="text-lg font-bold text-primary">Planes de Ahorro</p>
-          <p className="text-xs text-muted-foreground">Grupo Corradi</p>
+          <p className="text-xs text-muted-foreground">Grupo Fiorasi</p>
         </div>
         <nav className="flex-1 space-y-1 p-3">
           {items.map((i) => {

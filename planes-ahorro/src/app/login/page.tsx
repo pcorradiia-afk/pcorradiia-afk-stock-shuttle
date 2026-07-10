@@ -34,7 +34,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md space-y-4">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-primary">Planes de Ahorro</h1>
-          <p className="text-sm text-muted-foreground">Grupo Corradi · Pedro Corradi y SAPAC (Fiorasi)</p>
+          <p className="text-sm text-muted-foreground">Grupo Fiorasi · Pedro Corradi y SAPAC</p>
         </div>
 
         <Card>
