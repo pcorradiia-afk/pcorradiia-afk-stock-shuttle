@@ -521,7 +521,7 @@ Output Directory `dist` del panel fue desactivado — venía heredado del `verce
 | Q2 | Matriz de permisos Rol × Acción (§4.3) | ⏳ Pendiente de aprobación |
 | Q3 | Reglas de la etapa **Agrupamiento** (§6.2) | ⏳ A definir |
 | Q4 | Formatos reales de importación | ✅ Resuelto en parte: tenemos **Novedades/cartera** (§5.bis.1) y la planilla (§5.bis.2). Falta confirmar si además importan el export de **solicitudes Plan Óvalo** y para qué. |
-| Q6 | Herramienta/BSP de WhatsApp (§9) | ⏳ A definir (mientras tanto, proveedor simulado) |
+| Q6 | Herramienta/BSP de WhatsApp (§9) | ✅ **Twilio (decisión del cliente 2026-07-10; ya tienen cuenta)** — integrado vía ruta servidor `/api/whatsapp/enviar` (valida sesión Supabase + rol autorizado; credenciales solo en el servidor). Se activa con `NEXT_PUBLIC_WA_PROVIDER=twilio` + `TWILIO_ACCOUNT_SID/AUTH_TOKEN/WHATSAPP_FROM` en Vercel; sin esas variables sigue el simulado. Teléfonos AR normalizados a E.164 (`src/lib/telefono.ts`). |
 | — | Alcance de unicidad de documento: ¿global o por empresa? (§3.6) | ⏳ A confirmar |
 | — | Rol "Gerencia/Dirección (lectura)": ¿se incluye? (§4.2) | ⏳ A confirmar |
 | N1 | **Motor de cálculo de la planilla** (gastos de patentamiento, requisitos, licitación, hoja de pedido): ¿se replica dentro del sistema en Fase 3? Es alcance significativo. | ⏳ A confirmar prioridad |

@@ -7,6 +7,7 @@
 // sin tocar la lógica de campañas.
 
 import type { CategoriaPlantilla, Cliente } from "./types";
+import { getSupabase, MODO_DEMO } from "./supabase/client";
 
 export interface ResultadoEnvio {
   estado: "enviado" | "error";
@@ -27,8 +28,36 @@ class ProveedorSimulado implements EnviadorWhatsApp {
   }
 }
 
-/** Proveedor activo. Cuando haya BSP: elegir acá según NEXT_PUBLIC_WA_PROVIDER. */
+/**
+ * Twilio: el navegador NUNCA ve las credenciales. Llama a la ruta interna
+ * /api/whatsapp/enviar con el token de sesión; el servidor valida rol y envía.
+ */
+class ProveedorTwilio implements EnviadorWhatsApp {
+  nombre = "Twilio (WhatsApp Business)";
+  esSimulado = false;
+  async enviar(telefono: string, mensaje: string): Promise<ResultadoEnvio> {
+    try {
+      const sesion = await getSupabase()?.auth.getSession();
+      const jwt = sesion?.data.session?.access_token;
+      if (!jwt) return { estado: "error", detalle: "Sin sesión activa para autorizar el envío." };
+      const resp = await fetch("/api/whatsapp/enviar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${jwt}` },
+        body: JSON.stringify({ telefono, mensaje }),
+      });
+      const data = (await resp.json()) as ResultadoEnvio;
+      return { estado: data.estado === "enviado" ? "enviado" : "error", detalle: data.detalle ?? `HTTP ${resp.status}` };
+    } catch (e) {
+      return { estado: "error", detalle: `Fallo de red: ${(e as Error).message}` };
+    }
+  }
+}
+
+/** Proveedor activo según NEXT_PUBLIC_WA_PROVIDER ("twilio" | vacío = simulado). */
 export function getEnviador(): EnviadorWhatsApp {
+  if (!MODO_DEMO && process.env.NEXT_PUBLIC_WA_PROVIDER === "twilio") {
+    return new ProveedorTwilio();
+  }
   return new ProveedorSimulado();
 }
 
