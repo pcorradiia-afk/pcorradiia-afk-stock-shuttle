@@ -75,15 +75,24 @@ export const CATEGORIA_LABEL: Record<CategoriaPlantilla, string> = {
   authentication: "Authentication",
 };
 
-/** Reemplaza las variables de la plantilla con los datos del cliente. */
+/**
+ * Reemplaza las variables de la plantilla con los datos del cliente.
+ * Si un dato falta, la variable se omite y se limpian los restos
+ * ("(grupo /)", dobles espacios) para que el mensaje no salga roto.
+ */
 export function renderPlantilla(cuerpo: string, c: Cliente): string {
   const primerNombre = c.nombreCompleto.split(" ").slice(-1)[0] || c.nombreCompleto;
   return cuerpo
     .replace(/\{\{\s*nombre\s*\}\}/gi, c.nombreCompleto)
     .replace(/\{\{\s*primer_nombre\s*\}\}/gi, primerNombre)
-    .replace(/\{\{\s*modelo\s*\}\}/gi, c.solicitud.modelo ?? "su plan")
+    .replace(/\{\{\s*modelo\s*\}\}/gi, c.solicitud.modelo ?? "")
     .replace(/\{\{\s*grupo\s*\}\}/gi, c.solicitud.grupo ?? "")
-    .replace(/\{\{\s*orden\s*\}\}/gi, c.solicitud.orden ?? "");
+    .replace(/\{\{\s*orden\s*\}\}/gi, c.solicitud.orden ?? "")
+    .replace(/\(\s*grupo\s*\/\s*\)/gi, "") // "(grupo /)" cuando no hay grupo/orden
+    .replace(/\(\s*\/\s*\)/g, "")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/ +([.,!?)])/g, "$1")
+    .trim();
 }
 
 export const VARIABLES_AYUDA = "{{nombre}}, {{primer_nombre}}, {{modelo}}, {{grupo}}, {{orden}}";
