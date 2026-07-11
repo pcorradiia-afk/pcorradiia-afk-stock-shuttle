@@ -1,6 +1,6 @@
 import type { Importacion } from "./importsStore";
 import { clasificarGasto } from "./clasificacionGastos";
-import { DEPTOS_OLIAUTO } from "@/lib/oliauto";
+import { DEPTOS_OLIAUTO, deptoDeCuenta } from "@/lib/oliauto";
 import type { BalanceParcial, BalanceGeneral, Composicion, CeldaPL, ComunRubro, CuentaBP, LineaCuenta, Mayor, Ventas0km } from "@/lib/oliauto";
 
 /** Última importación de cada empresa para un tipo dado (mapa empresa→importación). */
@@ -361,10 +361,12 @@ export function gestionImportada(
   const celdaDe = (depto: string, per: string) => (((porDepto[depto] ??= {})[per] ??= vacia()));
 
   // Compatibilidad: las importaciones guardadas antes de separar Planes de Ahorro
-  // traen las cuentas con el depto viejo "planes". Se leen como "planes_susc"
-  // (Suscripciones) para que sigan apareciendo sin necesidad de reimportar; las
-  // de Entregas se reasignan a mano desde Plan de cuentas.
+  // traen las cuentas con el depto viejo "planes". Para el detalle por cuenta se
+  // re-deriva el depto desde el código (así 516120 va a Entregas y el resto a
+  // Suscripciones sin reimportar). Para el agregado sin detalle (importación
+  // vieja) no hay códigos: cae todo en Suscripciones.
   const legacyDepto = (d: string) => (d === "planes" ? "planes_susc" : d);
+  const deptoCuenta = (c: CuentaBP) => (c.depto === "planes" ? deptoDeCuenta(c.codigo) ?? "planes_susc" : c.depto);
 
   // Aplica el aporte (r = contribución al resultado, acreedor positivo) de una
   // cuenta a un depto/línea, y alimenta el desglose de comunes de Unidades.
@@ -418,7 +420,7 @@ export function gestionImportada(
         const linea = ov.linea ?? c.linea;
         const rep = ov.reparto && ov.reparto.deptos.length > 0 ? ov.reparto : null;
         if (!rep) {
-          const d = ov.depto ?? legacyDepto(c.depto);
+          const d = ov.depto ?? deptoCuenta(c);
           cuentas.push({ ...c, depto: d, linea });
           for (const [per, r] of Object.entries(c.valores)) aplicar(d, linea, per, r, c.codigo, c.nombre);
         } else {
