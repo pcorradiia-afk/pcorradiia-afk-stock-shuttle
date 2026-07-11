@@ -633,6 +633,19 @@ tanto los datos quedan en el navegador sin molestar: remote.ts silencia "tabla i
    Tabla nube `comercializadora` (agregada a **0004** — el cliente aún no la corrió, así que
    0004 ya incluye las 3 tablas).
 
+## 10.octies Ajustes de cotizador y ficha (2026-07-11, tarde) ✅
+1. **Jurisdicciones de patentamiento POR EMPRESA** (Cotizador → "Patenta en"): Corradi =
+   **Chubut (predeterminada)**, Río Negro, Santa Cruz, Neuquén y Otra provincia; Fiorasi =
+   **Neuquén (predeterminada)**, Río Negro y Otra provincia. `PROVINCIAS` en cotizador.ts:
+   NQN (sellado 1,4%; gestoría 2,33/3,03%) y RN (2%; 2,95/3,65%) tienen alícuotas reales de la
+   planilla; **Chubut / Santa Cruz / Otra usan PROVISORIAMENTE las de Neuquén** y muestran ⚠️
+   "a confirmar" — **pedir al cliente el sellado y la gestoría reales de esas jurisdicciones**.
+   La tabla exacta de gestoría (DB.gest) solo aplica a NQN/RN; el resto usa ratio.
+2. **Ficha del ahorrista sin "Gestión comercial"** (pedido del cliente: "si es un ahorrista ya
+   se le vendió, no suma nada"): la sección del vendedor (prueba de manejo, plan ofrecido,
+   presupuesto, cierre de venta) solo aparece si `estado !== "cartera"` — leads y vendidos sí,
+   importados de la cartera no. Bitácora y estadios quedan igual.
+
 ## 11. Preguntas abiertas (pendientes de confirmar con el cliente)
 
 | # | Tema | Estado |

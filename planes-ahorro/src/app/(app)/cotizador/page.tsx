@@ -5,6 +5,7 @@ import { useSesion } from "@/lib/session";
 import { tienePermiso } from "@/lib/roles";
 import {
   DB, buscarPlan, cotizarSeq, seqDelPlan, actualizacionVigente, preciosVigentes,
+  provinciasDeEmpresa, provinciaDef,
   type PlanAdjudicado, type Provincia,
 } from "@/lib/cotizador";
 import { suscribir, listarClientes } from "@/lib/store";
@@ -28,6 +29,13 @@ export default function CotizadorPage() {
   const [error, setError] = useState<string | null>(null);
   const [plan, setPlan] = useState<PlanAdjudicado | null>(null);
   const [prov, setProv] = useState<Provincia>("nqn");
+
+  // Jurisdicciones según la empresa: Corradi patenta en Chubut por defecto;
+  // Fiorasi en Neuquén. Al cambiar de empresa se resetea a la predeterminada.
+  const provincias = useMemo(() => provinciasDeEmpresa(empresaActivaId), [empresaActivaId]);
+  useEffect(() => {
+    setProv(provincias[0]?.id ?? "nqn");
+  }, [provincias]);
   const [cancelado, setCancelado] = useState(false);
   const [alicPagada, setAlicPagada] = useState(false);
   const [seqs, setSeqs] = useState<string[]>(["", "", ""]);
@@ -213,12 +221,14 @@ export default function CotizadorPage() {
           <Card className="p-4">
             <div className="flex flex-wrap items-center gap-5 text-sm">
               <span className="font-medium">Patenta en:</span>
-              <label className="flex items-center gap-1.5">
-                <input type="radio" checked={prov === "nqn"} onChange={() => setProv("nqn")} /> Neuquén
-              </label>
-              <label className="flex items-center gap-1.5">
-                <input type="radio" checked={prov === "rn"} onChange={() => setProv("rn")} /> Río Negro
-              </label>
+              {provincias.map((p) => (
+                <label key={p.id} className="flex items-center gap-1.5">
+                  <input type="radio" checked={prov === p.id} onChange={() => setProv(p.id)} /> {p.nombre}
+                  {!p.confirmada && prov === p.id && (
+                    <span title="Alícuotas provisorias (se usan las de Neuquén) — confirmar sellado y gestoría de esta provincia">⚠️</span>
+                  )}
+                </label>
+              ))}
               <label className="flex items-center gap-1.5">
                 <input type="checkbox" checked={cancelado} onChange={(e) => setCancelado(e.target.checked)} />
                 Plan cancelado / patenta el cliente
@@ -262,7 +272,7 @@ export default function CotizadorPage() {
                         {cot.difPromo != null && <Fila k="Diferencia con promo" v={$n(cot.difPromo)} resaltar={cot.difPromo > 0} />}
                         <hr className="my-2" />
                         <Fila k="Gestoría + inscripción" v={$n(cot.inscripcion)} />
-                        <Fila k={`Sellado (${prov === "nqn" ? "Neuquén 1,4%" : "Río Negro 2%"})`} v={$n(cot.sellado)} />
+                        <Fila k={`Sellado (${provinciaDef(prov).nombre} ${(provinciaDef(prov).sellado * 100).toLocaleString("es-AR")}%${provinciaDef(prov).confirmada ? "" : " ⚠️ a confirmar"})`} v={$n(cot.sellado)} />
                         <Fila k="Prenda (2,8% del saldo)" v={$n(cot.prenda)} />
                         <Fila k="Flete y traslado" v={$n(cot.flete)} />
                         <Fila k="Derecho de adjudicación" v={$n(plan.derecho)} />

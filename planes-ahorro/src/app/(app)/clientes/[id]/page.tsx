@@ -129,8 +129,9 @@ export default function FichaClientePage() {
       {/* Administración por estadios */}
       <AdministracionEstadio cliente={cliente} usuario={usuarioActivo} onCambio={() => setTick((t) => t + 1)} />
 
-      {/* Gestión comercial y cierre de venta */}
-      <GestionComercial cliente={cliente} usuario={usuarioActivo} />
+      {/* Gestión comercial y cierre de venta: SOLO para leads en proceso de venta.
+          Un ahorrista de la cartera ya compró — esta sección no aplica (pedido 2026-07-11). */}
+      {cliente.estado !== "cartera" && <GestionComercial cliente={cliente} usuario={usuarioActivo} />}
 
       {/* Bitácora */}
       <div className="grid gap-4 lg:grid-cols-3">

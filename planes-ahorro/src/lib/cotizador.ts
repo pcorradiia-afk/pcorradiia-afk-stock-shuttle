@@ -37,7 +37,38 @@ export const PARAMS = {
   DERECHO_ADJ_PCT: 0.0121, // 1,21% del valor móvil (+ $1)
 };
 
-export type Provincia = "nqn" | "rn";
+// --- Jurisdicciones de patentamiento (pedido del cliente 2026-07-11) ---
+// NQN y RN tienen las alícuotas reales de la planilla; el resto queda ⚠️ A CONFIRMAR
+// (se usan provisoriamente las de Neuquén hasta que el cliente pase los valores).
+export type Provincia = string;
+
+export interface ProvinciaDef {
+  id: string;
+  nombre: string;
+  sellado: number; // % sobre el precio del vehículo
+  gestoria: { NACIONAL: number; IMPORTADO: number }; // ratio si no hay tabla exacta
+  confirmada: boolean; // false = alícuotas provisorias, a confirmar con el cliente
+}
+
+export const PROVINCIAS: ProvinciaDef[] = [
+  { id: "nqn", nombre: "Neuquén", sellado: 0.014, gestoria: { NACIONAL: 0.0233, IMPORTADO: 0.0303 }, confirmada: true },
+  { id: "rn", nombre: "Río Negro", sellado: 0.02, gestoria: { NACIONAL: 0.0295, IMPORTADO: 0.0365 }, confirmada: true },
+  { id: "chubut", nombre: "Chubut", sellado: 0.014, gestoria: { NACIONAL: 0.0233, IMPORTADO: 0.0303 }, confirmada: false },
+  { id: "sc", nombre: "Santa Cruz", sellado: 0.014, gestoria: { NACIONAL: 0.0233, IMPORTADO: 0.0303 }, confirmada: false },
+  { id: "otra", nombre: "Otra provincia", sellado: 0.014, gestoria: { NACIONAL: 0.0233, IMPORTADO: 0.0303 }, confirmada: false },
+];
+
+export function provinciaDef(id: string): ProvinciaDef {
+  return PROVINCIAS.find((p) => p.id === id) ?? PROVINCIAS[0];
+}
+
+/** Jurisdicciones que ofrece cada empresa, en orden (la primera es la predeterminada). */
+export function provinciasDeEmpresa(empresaId?: string | null): ProvinciaDef[] {
+  const ids = empresaId === "pc"
+    ? ["chubut", "rn", "sc", "nqn", "otra"] // Corradi: patenta en Chubut por defecto
+    : ["nqn", "rn", "otra"]; // SAPAC/Fiorasi: Neuquén primero
+  return ids.map(provinciaDef);
+}
 
 export interface PlanAdjudicado {
   key: string;
@@ -154,12 +185,14 @@ export function seqDelPlan(desc: string, empresaId?: string | null): string {
   return "";
 }
 
-function gestoriaDe(precio: number, origen: string, prov: Provincia): number {
-  const g = DB.gest[String(Math.round(precio))];
-  const idx = prov === "nqn" ? (origen === "IMPORTADO" ? 1 : 0) : (origen === "IMPORTADO" ? 3 : 2);
-  if (g && g[idx] > 0) return g[idx];
-  const r = PARAMS.RATIOS_GESTORIA[prov][origen === "IMPORTADO" ? "IMPORTADO" : "NACIONAL"];
-  return precio * r;
+function gestoriaDe(precio: number, origen: string, prov: ProvinciaDef): number {
+  // La tabla exacta de gestoría de la planilla solo cubre Neuquén y Río Negro.
+  if (prov.id === "nqn" || prov.id === "rn") {
+    const g = DB.gest[String(Math.round(precio))];
+    const idx = prov.id === "nqn" ? (origen === "IMPORTADO" ? 1 : 0) : (origen === "IMPORTADO" ? 3 : 2);
+    if (g && g[idx] > 0) return g[idx];
+  }
+  return precio * prov.gestoria[origen === "IMPORTADO" ? "IMPORTADO" : "NACIONAL"];
 }
 
 export interface OpcionesCotizacion {
@@ -206,9 +239,10 @@ export function cotizarSeq(plan: PlanAdjudicado, seq: string, op: OpcionesCotiza
   const difActual = mismoModelo ? 0 : precioActual - plan.vm;
   const difPromo = mismoModelo ? 0 : promo != null ? promo - plan.vm : null;
 
-  const gestoria = gestoriaDe(precioActual, origen, op.prov);
+  const provDef = provinciaDef(op.prov);
+  const gestoria = gestoriaDe(precioActual, origen, provDef);
   const inscripcion = gestoria + PARAMS.ADIC_GESTORIA + PARAMS.EXTRAS_FIJOS;
-  const sellado = precioActual * PARAMS.SELLADO[op.prov];
+  const sellado = precioActual * provDef.sellado;
   const prenda = op.cancelado ? 0 : plan.saldo * PARAMS.PRENDA_PCT;
   const gastosConc = inscripcion + sellado + prenda;
   const alicPendiente = plan.alicTotal > 0 && !op.alicuotaPagada ? plan.alicTotal : 0;
