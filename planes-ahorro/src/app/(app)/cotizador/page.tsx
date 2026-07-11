@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSesion } from "@/lib/session";
 import { tienePermiso } from "@/lib/roles";
 import {
-  DB, buscarPlan, cotizarSeq, seqDelPlan, actualizacionVigente,
+  DB, buscarPlan, cotizarSeq, seqDelPlan, actualizacionVigente, preciosVigentes,
   type PlanAdjudicado, type Provincia,
 } from "@/lib/cotizador";
 import { suscribir, listarClientes } from "@/lib/store";
@@ -50,12 +50,12 @@ export default function CotizadorPage() {
     setPlan(r.plan);
     setAlicPagada(false);
     setCancelado(false);
-    setSeqs([seqDelPlan(r.plan.desc), "", ""]);
+    setSeqs([seqDelPlan(r.plan.desc, empresaActivaId), "", ""]);
   };
 
   const cotizaciones = useMemo(
-    () => (plan ? seqs.map((s) => cotizarSeq(plan, s, { prov, cancelado, alicuotaPagada: alicPagada })) : []),
-    [plan, seqs, prov, cancelado, alicPagada]
+    () => (plan ? seqs.map((s) => cotizarSeq(plan, s, { prov, cancelado, alicuotaPagada: alicPagada }, empresaActivaId)) : []),
+    [plan, seqs, prov, cancelado, alicPagada, empresaActivaId]
   );
 
   const resultados = useMemo<Cliente[]>(() => {
@@ -87,9 +87,14 @@ export default function CotizadorPage() {
     [empresaActivaId, tick]
   );
 
+  const listaPrecios = useMemo(
+    () => preciosVigentes(empresaActivaId),
+    [empresaActivaId, tick]
+  );
+
   const opcionesSeq = useMemo(
-    () => Object.entries(DB.prec2).map(([seq, r]) => ({ seq, label: `${seq} — ${r[0]}` })),
-    []
+    () => Object.entries(listaPrecios.prec2).map(([seq, r]) => ({ seq, label: `${seq} — ${r[0]}` })),
+    [listaPrecios]
   );
 
   if (!usuarioActivo) return null;
@@ -107,7 +112,11 @@ export default function CotizadorPage() {
             Datos de la actualización del <strong>{fuente.fecha}</strong>{" "}
             {fuente.importada
               ? <Badge variant="success">cartera importada</Badge>
-              : <Badge variant="secondary">planilla embebida — importá el Novedades para actualizar</Badge>}.
+              : <Badge variant="secondary">planilla embebida — importá el Novedades para actualizar</Badge>}
+            {" "}· Lista de precios del <strong>{listaPrecios.fecha}</strong>{" "}
+            {listaPrecios.importada
+              ? <Badge variant="success">lista importada</Badge>
+              : <Badge variant="secondary">embebida</Badge>}.
           </p>
         </div>
         {plan && (

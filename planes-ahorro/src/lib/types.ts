@@ -194,12 +194,54 @@ export interface Alerta {
   id: string;
   empresaId: string;
   rolesDestino: RolId[]; // a qué roles les aparece
+  /** Si está seteado, la alerta es SOLO para ese usuario (ej: recordatorio vencido). */
+  usuarioDestinoId?: string | null;
   tipo: string;
   clienteId: string | null;
   clienteNombre: string | null;
   mensaje: string;
   leidaPor: string[]; // ids de usuarios que ya la leyeron
   fecha: string;
+}
+
+// Recordatorio de gestión con fecha (calendario de tareas de /gestiones).
+export interface Recordatorio {
+  id: string;
+  empresaId: string;
+  usuarioId: string; // destinatario (a quién le suena la campanita)
+  usuarioNombre: string;
+  creadoPorNombre: string;
+  fecha: string; // "aaaa-mm-dd" — día en que hay que hacer la gestión
+  nota: string;
+  clienteId: string | null;
+  clienteNombre: string | null;
+  gestionTipo: string | null; // cola de gestión relacionada (opcional)
+  completado: boolean;
+  fechaCompletado: string | null;
+  avisado: boolean; // ya se generó la alerta de vencimiento (para no duplicar)
+}
+
+// Liquidación de comisiones a comercializadoras (gestiones terciarizadas).
+export interface ItemComision {
+  clienteId: string;
+  nombre: string;
+  nroSolicitud: string | null;
+  fechaVenta: string | null;
+  base: number | null; // valor móvil u otra base
+  comision: number;
+}
+export interface LiquidacionComision {
+  id: string;
+  empresaId: string;
+  comercializadora: string; // nombre de la gestión (coincide con gestionId de los clientes)
+  periodo: string; // "aaaa-mm"
+  esquema: { tipo: "monto_fijo" | "pct_valor_movil"; valor: number };
+  items: ItemComision[];
+  total: number;
+  estado: "borrador" | "aprobada" | "pagada";
+  fechaCreacion: string;
+  creadaPorNombre: string;
+  fechaPago: string | null;
 }
 
 // Datos registrados en cada estadio (todos opcionales; se completan a medida que avanza).

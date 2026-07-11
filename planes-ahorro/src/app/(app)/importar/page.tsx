@@ -1,28 +1,44 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSesion } from "@/lib/session";
 import { tienePermiso } from "@/lib/roles";
-import { empresaPorId } from "@/lib/store";
 import {
+  suscribir, empresaPorId,
   importarCartera, importarAdjudicatarios, importarGanadores, importarCtaCte, importarAdh,
-  importarSolicitudes, type ReporteImportacion,
+  importarSolicitudes, importarListaPrecios,
+  registrarImportacion, ultimaImportacion, historialListasPrecios,
+  type ReporteImportacion,
 } from "@/lib/store";
-import { analizarArchivo, TIPO_LABEL, type ArchivoAnalizado } from "@/lib/import-archivos";
+import { analizarArchivo, TIPO_LABEL, type ArchivoAnalizado, type TipoArchivo } from "@/lib/import-archivos";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Upload, CheckCircle2, AlertTriangle, History } from "lucide-react";
+
+// Una casilla por archivo: control de qué se importa y de cuándo es cada actualización.
+const CASILLAS: { tipo: TipoArchivo; titulo: string; fuente: string; desc: string }[] = [
+  { tipo: "novedades", titulo: "Cartera (Novedades)", fuente: "VOPA → Reportes → Novedades", desc: "La cartera completa de ahorristas. Actualiza datos y cuotas; alimenta Gestiones y el Cotizador." },
+  { tipo: "solicitudes", titulo: "Solicitudes VOPA", fuente: "VOPA → Solicitud → Buscar → Exportar CSV", desc: "Solicitudes enviadas a fábrica: trae DNI/CUIT, email, teléfonos, domicilio y el status de firma." },
+  { tipo: "adjudicatarios", titulo: "Adjudicatarios sin pedido", fuente: "VOPA → Reportes → Adjudicatarios sin pedido", desc: "Adjudicados que aún no cargaron pedido: pasa los casos al estadio Pedido con aging y observaciones." },
+  { tipo: "ganadores", titulo: "Ganadores de acto", fuente: "VOPA → Reportes → Ganadores del acto", desc: "Ganadores de sorteo/licitación: pasa a Adjudicación y avisa a Administración." },
+  { tipo: "precios", titulo: "Lista de precios", fuente: "Planilla → solapa Precio2 (guardar como CSV/Excel)", desc: "Precios por SEQ para el Cotizador. Queda guardado el historial de listas. Columnas: SEQ, MODELO, PRECIO (y opcional PROMO, FLETE, ORIGEN)." },
+  { tipo: "cta_cte", titulo: "Cuenta corriente", fuente: "FIS → cta_cte_*.txt", desc: "Movimientos de la concesionaria con la administradora (módulo Cuenta corriente)." },
+  { tipo: "adh", titulo: "Domicilios (adh)", fuente: "FIS → adh_*.txt", desc: "Enriquece domicilio/localidad/provincia/CP de clientes existentes. Layout beta." },
+];
 
 export default function ImportarPage() {
   const { usuarioActivo, empresaActivaId } = useSesion();
-  const [nombreArchivo, setNombreArchivo] = useState<string | null>(null);
-  const [analisis, setAnalisis] = useState<ArchivoAnalizado | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [reporte, setReporte] = useState<ReporteImportacion | null>(null);
+  const [, setTick] = useState(0);
+  useEffect(() => suscribir(() => setTick((t) => t + 1)), []);
+
+  const [pendiente, setPendiente] = useState<{ tipo: TipoArchivo; analisis: ArchivoAnalizado; archivo: string } | null>(null);
+  const [errorEn, setErrorEn] = useState<{ tipo: TipoArchivo; texto: string } | null>(null);
+  const [reporte, setReporte] = useState<{ tipo: TipoArchivo; rep: ReporteImportacion } | null>(null);
   const [cargando, setCargando] = useState(false);
+  const confirmarRef = useRef<HTMLDivElement | null>(null);
 
   if (!usuarioActivo) return null;
   if (!tienePermiso(usuarioActivo.roles, "importar")) {
@@ -36,35 +52,45 @@ export default function ImportarPage() {
 
   const empresa = empresaActivaId ? empresaPorId(empresaActivaId) : null;
 
-  const onArchivo = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const onArchivo = async (esperado: TipoArchivo, file: File | undefined) => {
     if (!file) return;
-    setError(null); setReporte(null); setAnalisis(null); setCargando(true);
+    setErrorEn(null); setReporte(null); setPendiente(null); setCargando(true);
     try {
       const a = await analizarArchivo(file);
       if (a.tipo === "desconocido") {
-        setError("No reconocimos el formato del archivo. Formatos soportados: Novedades (cartera), Adjudicatarios sin pedido, Ganadores de acto, Solicitudes VOPA, cta_cte y adh.");
+        setErrorEn({ tipo: esperado, texto: "No reconocimos el formato de este archivo." });
+      } else if (a.tipo !== esperado) {
+        setErrorEn({ tipo: esperado, texto: `Este archivo parece ser "${TIPO_LABEL[a.tipo]}". Subilo en su casilla para mantener el control.` });
       } else {
-        setAnalisis(a);
-        setNombreArchivo(file.name);
+        setPendiente({ tipo: esperado, analisis: a, archivo: file.name });
+        setTimeout(() => confirmarRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
       }
     } catch {
-      setError("No pudimos leer el archivo. Verificá que sea uno de los exports de FIS/Plan Óvalo.");
+      setErrorEn({ tipo: esperado, texto: "No pudimos leer el archivo. Verificá que sea el export correcto." });
     } finally {
       setCargando(false);
     }
   };
 
   const ejecutar = () => {
-    if (!empresaActivaId || !analisis) return;
+    if (!empresaActivaId || !pendiente) return;
+    const a = pendiente.analisis;
     let rep: ReporteImportacion | null = null;
-    if (analisis.tipo === "novedades" && analisis.cartera) rep = importarCartera(analisis.cartera, empresaActivaId);
-    if (analisis.tipo === "adjudicatarios" && analisis.adjudicatarios) rep = importarAdjudicatarios(analisis.adjudicatarios, empresaActivaId);
-    if (analisis.tipo === "ganadores" && analisis.ganadores) rep = importarGanadores(analisis.ganadores, empresaActivaId);
-    if (analisis.tipo === "solicitudes" && analisis.solicitudes) rep = importarSolicitudes(analisis.solicitudes, empresaActivaId);
-    if (analisis.tipo === "cta_cte" && analisis.movimientos) rep = importarCtaCte(analisis.movimientos, empresaActivaId);
-    if (analisis.tipo === "adh" && analisis.adh) rep = importarAdh(analisis.adh, empresaActivaId);
-    setReporte(rep);
+    if (a.tipo === "novedades" && a.cartera) rep = importarCartera(a.cartera, empresaActivaId);
+    if (a.tipo === "adjudicatarios" && a.adjudicatarios) rep = importarAdjudicatarios(a.adjudicatarios, empresaActivaId);
+    if (a.tipo === "ganadores" && a.ganadores) rep = importarGanadores(a.ganadores, empresaActivaId);
+    if (a.tipo === "solicitudes" && a.solicitudes) rep = importarSolicitudes(a.solicitudes, empresaActivaId);
+    if (a.tipo === "precios" && a.precios) rep = importarListaPrecios(a.precios, empresaActivaId, pendiente.archivo, usuarioActivo.nombre);
+    if (a.tipo === "cta_cte" && a.movimientos) rep = importarCtaCte(a.movimientos, empresaActivaId);
+    if (a.tipo === "adh" && a.adh) rep = importarAdh(a.adh, empresaActivaId);
+    if (rep) {
+      registrarImportacion(empresaActivaId, a.tipo, {
+        fecha: new Date().toISOString(), archivo: pendiente.archivo, usuario: usuarioActivo.nombre,
+        total: rep.total, creados: rep.creados, actualizados: rep.actualizados, rechazados: rep.rechazados.length,
+      });
+      setReporte({ tipo: a.tipo, rep });
+      setPendiente(null);
+    }
   };
 
   return (
@@ -72,46 +98,73 @@ export default function ImportarPage() {
       <div>
         <h1 className="text-2xl font-bold">Importar archivos</h1>
         <p className="text-muted-foreground">
-          Subí cualquiera de los archivos que hoy se importan al sistema actual: <strong>Novedades</strong> (cartera),{" "}
-          <strong>Adjudicatarios sin pedido</strong>, <strong>Ganadores de acto</strong>, <strong>Solicitudes VOPA</strong>,{" "}
-          <strong>cta_cte</strong> y <strong>adh</strong>. El tipo se detecta solo. Se asigna a{" "}
-          <strong>{empresa?.nombreComercial ?? "la empresa seleccionada"}</strong>.
+          Una casilla por archivo, con la fecha de la última actualización de cada uno.
+          Todo se asigna a <strong>{empresa?.nombreComercial ?? "la empresa seleccionada"}</strong>.
         </p>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-8 text-center hover:bg-accent/40">
-            <Upload className="h-8 w-8 text-muted-foreground" />
-            <span className="font-medium">{nombreArchivo ?? "Elegí el archivo"}</span>
-            <span className="text-sm text-muted-foreground">CSV (separador ;), Excel (.xls/.xlsx) o TXT posicional (cta_cte / adh)</span>
-            <input type="file" accept=".csv,.xls,.xlsx,.txt,text/csv,text/plain" className="hidden" onChange={onArchivo} />
-          </label>
-          {cargando && <p className="mt-2 text-sm text-muted-foreground">Leyendo archivo…</p>}
-          {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-        </CardContent>
-      </Card>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {CASILLAS.map((c) => {
+          const ult = empresaActivaId ? ultimaImportacion(empresaActivaId, c.tipo) : null;
+          const error = errorEn?.tipo === c.tipo ? errorEn.texto : null;
+          return (
+            <Card key={c.tipo} className={pendiente?.tipo === c.tipo ? "border-primary" : undefined}>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center justify-between gap-2 text-base">
+                  {c.titulo}
+                  <label className="shrink-0">
+                    <span className="inline-flex h-9 cursor-pointer items-center gap-1 rounded-md border px-3 text-sm font-medium hover:bg-accent">
+                      <Upload className="h-4 w-4" /> Subir
+                    </span>
+                    <input
+                      type="file"
+                      accept=".csv,.xls,.xlsx,.txt,text/csv,text/plain"
+                      className="hidden"
+                      onChange={(e) => { onArchivo(c.tipo, e.target.files?.[0]); e.target.value = ""; }}
+                    />
+                  </label>
+                </CardTitle>
+                <CardDescription>{c.desc}</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-1 pt-0 text-sm">
+                <p className="text-xs text-muted-foreground">Se baja de: {c.fuente}</p>
+                {ult ? (
+                  <p>
+                    <Badge variant="success">Actualizado {new Date(ult.fecha).toLocaleDateString("es-AR")}</Badge>{" "}
+                    <span className="text-muted-foreground">
+                      {new Date(ult.fecha).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} hs
+                      · {ult.archivo} · {ult.total} reg. ({ult.actualizados} act. / {ult.creados} nuevos
+                      {ult.rechazados ? ` / ${ult.rechazados} rech.` : ""}) · por {ult.usuario}
+                    </span>
+                  </p>
+                ) : (
+                  <p><Badge variant="outline">Nunca se importó</Badge></p>
+                )}
+                {c.tipo === "precios" && empresaActivaId && <HistorialPrecios empresaId={empresaActivaId} />}
+                {error && <p className="text-destructive">{error}</p>}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
 
-      {analisis && !reporte && (
-        <Card>
+      {cargando && <p className="text-sm text-muted-foreground">Leyendo archivo…</p>}
+
+      {pendiente && !reporte && (
+        <Card ref={confirmarRef as React.RefObject<HTMLDivElement>}>
           <CardHeader>
             <CardTitle className="flex flex-wrap items-center gap-2 text-base">
-              Tipo detectado: <Badge>{TIPO_LABEL[analisis.tipo]}</Badge>
-              <span className="text-sm font-normal text-muted-foreground">{analisis.cantidad} registro(s)</span>
+              Confirmar: <Badge>{TIPO_LABEL[pendiente.tipo]}</Badge>
+              <span className="text-sm font-normal text-muted-foreground">
+                {pendiente.archivo} — {pendiente.analisis.cantidad} registro(s)
+              </span>
             </CardTitle>
-            <CardDescription>
-              {analisis.tipo === "novedades" && "Actualiza la cartera: match por N° de solicitud (o grupo+orden); si existe actualiza, si no crea."}
-              {analisis.tipo === "adjudicatarios" && "Adjudicados que aún no cargaron el pedido: pasa los clientes al estadio Pedido con aging, observaciones y si pueden ingresar pedido."}
-              {analisis.tipo === "ganadores" && "Ganadores de sorteo/licitación: pasa los clientes a Adjudicación y genera una alerta a Administración por cada uno."}
-              {analisis.tipo === "solicitudes" && "Solicitudes enviadas a fábrica (export de VOPA): trae DNI/CUIT, email, teléfonos y domicilio del titular. Completa los datos que falten en la ficha (sin pisar lo cargado a mano), actualiza el status de fábrica y crea los clientes que no existan."}
-              {analisis.tipo === "cta_cte" && "Cuenta corriente de la concesionaria con la administradora: guarda los movimientos (los duplicados se rechazan)."}
-              {analisis.tipo === "adh" && "Enriquece el domicilio (calle, localidad, provincia, CP) de los clientes ya existentes en la cartera. No crea clientes nuevos. ⚠️ Layout beta hasta tener el diseño de registro oficial."}
-            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <VistaPrevia analisis={analisis} />
+            <VistaPrevia analisis={pendiente.analisis} />
             <div className="flex items-center gap-2">
-              <Button onClick={ejecutar} disabled={!empresaActivaId}>Importar {analisis.cantidad} registro(s)</Button>
+              <Button onClick={ejecutar} disabled={!empresaActivaId}>Importar {pendiente.analisis.cantidad} registro(s)</Button>
+              <Button variant="outline" onClick={() => setPendiente(null)}>Cancelar</Button>
               {!empresaActivaId && <span className="text-sm text-destructive">Seleccioná una empresa arriba.</span>}
             </div>
           </CardContent>
@@ -122,35 +175,59 @@ export default function ImportarPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
-              <CheckCircle2 className="h-5 w-5 text-emerald-600" /> Importación finalizada
+              <CheckCircle2 className="h-5 w-5 text-emerald-600" /> Importación finalizada — {TIPO_LABEL[reporte.tipo]}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex flex-wrap gap-3">
-              <Resumen n={reporte.total} t="Total" />
-              <Resumen n={reporte.creados} t="Creados" color="text-emerald-700" />
-              <Resumen n={reporte.actualizados} t="Actualizados" color="text-blue-700" />
-              <Resumen n={reporte.rechazados.length} t="Rechazados" color="text-amber-700" />
+              <Resumen n={reporte.rep.total} t="Total" />
+              <Resumen n={reporte.rep.creados} t={reporte.tipo === "precios" ? "Precios cargados" : "Creados"} color="text-emerald-700" />
+              <Resumen n={reporte.rep.actualizados} t="Actualizados" color="text-blue-700" />
+              <Resumen n={reporte.rep.rechazados.length} t="Rechazados" color="text-amber-700" />
             </div>
-            {reporte.rechazados.length > 0 && (
+            {reporte.rep.rechazados.length > 0 && (
               <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
                 <p className="flex items-center gap-2 text-sm font-medium text-amber-900">
                   <AlertTriangle className="h-4 w-4" /> Registros rechazados
                 </p>
                 <ul className="mt-1 space-y-1 text-sm text-amber-800">
-                  {reporte.rechazados.slice(0, 20).map((r, i) => (
+                  {reporte.rep.rechazados.slice(0, 20).map((r, i) => (
                     <li key={i}>Fila {r.fila} ({r.nombre}): {r.motivo}</li>
                   ))}
-                  {reporte.rechazados.length > 20 && <li>… y {reporte.rechazados.length - 20} más.</li>}
+                  {reporte.rep.rechazados.length > 20 && <li>… y {reporte.rep.rechazados.length - 20} más.</li>}
                 </ul>
               </div>
             )}
             <div className="flex gap-2">
-              <Link href="/clientes"><Button variant="outline">Ver ahorristas</Button></Link>
-              {analisis?.tipo === "cta_cte" && <Link href="/cta-cte"><Button variant="outline">Ver cuenta corriente</Button></Link>}
+              {reporte.tipo !== "precios" && reporte.tipo !== "cta_cte" && <Link href="/clientes"><Button variant="outline">Ver ahorristas</Button></Link>}
+              {reporte.tipo === "cta_cte" && <Link href="/cta-cte"><Button variant="outline">Ver cuenta corriente</Button></Link>}
+              {reporte.tipo === "precios" && <Link href="/cotizador"><Button variant="outline">Ver cotizador</Button></Link>}
             </div>
           </CardContent>
         </Card>
+      )}
+    </div>
+  );
+}
+
+function HistorialPrecios({ empresaId }: { empresaId: string }) {
+  const [abierto, setAbierto] = useState(false);
+  const hist = historialListasPrecios(empresaId);
+  if (hist.length === 0) return null;
+  return (
+    <div>
+      <button className="inline-flex items-center gap-1 text-xs text-primary underline-offset-2 hover:underline" onClick={() => setAbierto((v) => !v)}>
+        <History className="h-3 w-3" /> {abierto ? "Ocultar historial" : `Historial de listas (${hist.length})`}
+      </button>
+      {abierto && (
+        <ul className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+          {hist.map((h, i) => (
+            <li key={h.fecha}>
+              {new Date(h.fecha).toLocaleDateString("es-AR")} — {h.archivo} — {Object.keys(h.prec2).length} precios — por {h.usuario}
+              {i === 0 && <Badge className="ml-1" variant="success">vigente</Badge>}
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
@@ -179,6 +256,12 @@ function VistaPrevia({ analisis }: { analisis: ArchivoAnalizado }) {
     return (
       <Tabla headers={["Nombre", "N° solicitud", "N° manual", "DNI", "Modelo", "Status", "Firma pend."]}
         rows={analisis.solicitudes.slice(0, 8).map((f) => [f.nombre, f.nroSolicitud, f.nroManual ?? "—", f.documento ?? "—", f.modelo ?? "—", f.status ?? "—", f.firmaPendiente ? "SÍ" : "NO"])} />
+    );
+  }
+  if (analisis.tipo === "precios" && analisis.precios) {
+    return (
+      <Tabla headers={["SEQ", "Modelo", "Precio", "Promo", "Flete", "Origen"]}
+        rows={analisis.precios.slice(0, 8).map((f) => [f.seq, f.modelo, f.precio.toLocaleString("es-AR"), f.promo ? f.promo.toLocaleString("es-AR") : "—", f.flete ? f.flete.toLocaleString("es-AR") : "—", f.origen ?? "—"])} />
     );
   }
   if (analisis.tipo === "cta_cte" && analisis.movimientos) {

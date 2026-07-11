@@ -22,7 +22,14 @@ async function upsert(tabla: string, empresaId: string, filas: { id: string }[])
   if (!sb) return;
   const payload = filas.map((f) => ({ id: f.id, empresa_id: empresaId, data: f }));
   const { error } = await sb.from(tabla).upsert(payload);
-  if (error) avisarError(tabla, error.message);
+  if (error) {
+    // Tabla aún no creada (migración pendiente): queda en el navegador, sin alarmar.
+    if (/does not exist|42P01/i.test(error.message)) {
+      console.warn(`[nube:${tabla}] tabla pendiente de migración — el dato quedó local`);
+      return;
+    }
+    avisarError(tabla, error.message);
+  }
 }
 
 export const remote = {
@@ -36,6 +43,8 @@ export const remote = {
   plantillasWa: (empresaId: string, filas: { id: string }[]) => upsert("plantilla_wa", empresaId, filas),
   campaniasWa: (empresaId: string, filas: { id: string }[]) => upsert("campania_wa", empresaId, filas),
   enviosWa: (empresaId: string, filas: { id: string }[]) => upsert("envio_wa", empresaId, filas),
+  recordatorios: (empresaId: string, filas: { id: string }[]) => upsert("recordatorio", empresaId, filas),
+  liquidaciones: (empresaId: string, filas: { id: string }[]) => upsert("liquidacion_comision", empresaId, filas),
   // La tabla empresa tiene columnas reales (no jsonb) y RLS: solo super admin modifica.
   empresa: async (e: { id: string; nombre: string; nombreComercial: string; cuit: string; activo: boolean }) => {
     if (MODO_DEMO) return;

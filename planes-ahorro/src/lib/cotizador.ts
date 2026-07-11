@@ -7,7 +7,7 @@
 // src/data/cotizador-db.json y se refrescan reemplazando ese archivo (mensual).
 
 import DB_JSON from "@/data/cotizador-db.json";
-import { getMeta } from "./store";
+import { getMeta, listaPreciosVigente } from "./store";
 
 export interface CotizadorDB {
   act: Record<string, [number, number, string, number, string]>; // "grupo/orden" → [adelanto, licitadas, pct, emitidas, codPlan]
@@ -58,8 +58,30 @@ export interface PlanAdjudicado {
   adelantadas: number;
 }
 
-function valorMovilDe(desc: string): number {
-  const p = DB.precio[desc];
+/**
+ * Lista de precios vigente: si la empresa importó una (módulo Importar → Lista de
+ * precios), esa manda; lo que no esté cae a la embebida en cotizador-db.json.
+ */
+export function preciosVigentes(empresaId?: string | null): {
+  precio: CotizadorDB["precio"]; prec2: CotizadorDB["prec2"]; fecha: string; archivo: string | null; importada: boolean;
+} {
+  if (empresaId) {
+    const lp = listaPreciosVigente(empresaId);
+    if (lp && Object.keys(lp.prec2).length > 0) {
+      return {
+        precio: { ...DB.precio, ...lp.precio },
+        prec2: { ...DB.prec2, ...lp.prec2 },
+        fecha: new Date(lp.fecha).toLocaleDateString("es-AR"),
+        archivo: lp.archivo,
+        importada: true,
+      };
+    }
+  }
+  return { precio: DB.precio, prec2: DB.prec2, fecha: FECHA_DATOS, archivo: null, importada: false };
+}
+
+function valorMovilDe(desc: string, precioTbl: CotizadorDB["precio"]): number {
+  const p = precioTbl[desc];
   if (p) {
     if (p[1] > 0) return p[1];
     if (p[0] > 0) return p[0];
@@ -104,7 +126,7 @@ export function buscarPlan(grupo: string, orden: string, empresaId?: string | nu
   const [, desc, precioLista, totCuotas, beneficio] = m;
   const pagas = Math.round(emi + adelanto + lic);
   const aVencer = Math.max(0, totCuotas - pagas);
-  const vm = valorMovilDe(desc) || precioLista;
+  const vm = valorMovilDe(desc, preciosVigentes(empresaId).precio) || precioLista;
 
   let alicTotal = 0;
   let tipo: PlanAdjudicado["tipo"] = "100%";
@@ -125,8 +147,8 @@ export function buscarPlan(grupo: string, orden: string, empresaId?: string | nu
 }
 
 /** SEQ cuyo modelo coincide con el del plan (para precargar el primer slot). */
-export function seqDelPlan(desc: string): string {
-  for (const [seq, r] of Object.entries(DB.prec2)) {
+export function seqDelPlan(desc: string, empresaId?: string | null): string {
+  for (const [seq, r] of Object.entries(preciosVigentes(empresaId).prec2)) {
     if (r[0].trim() === desc.trim()) return seq;
   }
   return "";
@@ -170,13 +192,14 @@ export interface Cotizacion {
   totalCliPromo: number | null;
 }
 
-export function cotizarSeq(plan: PlanAdjudicado, seq: string, op: OpcionesCotizacion): Cotizacion | { error: string } | null {
+export function cotizarSeq(plan: PlanAdjudicado, seq: string, op: OpcionesCotizacion, empresaId?: string | null): Cotizacion | { error: string } | null {
   const s = seq.trim().toUpperCase();
   if (!s) return null;
-  const r = DB.prec2[s];
+  const tablas = preciosVigentes(empresaId);
+  const r = tablas.prec2[s];
   if (!r) return { error: `SEQ "${s}" no encontrado en la lista de precios.` };
   const [desc, precioActual, flete, origen] = r;
-  const pInfo = DB.precio[desc] || [0, 0, ""];
+  const pInfo = tablas.precio[desc] || [0, 0, ""];
   const promo = pInfo[1] > 0 ? pInfo[1] : null;
   const nota = pInfo[2] || "";
   const mismoModelo = desc.trim() === plan.desc.trim();

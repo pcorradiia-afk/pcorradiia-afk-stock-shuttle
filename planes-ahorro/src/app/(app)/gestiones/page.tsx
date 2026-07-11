@@ -4,16 +4,20 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSesion } from "@/lib/session";
 import { tienePermiso } from "@/lib/roles";
-import { inicializar, suscribir, listarClientes, listarComunicaciones } from "@/lib/store";
+import {
+  inicializar, suscribir, listarClientes, listarComunicaciones, listarUsuariosCache,
+  listarRecordatorios, crearRecordatorio, completarRecordatorio, eliminarRecordatorio, hoyISO,
+} from "@/lib/store";
 import { GESTIONES, colaGestion, claveFecha, type GestionTipo } from "@/lib/gestiones";
 import { exportarExcel } from "@/lib/exportar";
 import { fechaHora } from "@/lib/labels";
-import type { Cliente } from "@/lib/types";
+import type { Cliente, Recordatorio, Usuario } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, PhoneCall } from "lucide-react";
+import { Download, PhoneCall, CalendarClock, Check, ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 
 export default function GestionesPage() {
   const { usuarioActivo, empresaActivaId } = useSesion();
@@ -101,6 +105,9 @@ export default function GestionesPage() {
           <Download className="h-4 w-4" /> Excel con anotador
         </Button>
       </div>
+
+      {/* Recordatorios con calendario (pedido del cliente 2026-07-11) */}
+      {empresaActivaId && <Recordatorios empresaId={empresaActivaId} usuario={usuarioActivo} clientes={clientes} />}
 
       {/* Selector de gestión con contadores */}
       <div className="flex flex-wrap gap-2">
@@ -195,6 +202,213 @@ export default function GestionesPage() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+// ===================== Recordatorios (calendario de tareas con aviso) =====================
+
+const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+const DIAS = ["L", "M", "M", "J", "V", "S", "D"];
+
+function fmtDia(iso: string): string {
+  const [a, m, d] = iso.split("-");
+  return `${d}/${m}/${a}`;
+}
+
+function Recordatorios({ empresaId, usuario, clientes }: { empresaId: string; usuario: Usuario; clientes: Cliente[] }) {
+  const hoy = hoyISO();
+  const [mes, setMes] = useState(hoy.slice(0, 7)); // "aaaa-mm" visible en el calendario
+  const [diaSel, setDiaSel] = useState<string | null>(null);
+  const [soloMios, setSoloMios] = useState(true);
+  const [abierto, setAbierto] = useState(false);
+  const [form, setForm] = useState({ fecha: hoy, nota: "", usuarioId: usuario.id, busquedaCliente: "", clienteId: null as string | null, clienteNombre: null as string | null });
+
+  const todos = listarRecordatorios(empresaId, soloMios ? usuario.id : undefined);
+  const pendientes = todos.filter((r) => !r.completado);
+  const vencidos = pendientes.filter((r) => r.fecha < hoy);
+  const deHoy = pendientes.filter((r) => r.fecha === hoy);
+
+  // Calendario del mes visible
+  const [anio, mesNum] = mes.split("-").map(Number);
+  const primerDia = new Date(anio, mesNum - 1, 1);
+  const diasEnMes = new Date(anio, mesNum, 0).getDate();
+  const offset = (primerDia.getDay() + 6) % 7; // lunes = 0
+  const porDia = new Map<string, number>();
+  pendientes.forEach((r) => porDia.set(r.fecha, (porDia.get(r.fecha) ?? 0) + 1));
+  const cambiarMes = (delta: number) => {
+    const d = new Date(anio, mesNum - 1 + delta, 1);
+    setMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    setDiaSel(null);
+  };
+
+  const agenda = (diaSel ? pendientes.filter((r) => r.fecha === diaSel) : pendientes).slice(0, 30);
+
+  const colegas = listarUsuariosCache().filter((u) => u.activo && (u.empresaId === empresaId || u.alcance === "grupo" || (Array.isArray(u.alcance) && u.alcance.includes(empresaId))));
+
+  const resultadosCliente = form.busquedaCliente.trim().length >= 3
+    ? clientes.filter((c) => c.nombreCompleto.toLowerCase().includes(form.busquedaCliente.trim().toLowerCase())).slice(0, 6)
+    : [];
+
+  const crear = () => {
+    if (!form.nota.trim() || !form.fecha) return;
+    const destinatario = colegas.find((u) => u.id === form.usuarioId) ?? usuario;
+    crearRecordatorio({
+      empresaId,
+      usuarioId: destinatario.id,
+      usuarioNombre: destinatario.nombre,
+      creadoPorNombre: usuario.nombre,
+      fecha: form.fecha,
+      nota: form.nota.trim(),
+      clienteId: form.clienteId,
+      clienteNombre: form.clienteNombre,
+      gestionTipo: null,
+    });
+    setForm({ fecha: hoy, nota: "", usuarioId: usuario.id, busquedaCliente: "", clienteId: null, clienteNombre: null });
+    setAbierto(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-base">
+          <span className="flex items-center gap-2">
+            <CalendarClock className="h-5 w-5" /> Recordatorios
+            {vencidos.length > 0 && <Badge variant="destructive">{vencidos.length} vencido(s)</Badge>}
+            {deHoy.length > 0 && <Badge variant="warning">{deHoy.length} para hoy</Badge>}
+            {vencidos.length === 0 && deHoy.length === 0 && <Badge variant="outline">al día</Badge>}
+          </span>
+          <span className="flex items-center gap-2">
+            <label className="flex items-center gap-1 text-sm font-normal">
+              <input type="checkbox" checked={soloMios} onChange={(e) => setSoloMios(e.target.checked)} /> Solo los míos
+            </label>
+            <Button size="sm" onClick={() => setAbierto((v) => !v)}>
+              <Plus className="h-4 w-4" /> Nuevo recordatorio
+            </Button>
+          </span>
+        </CardTitle>
+        <CardDescription>
+          Agendá gestiones a realizar. El día del recordatorio (o si quedó vencido) le suena la campanita al usuario asignado.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {abierto && (
+          <div className="space-y-3 rounded-md border p-3">
+            <div className="grid gap-3 md:grid-cols-4">
+              <label className="space-y-1 text-sm">
+                <span className="block text-xs font-medium text-muted-foreground">Fecha</span>
+                <input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" />
+              </label>
+              <label className="space-y-1 text-sm md:col-span-2">
+                <span className="block text-xs font-medium text-muted-foreground">Qué hay que hacer</span>
+                <Input value={form.nota} onChange={(e) => setForm({ ...form, nota: e.target.value })} placeholder="Ej: llamar por la alícuota pendiente" />
+              </label>
+              <label className="space-y-1 text-sm">
+                <span className="block text-xs font-medium text-muted-foreground">Para</span>
+                <select value={form.usuarioId} onChange={(e) => setForm({ ...form, usuarioId: e.target.value })} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm">
+                  {colegas.map((u) => <option key={u.id} value={u.id}>{u.id === usuario.id ? `${u.nombre} (yo)` : u.nombre}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="space-y-1">
+              <span className="block text-xs font-medium text-muted-foreground">Cliente (opcional)</span>
+              {form.clienteId ? (
+                <p className="text-sm">
+                  {form.clienteNombre}{" "}
+                  <button className="text-xs text-primary hover:underline" onClick={() => setForm({ ...form, clienteId: null, clienteNombre: null })}>quitar</button>
+                </p>
+              ) : (
+                <div className="relative max-w-sm">
+                  <Input value={form.busquedaCliente} onChange={(e) => setForm({ ...form, busquedaCliente: e.target.value })} placeholder="Buscar por nombre (3+ letras)" />
+                  {resultadosCliente.length > 0 && (
+                    <div className="absolute z-10 mt-1 w-full rounded-md border bg-card shadow">
+                      {resultadosCliente.map((c) => (
+                        <button key={c.id} className="block w-full px-3 py-1.5 text-left text-sm hover:bg-accent"
+                          onClick={() => setForm({ ...form, clienteId: c.id, clienteNombre: c.nombreCompleto, busquedaCliente: "" })}>
+                          {c.nombreCompleto}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={crear} disabled={!form.nota.trim()}>Guardar</Button>
+              <Button size="sm" variant="outline" onClick={() => setAbierto(false)}>Cancelar</Button>
+            </div>
+          </div>
+        )}
+
+        <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+          {/* Calendario del mes */}
+          <div className="rounded-md border p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <button onClick={() => cambiarMes(-1)} className="rounded p-1 hover:bg-accent"><ChevronLeft className="h-4 w-4" /></button>
+              <p className="text-sm font-medium">{MESES[mesNum - 1]} {anio}</p>
+              <button onClick={() => cambiarMes(1)} className="rounded p-1 hover:bg-accent"><ChevronRight className="h-4 w-4" /></button>
+            </div>
+            <div className="grid grid-cols-7 gap-1 text-center text-xs text-muted-foreground">
+              {DIAS.map((d, i) => <span key={i}>{d}</span>)}
+            </div>
+            <div className="mt-1 grid grid-cols-7 gap-1">
+              {Array.from({ length: offset }).map((_, i) => <span key={`v${i}`} />)}
+              {Array.from({ length: diasEnMes }).map((_, i) => {
+                const iso = `${mes}-${String(i + 1).padStart(2, "0")}`;
+                const n = porDia.get(iso) ?? 0;
+                const activo = diaSel === iso;
+                return (
+                  <button
+                    key={iso}
+                    onClick={() => { setDiaSel(activo ? null : iso); if (!activo) setForm((f) => ({ ...f, fecha: iso })); }}
+                    className={`relative h-9 rounded text-sm ${activo ? "bg-primary text-primary-foreground" : iso === hoy ? "border border-primary" : "hover:bg-accent"} ${iso < hoy && n > 0 && !activo ? "text-red-600" : ""}`}
+                  >
+                    {i + 1}
+                    {n > 0 && (
+                      <span className={`absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-0.5 text-[10px] font-bold ${iso < hoy ? "bg-red-600 text-white" : "bg-primary text-primary-foreground"} ${activo ? "bg-background text-foreground" : ""}`}>
+                        {n}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-xs text-muted-foreground">Tocá un día para ver/agendar. El número indica recordatorios pendientes.</p>
+          </div>
+
+          {/* Agenda */}
+          <div className="space-y-1">
+            <p className="text-sm font-medium">
+              {diaSel ? `Recordatorios del ${fmtDia(diaSel)}` : "Pendientes"}
+              {diaSel && <button className="ml-2 text-xs text-primary hover:underline" onClick={() => setDiaSel(null)}>ver todos</button>}
+            </p>
+            {agenda.length === 0 && <p className="text-sm text-muted-foreground">Sin recordatorios pendientes {diaSel ? "ese día" : ""}. 🎉</p>}
+            {agenda.map((r) => <FilaRecordatorio key={r.id} r={r} hoy={hoy} />)}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FilaRecordatorio({ r, hoy }: { r: Recordatorio; hoy: string }) {
+  const vencido = r.fecha < hoy;
+  const esHoy = r.fecha === hoy;
+  return (
+    <div className={`flex flex-wrap items-center gap-2 rounded-md border p-2 text-sm ${vencido ? "border-red-300 bg-red-50" : esHoy ? "border-amber-300 bg-amber-50" : ""}`}>
+      <Badge variant={vencido ? "destructive" : esHoy ? "warning" : "secondary"}>{esHoy ? "HOY" : fmtDia(r.fecha)}</Badge>
+      <span className="font-medium">{r.nota}</span>
+      {r.clienteId && (
+        <Link href={`/clientes/${r.clienteId}`} className="text-primary hover:underline">{r.clienteNombre}</Link>
+      )}
+      <span className="text-xs text-muted-foreground">para {r.usuarioNombre} · agendó {r.creadoPorNombre}</span>
+      <span className="grow" />
+      <Button size="sm" variant="outline" onClick={() => completarRecordatorio(r.id)}>
+        <Check className="h-4 w-4" /> Hecho
+      </Button>
+      <Button size="sm" variant="ghost" title="Eliminar" onClick={() => eliminarRecordatorio(r.id)}>
+        <Trash2 className="h-4 w-4 text-destructive" />
+      </Button>
     </div>
   );
 }

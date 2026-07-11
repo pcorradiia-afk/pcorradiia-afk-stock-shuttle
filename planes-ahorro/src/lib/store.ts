@@ -8,7 +8,7 @@ import type {
   PlantillaWhatsApp, CampaniaWhatsApp, EnvioWhatsApp, CategoriaPlantilla,
   Cliente, Comunicacion, Empresa, Estadio, EstadoCliente, Plan,
   ObservacionScoring, ResultadoScoring, Alerta, GestionAdmin, RolId, Usuario,
-  MovimientoCtaCte, Tarea,
+  MovimientoCtaCte, Tarea, Recordatorio, LiquidacionComision, ItemComision,
 } from "./types";
 import { USUARIOS, EMPRESAS, SUCURSALES, EQUIPOS } from "./demo-data";
 import { remote } from "./remote";
@@ -24,6 +24,8 @@ const K_PLANTILLAS_WA = "pa.plantillasWa";
 const K_CAMPANIAS_WA = "pa.campaniasWa";
 const K_ENVIOS_WA = "pa.enviosWa";
 const K_META = "pa.meta";
+const K_RECORDATORIOS = "pa.recordatorios";
+const K_LIQUIDACIONES = "pa.liquidaciones";
 
 // Metadatos simples (ej. fecha de última actualización de cartera por empresa).
 export function getMeta(clave: string): string | null {
@@ -238,6 +240,7 @@ export function reemplazarDatosEmpresa(
     clientes: K_CLIENTES, comunicaciones: K_COMS, planes: K_PLANES,
     observaciones: K_OBS, alertas: K_ALERTAS, tareas: K_TAREAS, ctacte: K_CTACTE,
     plantillasWa: K_PLANTILLAS_WA, campaniasWa: K_CAMPANIAS_WA, enviosWa: K_ENVIOS_WA,
+    recordatorios: K_RECORDATORIOS, liquidaciones: K_LIQUIDACIONES,
   };
   for (const [clave, key] of Object.entries(mapa)) {
     localStorage.setItem(key, JSON.stringify(datos[clave] ?? []));
@@ -812,6 +815,83 @@ export function importarSolicitudes(
   return rep;
 }
 
+// --- Registro de importaciones por tipo de archivo (control "de cuándo es la actualización") ---
+export interface RegistroImportacion {
+  fecha: string; // ISO
+  archivo: string;
+  usuario: string;
+  total: number;
+  creados: number;
+  actualizados: number;
+  rechazados: number;
+}
+
+function leerLogImports(empresaId: string): Record<string, RegistroImportacion[]> {
+  try {
+    return JSON.parse(getMeta(`importLog:${empresaId}`) || "{}");
+  } catch {
+    return {};
+  }
+}
+export function registrarImportacion(empresaId: string, tipo: string, reg: RegistroImportacion) {
+  const log = leerLogImports(empresaId);
+  log[tipo] = [reg, ...(log[tipo] ?? [])].slice(0, 10); // se guardan las últimas 10 por tipo
+  setMeta(`importLog:${empresaId}`, JSON.stringify(log), empresaId);
+}
+export function ultimaImportacion(empresaId: string, tipo: string): RegistroImportacion | null {
+  return leerLogImports(empresaId)[tipo]?.[0] ?? null;
+}
+export function historialImportaciones(empresaId: string, tipo: string): RegistroImportacion[] {
+  return leerLogImports(empresaId)[tipo] ?? [];
+}
+
+// --- Lista de precios: vigente + HISTORIAL completo (pedido del cliente 2026-07-11) ---
+// El Cotizador usa la lista vigente importada; la embebida en cotizador-db.json es respaldo.
+export interface ListaPrecios {
+  fecha: string; // ISO
+  archivo: string;
+  usuario: string;
+  /** descModelo → [lista, promo, nota] (misma forma que cotizador-db.json) */
+  precio: Record<string, [number, number, string]>;
+  /** SEQ → [descModelo, precioActual, flete, origen] */
+  prec2: Record<string, [string, number, number, string]>;
+}
+
+export function importarListaPrecios(
+  filas: { seq: string; modelo: string; precio: number; promo: number | null; flete: number | null; origen: string | null; nota: string | null }[],
+  empresaId: string,
+  archivo: string,
+  usuario: string
+): ReporteImportacion {
+  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
+  const precio: ListaPrecios["precio"] = {};
+  const prec2: ListaPrecios["prec2"] = {};
+  filas.forEach((f, idx) => {
+    if (prec2[f.seq]) {
+      rep.rechazados.push({ fila: idx + 1, motivo: `SEQ ${f.seq} repetido en el archivo`, nombre: f.modelo });
+      return;
+    }
+    precio[f.modelo] = [f.precio, f.promo ?? 0, f.nota ?? ""];
+    prec2[f.seq] = [f.modelo, f.precio, f.flete ?? 0, f.origen === "IMPORTADO" ? "IMPORTADO" : "NACIONAL"];
+    rep.creados++;
+  });
+  const nueva: ListaPrecios = { fecha: new Date().toISOString(), archivo, usuario, precio, prec2 };
+  const hist = historialListasPrecios(empresaId);
+  setMeta(`preciosHist:${empresaId}`, JSON.stringify([nueva, ...hist].slice(0, 12)), empresaId);
+  return rep;
+}
+
+export function historialListasPrecios(empresaId: string): ListaPrecios[] {
+  try {
+    return JSON.parse(getMeta(`preciosHist:${empresaId}`) || "[]") as ListaPrecios[];
+  } catch {
+    return [];
+  }
+}
+export function listaPreciosVigente(empresaId: string): ListaPrecios | null {
+  return historialListasPrecios(empresaId)[0] ?? null;
+}
+
 // ===================== Fase 3: estadios de administración =====================
 
 export function estadioSiguiente(e: Estadio): Estadio | null {
@@ -919,9 +999,15 @@ export function crearAlerta(input: Omit<Alerta, "id" | "fecha" | "leidaPor">) {
   remote.alertas(input.empresaId, [nueva]);
 }
 
+/** Una alerta aplica por rol, o —si tiene destinatario puntual— solo a ese usuario. */
+function alertaAplica(a: Alerta, usuario: Usuario): boolean {
+  if (a.usuarioDestinoId) return a.usuarioDestinoId === usuario.id;
+  return a.rolesDestino.some((r) => usuario.roles.includes(r));
+}
+
 export function listarAlertas(usuario: Usuario, empresaId: string | null): Alerta[] {
   return leer<Alerta>(K_ALERTAS)
-    .filter((a) => (!empresaId || a.empresaId === empresaId) && a.rolesDestino.some((r) => usuario.roles.includes(r)))
+    .filter((a) => (!empresaId || a.empresaId === empresaId) && alertaAplica(a, usuario))
     .sort((a, b) => b.fecha.localeCompare(a.fecha));
 }
 export function contarAlertasNoLeidas(usuario: Usuario, empresaId: string | null): number {
@@ -940,7 +1026,7 @@ export function marcarTodasLeidas(usuario: Usuario, empresaId: string | null) {
   let cambio = false;
   const tocadas: Alerta[] = [];
   lista.forEach((a, i) => {
-    const aplica = (!empresaId || a.empresaId === empresaId) && a.rolesDestino.some((r) => usuario.roles.includes(r));
+    const aplica = (!empresaId || a.empresaId === empresaId) && alertaAplica(a, usuario);
     if (aplica && !a.leidaPor.includes(usuario.id)) {
       lista[i] = { ...a, leidaPor: [...a.leidaPor, usuario.id] };
       tocadas.push(lista[i]);
@@ -1197,4 +1283,165 @@ export function listarCampanias(empresaId: string): CampaniaWhatsApp[] {
 
 export function listarEnviosCampania(campaniaId: string): EnvioWhatsApp[] {
   return leer<EnvioWhatsApp>(K_ENVIOS_WA).filter((e) => e.campaniaId === campaniaId);
+}
+
+// ===================== Recordatorios de gestión (calendario de /gestiones) =====================
+
+export function crearRecordatorio(input: Omit<Recordatorio, "id" | "completado" | "fechaCompletado" | "avisado">): Recordatorio {
+  const lista = leer<Recordatorio>(K_RECORDATORIOS);
+  const nuevo: Recordatorio = { ...input, id: uid(), completado: false, fechaCompletado: null, avisado: false };
+  lista.push(nuevo);
+  escribir(K_RECORDATORIOS, lista);
+  remote.recordatorios(input.empresaId, [nuevo]);
+  return nuevo;
+}
+
+/** Recordatorios de la empresa; si se pasa usuarioId, solo los de ese destinatario. */
+export function listarRecordatorios(empresaId: string, usuarioId?: string): Recordatorio[] {
+  return leer<Recordatorio>(K_RECORDATORIOS)
+    .filter((r) => r.empresaId === empresaId && (!usuarioId || r.usuarioId === usuarioId))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.nota.localeCompare(b.nota));
+}
+
+export function completarRecordatorio(id: string, deshacer = false) {
+  const lista = leer<Recordatorio>(K_RECORDATORIOS);
+  const i = lista.findIndex((r) => r.id === id);
+  if (i < 0) return;
+  lista[i] = { ...lista[i], completado: !deshacer, fechaCompletado: deshacer ? null : new Date().toISOString() };
+  escribir(K_RECORDATORIOS, lista);
+  remote.recordatorios(lista[i].empresaId, [lista[i]]);
+}
+
+export function eliminarRecordatorio(id: string) {
+  const lista = leer<Recordatorio>(K_RECORDATORIOS);
+  const r = lista.find((x) => x.id === id);
+  if (!r) return;
+  // Baja lógica local: se marca completado y avisado para que no vuelva a sonar.
+  escribir(K_RECORDATORIOS, lista.filter((x) => x.id !== id));
+  const baja: Recordatorio = { ...r, completado: true, avisado: true, nota: `[eliminado] ${r.nota}` };
+  remote.recordatorios(r.empresaId, [baja]);
+}
+
+/** Fecha local "aaaa-mm-dd" (los recordatorios se comparan por día calendario). */
+export function hoyISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Genera la alerta (campanita) de los recordatorios del usuario que vencen hoy
+ * o ya vencieron y todavía no avisaron. Se llama al entrar a la app.
+ */
+export function avisarRecordatoriosVencidos(usuario: Usuario, empresaId: string | null) {
+  if (!empresaId) return;
+  const hoy = hoyISO();
+  const lista = leer<Recordatorio>(K_RECORDATORIOS);
+  const tocados: Recordatorio[] = [];
+  lista.forEach((r, i) => {
+    if (r.empresaId !== empresaId || r.usuarioId !== usuario.id) return;
+    if (r.completado || r.avisado || r.fecha > hoy) return;
+    crearAlerta({
+      empresaId,
+      rolesDestino: [],
+      usuarioDestinoId: usuario.id,
+      tipo: "recordatorio",
+      clienteId: r.clienteId,
+      clienteNombre: r.clienteNombre,
+      mensaje: `Recordatorio ${r.fecha === hoy ? "de HOY" : `vencido (${r.fecha.split("-").reverse().join("/")})`}: ${r.nota}`,
+    });
+    lista[i] = { ...r, avisado: true };
+    tocados.push(lista[i]);
+  });
+  if (tocados.length) {
+    escribir(K_RECORDATORIOS, lista);
+    remote.recordatorios(empresaId, tocados);
+  }
+}
+
+// ===================== Comisiones a comercializadoras =====================
+// Esquema por comercializadora (meta) + liquidaciones mensuales con historial.
+
+export interface EsquemaComision { tipo: "monto_fijo" | "pct_valor_movil"; valor: number }
+
+export function esquemasComision(empresaId: string): Record<string, EsquemaComision> {
+  try {
+    return JSON.parse(getMeta(`comisiones:${empresaId}`) || "{}");
+  } catch {
+    return {};
+  }
+}
+export function guardarEsquemaComision(empresaId: string, comercializadora: string, esquema: EsquemaComision) {
+  const m = esquemasComision(empresaId);
+  m[comercializadora] = esquema;
+  setMeta(`comisiones:${empresaId}`, JSON.stringify(m), empresaId);
+}
+
+/** Comercializadoras conocidas: las gestiones terciarizadas presentes en clientes y usuarios. */
+export function listarComercializadoras(empresaId: string): string[] {
+  const s = new Set<string>();
+  leer<Cliente>(K_CLIENTES).forEach((c) => { if (c.empresaId === empresaId && c.gestionId) s.add(c.gestionId); });
+  listarUsuariosCache().forEach((u) => { if (u.empresaId === empresaId && u.gestionId) s.add(u.gestionId); });
+  Object.keys(esquemasComision(empresaId)).forEach((k) => s.add(k));
+  return Array.from(s).sort((a, b) => a.localeCompare(b));
+}
+
+/** Ventas de una comercializadora en un período "aaaa-mm" (por fecha de venta). */
+export function ventasComercializadora(empresaId: string, comercializadora: string, periodo: string): Cliente[] {
+  return leer<Cliente>(K_CLIENTES).filter((c) =>
+    c.empresaId === empresaId &&
+    c.gestionId === comercializadora &&
+    !!c.fechaVenta &&
+    c.fechaVenta.slice(0, 7) === periodo
+  );
+}
+
+export function generarLiquidacion(
+  empresaId: string, comercializadora: string, periodo: string,
+  esquema: EsquemaComision, creadaPorNombre: string
+): LiquidacionComision {
+  const ventas = ventasComercializadora(empresaId, comercializadora, periodo);
+  const items: ItemComision[] = ventas.map((c) => {
+    const base = c.solicitud.valorMovil ?? null;
+    const comision = esquema.tipo === "monto_fijo"
+      ? esquema.valor
+      : base != null ? (base * esquema.valor) / 100 : 0;
+    return {
+      clienteId: c.id, nombre: c.nombreCompleto, nroSolicitud: c.solicitud.nroSolicitud,
+      fechaVenta: c.fechaVenta, base, comision: Math.round(comision * 100) / 100,
+    };
+  });
+  const liq: LiquidacionComision = {
+    id: uid(), empresaId, comercializadora, periodo, esquema, items,
+    total: Math.round(items.reduce((s, i) => s + i.comision, 0) * 100) / 100,
+    estado: "borrador", fechaCreacion: new Date().toISOString(), creadaPorNombre, fechaPago: null,
+  };
+  const lista = leer<LiquidacionComision>(K_LIQUIDACIONES);
+  lista.push(liq);
+  escribir(K_LIQUIDACIONES, lista);
+  remote.liquidaciones(empresaId, [liq]);
+  return liq;
+}
+
+export function listarLiquidaciones(empresaId: string): LiquidacionComision[] {
+  return leer<LiquidacionComision>(K_LIQUIDACIONES)
+    .filter((l) => l.empresaId === empresaId)
+    .sort((a, b) => b.periodo.localeCompare(a.periodo) || b.fechaCreacion.localeCompare(a.fechaCreacion));
+}
+
+export function cambiarEstadoLiquidacion(id: string, estado: LiquidacionComision["estado"]) {
+  const lista = leer<LiquidacionComision>(K_LIQUIDACIONES);
+  const i = lista.findIndex((l) => l.id === id);
+  if (i < 0) return;
+  lista[i] = { ...lista[i], estado, fechaPago: estado === "pagada" ? new Date().toISOString() : null };
+  escribir(K_LIQUIDACIONES, lista);
+  remote.liquidaciones(lista[i].empresaId, [lista[i]]);
+}
+
+export function eliminarLiquidacion(id: string) {
+  const lista = leer<LiquidacionComision>(K_LIQUIDACIONES);
+  const l = lista.find((x) => x.id === id);
+  if (!l || l.estado === "pagada") return; // una liquidación pagada no se borra
+  escribir(K_LIQUIDACIONES, lista.filter((x) => x.id !== id));
+  const baja: LiquidacionComision = { ...l, items: [], total: 0, comercializadora: `[eliminada] ${l.comercializadora}` };
+  remote.liquidaciones(l.empresaId, [baja]);
 }

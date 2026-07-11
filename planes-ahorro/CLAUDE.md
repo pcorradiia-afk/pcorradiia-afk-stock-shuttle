@@ -568,6 +568,42 @@ ABM de **sucursales y equipos** (persisten como JSON en `meta` clave `organizaci
 `demo-data` queda solo como semilla/fallback). En producción las sucursales arrancan vacías
 para que el cliente cargue las reales.
 
+## 10.sexies Lote de pedidos del cliente (2026-07-11) ✅
+Cuatro pedidos hechos en vivo, todos implementados y verificados E2E:
+1. **Importar por casillas con control de fechas** ("separar qué archivos se importa para
+   llevar el control y saber de cuándo es la actualización"): /importar ahora es un panel con
+   UNA casilla por archivo (7: Novedades, Solicitudes VOPA, Adjudicatarios, Ganadores, Lista
+   de precios, cta_cte, adh), cada una con **última actualización** (fecha+hora, archivo,
+   cantidades, quién) y de dónde se baja. Si subís un archivo en la casilla equivocada lo
+   rechaza indicando cuál es. Registro en meta `importLog:{empresaId}` (últimas 10 por tipo).
+2. **Lista de precios con historial**: nueva casilla de importación (columnas SEQ, MODELO,
+   PRECIO + opcionales PROMO/FLETE/ORIGEN/NOTA — solapa Precio2 de la planilla guardada como
+   CSV/Excel). Se guardan las **últimas 12 listas completas** en meta `preciosHist:{empresaId}`
+   con "vigente" marcada; el **Cotizador usa la lista importada** (merge sobre la embebida,
+   `preciosVigentes()` en cotizador.ts) y muestra fecha y badge de la lista.
+3. **Módulo Comisiones a comercializadoras** (/comisiones, permiso `importar` + gerencia
+   lectura): esquema configurable POR comercializadora (= gestión terciarizada) — monto fijo
+   por solicitud o % del valor móvil (⚠️ **base de cálculo A CONFIRMAR**, ver Q7) —,
+   liquidación mensual sobre las ventas cerradas (`fechaVenta` del mes, gestionId =
+   comercializadora), estados borrador→aprobada→pagada (pagada no se borra), export Excel e
+   historial. Tabla nube `liquidacion_comision` (0004).
+4. **Recordatorios con calendario en Gestiones** ("calendario con tareas a realizar y que
+   notifique al usuario"): sección Recordatorios en /gestiones con calendario mensual (contador
+   por día, vencidos en rojo), agenda de pendientes, alta con fecha/nota/destinatario/cliente
+   opcional, "Hecho"/eliminar, filtro "solo los míos". **Notificación**: al entrar a la app (y
+   cada 5 min) los recordatorios que vencen generan una alerta en la campanita del usuario
+   asignado (`Alerta.usuarioDestinoId` — alertas ahora pueden ser por usuario puntual, no solo
+   por rol). Tabla nube `recordatorio` (0004).
+5. **Supervisión de administración** (/supervision-admin, permiso nuevo `admin.supervisar`:
+   super admin, sup. administración y gerencia): "% del trabajo al día" — KPIs de cumplimiento
+   de asignaciones (completadas/total; pendiente atrasada = asignada hace >7 días),
+   recordatorios vencidos y clientes gestionados en el período (7/30/90 días, % de la
+   cartera); tabla **por colaborador** (asignaciones, cumplimiento con barra, atrasadas,
+   recordatorios vencidos, gestionados, última actividad, export Excel) y **avance por
+   gestión** (de cada cola, % con registro en el anotador en el período).
+**Migración `0004_recordatorios_comisiones.sql` PENDIENTE de correr por el cliente** (mientras
+tanto los datos quedan en el navegador sin molestar: remote.ts silencia "tabla inexistente").
+
 ## 11. Preguntas abiertas (pendientes de confirmar con el cliente)
 
 | # | Tema | Estado |
@@ -586,6 +622,7 @@ para que el cliente cargue las reales.
 | N4 | Mapeo de **STATUS de cartera → estadio** del cliente. **Status reales confirmados por el cliente (2026-07-03, tabla dinámica):** ADJUD DEF C/DESV (36) · ADJUD DEF AL DIA (297) · ADJUD PEND AL DIA (9) · AHORRISTA AL DIA (520) · AHORRISTA EN MORA (27) · RESCINDIDO (161). La gestión **Mora** ahora usa el status oficial "AHORRISTA EN MORA"; "Mora temprana" = AL DIA con impagas ≥1 (a confirmar). **RESCINDIDO (decisión del cliente 2026-07-03):** excluidos de todas las gestiones y del embudo; listados en **Informes → "Rescindidos"** con Excel (datos de contacto + cuotas pagas) para una eventual campaña de reactivación. | 🟡 Parcial |
 | N5 | **Layout posicional** del archivo `adh_*.txt` (§5.bis.6): hace falta el diseño de registro para parsearlo. | ⏳ Pedir al cliente |
 | N6 | `cta_cte_*.txt` es la cuenta de la **concesionaria con la administradora**, no del cliente. ¿Entra en alcance (finanzas/conciliación) o queda fuera? | ⏳ A confirmar |
+| Q7 | **Comisiones a comercializadoras**: ¿cómo se calcula hoy la comisión? (v1 soporta monto fijo por solicitud o % del valor móvil, sobre ventas cerradas del mes; puede ser otra base: % de la alícuota, escalonado por cuotas cobradas, etc.) | ⏳ A confirmar |
 
 ---
 

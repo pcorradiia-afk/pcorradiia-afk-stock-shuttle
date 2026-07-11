@@ -18,6 +18,8 @@ const TABLAS = [
   ["plantilla_wa", "plantillasWa"],
   ["campania_wa", "campaniasWa"],
   ["envio_wa", "enviosWa"],
+  ["recordatorio", "recordatorios"],
+  ["liquidacion_comision", "liquidaciones"],
 ] as const;
 
 /** Descarga todos los datos de una empresa y reemplaza la caché local. */

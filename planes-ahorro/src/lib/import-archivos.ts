@@ -8,13 +8,14 @@ import { leerArchivo, mapearFilas, decodificarTexto, type Registro } from "./imp
 import type { FilaCartera } from "./store";
 import type { MovimientoCtaCte } from "./types";
 
-export type TipoArchivo = "novedades" | "adjudicatarios" | "ganadores" | "solicitudes" | "cta_cte" | "adh" | "desconocido";
+export type TipoArchivo = "novedades" | "adjudicatarios" | "ganadores" | "solicitudes" | "precios" | "cta_cte" | "adh" | "desconocido";
 
 export const TIPO_LABEL: Record<TipoArchivo, string> = {
   novedades: "Cartera (Novedades)",
   adjudicatarios: "Adjudicatarios sin pedido",
   ganadores: "Ganadores de acto",
   solicitudes: "Solicitudes VOPA (enviadas a fábrica)",
+  precios: "Lista de precios",
   cta_cte: "Cuenta corriente concesionaria",
   adh: "Movimiento por adherente (domicilios)",
   desconocido: "No reconocido",
@@ -68,6 +69,18 @@ export interface FilaSolicitud {
   ordenArranque: string | null;
 }
 
+// Lista de precios (solapa "Precio2" de la planilla o CSV/Excel equivalente):
+// columnas SEQ + modelo/versión + precio (y opcionales promo, flete, origen, nota).
+export interface FilaPrecio {
+  seq: string;
+  modelo: string;
+  precio: number;
+  promo: number | null;
+  flete: number | null;
+  origen: string | null; // NACIONAL | IMPORTADO
+  nota: string | null;
+}
+
 export interface FilaAdh {
   grupo: string;
   orden: string;
@@ -87,6 +100,7 @@ export interface ArchivoAnalizado {
   adjudicatarios?: FilaAdjudicatario[];
   ganadores?: FilaGanador[];
   solicitudes?: FilaSolicitud[];
+  precios?: FilaPrecio[];
   movimientos?: MovimientoCrudo[];
   adh?: FilaAdh[];
 }
@@ -143,7 +157,34 @@ export async function analizarArchivo(file: File): Promise<ArchivoAnalizado> {
     const cartera = mapearFilas(registros, headers);
     return { tipo: "novedades", cantidad: cartera.length, cartera };
   }
+  // Lista de precios: SEQ + una columna de precio (solapa Precio2 de la planilla o equivalente).
+  if (H.has("SEQ") && ["PRECIO", "VALOR_MOVIL_FINAL", "VALOR_MOVIL", "VALOR", "LISTA", "PRECIO_LISTA"].some((c) => H.has(c))) {
+    const precios = registros.map((r) => parsePrecio(r, headers)).filter((f): f is FilaPrecio => !!f);
+    return { tipo: "precios", cantidad: precios.length, precios };
+  }
   return { tipo: "desconocido", cantidad: registros.length };
+}
+
+function parsePrecio(r: Registro, headers: string[]): FilaPrecio | null {
+  const col = (...nombres: string[]) => {
+    for (const n of nombres) {
+      const h = headers.find((x) => x.trim().toUpperCase() === n);
+      if (h !== undefined && r[h] !== undefined && String(r[h]).trim() !== "") return String(r[h]);
+    }
+    return null;
+  };
+  const seq = limpiar(col("SEQ"))?.toUpperCase() ?? null;
+  const modelo = limpiar(col("MODELO", "DESCRIPCION", "DESC_MODELO", "VERSION", "MODELO_VERSION"));
+  const precio = num(col("PRECIO", "VALOR_MOVIL_FINAL", "VALOR_MOVIL", "VALOR", "LISTA", "PRECIO_LISTA"));
+  if (!seq || !modelo || !precio || precio <= 0) return null;
+  return {
+    seq, modelo,
+    precio,
+    promo: num(col("PROMO", "PRECIO_PROMO", "BONIFICADO")),
+    flete: num(col("FLETE")),
+    origen: limpiar(col("ORIGEN", "IMPORTADO_NACIONAL", "NACIONALIDAD"))?.toUpperCase() ?? null,
+    nota: limpiar(col("NOTA", "OBSERVACIONES", "ALICUOTA_NOTA")),
+  };
 }
 
 function parseAdjudicatario(r: Registro): FilaAdjudicatario | null {

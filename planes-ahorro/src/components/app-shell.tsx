@@ -5,11 +5,12 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Building2, Users, ShieldCheck, LogOut, UserCog, X, Contact, Upload,
-  Package, TrendingUp, Bell, BarChart3, Landmark, PhoneCall, MessageCircle, Headphones, Calculator,
+  Package, TrendingUp, Bell, BarChart3, Landmark, PhoneCall, MessageCircle, Headphones, Calculator, HandCoins,
+  ClipboardCheck,
 } from "lucide-react";
 import { useSesion } from "@/lib/session";
 import { tienePermiso, nombreRol, type Permiso } from "@/lib/roles";
-import { suscribir, contarAlertasNoLeidas, inicializar, listarEmpresas, empresaPorId } from "@/lib/store";
+import { suscribir, contarAlertasNoLeidas, inicializar, listarEmpresas, empresaPorId, avisarRecordatoriosVencidos } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,11 +29,13 @@ const NAV: NavItem[] = [
   { href: "/call-center", label: "Call center", icon: Headphones, permiso: "clientes.ver" },
   { href: "/cotizador", label: "Cotizador adjudicados", icon: Calculator, permiso: "clientes.ver" },
   { href: "/ventas", label: "Supervisión de ventas", icon: TrendingUp, permiso: "ventas.supervisar" },
+  { href: "/supervision-admin", label: "Supervisión admin.", icon: ClipboardCheck, permiso: "admin.supervisar" },
   { href: "/informes", label: "Informes", icon: BarChart3, permiso: "informes.ver" },
   { href: "/planes", label: "Planes", icon: Package, permiso: "clientes.ver" },
   { href: "/whatsapp", label: "Campañas WhatsApp", icon: MessageCircle, permiso: "campanias.enviar" },
   { href: "/importar", label: "Importar archivos", icon: Upload, permiso: "importar" },
   { href: "/cta-cte", label: "Cuenta corriente", icon: Landmark, permiso: "importar" },
+  { href: "/comisiones", label: "Comisiones", icon: HandCoins, permiso: "importar" },
   { href: "/admin/empresas", label: "Empresas", icon: Building2, permiso: "config.empresas" },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users, permiso: "config.usuarios" },
   { href: "/admin/roles", label: "Roles y permisos", icon: ShieldCheck, permiso: "config.roles" },
@@ -56,6 +59,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setTick((t) => t + 1);
     return unsub;
   }, []);
+
+  // Recordatorios que vencen: generan la alerta (campanita) del usuario al entrar
+  // y cada 5 minutos mientras la app quede abierta.
+  useEffect(() => {
+    if (!usuarioActivo || !empresaActivaId) return;
+    avisarRecordatoriosVencidos(usuarioActivo, empresaActivaId);
+    const timer = setInterval(() => avisarRecordatoriosVencidos(usuarioActivo, empresaActivaId), 5 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [usuarioActivo, empresaActivaId]);
 
   if (!usuarioReal || !usuarioActivo) return null;
 
