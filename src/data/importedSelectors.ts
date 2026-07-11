@@ -341,10 +341,14 @@ const REPARTO_PLANES_FIJOS: RepartoCuenta = {
 const PLANES_DEFAULT: OverridesCuentas = {
   // Ventas → Entregas (el resto de las ventas de planes quedan en Suscripciones)
   "516120": { depto: "planes_ent" },
-  // Gastos variables → Entregas (516117/516118 quedan variables de Suscripciones)
-  "516202": { depto: "planes_ent" },
-  "516203": { depto: "planes_ent" },
-  "516204": { depto: "planes_ent" },
+  // Gastos variables de Suscripciones (línea gvar; para Planes el parser manda
+  // todos los débitos a fijos, así que hay que forzar la línea).
+  "516117": { linea: "gvar" },
+  "516118": { linea: "gvar" },
+  // Gastos variables → Entregas
+  "516202": { depto: "planes_ent", linea: "gvar" },
+  "516203": { depto: "planes_ent", linea: "gvar" },
+  "516204": { depto: "planes_ent", linea: "gvar" },
   // Gastos fijos comunes atribuidos a Planes: 35% Suscripciones / 65% Entregas
   "5151214": { reparto: REPARTO_PLANES_FIJOS },
   "5151217": { reparto: REPARTO_PLANES_FIJOS },
