@@ -329,6 +329,44 @@ export interface RepartoCuenta {
 export type OverrideCuenta = { depto?: string; linea?: LineaCuenta; reparto?: RepartoCuenta };
 export type OverridesCuentas = Record<string, OverrideCuenta>;
 
+// Reglas de negocio del grupo para separar Plan de Ahorro entre Suscripciones y
+// Entregas. Se aplican como DEFAULT (un ajuste manual en Plan de cuentas siempre
+// tiene prioridad). Todo lo de 516 no listado queda en Suscripciones. El match es
+// por prefijo de código (toma subcuentas), igual que clasificarGasto.
+const REPARTO_PLANES_FIJOS: RepartoCuenta = {
+  modo: "fijo",
+  deptos: ["planes_susc", "planes_ent"],
+  pct: { planes_susc: 35, planes_ent: 65 },
+};
+const PLANES_DEFAULT: OverridesCuentas = {
+  // Ventas → Entregas (el resto de las ventas de planes quedan en Suscripciones)
+  "516120": { depto: "planes_ent" },
+  // Gastos variables → Entregas (516117/516118 quedan variables de Suscripciones)
+  "516202": { depto: "planes_ent" },
+  "516203": { depto: "planes_ent" },
+  "516204": { depto: "planes_ent" },
+  // Gastos fijos comunes atribuidos a Planes: 35% Suscripciones / 65% Entregas
+  "5151214": { reparto: REPARTO_PLANES_FIJOS },
+  "5151217": { reparto: REPARTO_PLANES_FIJOS },
+  "5151218": { reparto: REPARTO_PLANES_FIJOS },
+  "5151219": { reparto: REPARTO_PLANES_FIJOS },
+  "5151220": { reparto: REPARTO_PLANES_FIJOS },
+  "5152215": { reparto: REPARTO_PLANES_FIJOS },
+  "5152216": { reparto: REPARTO_PLANES_FIJOS },
+  "5153214": { reparto: REPARTO_PLANES_FIJOS },
+  "5153215": { reparto: REPARTO_PLANES_FIJOS },
+};
+/** Default de Planes para un código (match por prefijo, el más largo primero). */
+function planesDefault(codigo: string): OverrideCuenta | undefined {
+  const c = codigo.trim();
+  let best: OverrideCuenta | undefined;
+  let bestLen = 0;
+  for (const [k, v] of Object.entries(PLANES_DEFAULT)) {
+    if (c.startsWith(k) && k.length > bestLen) { best = v; bestLen = k.length; }
+  }
+  return best;
+}
+
 // Regla de grupo: el 50% de la utilidad (margen bruto = ventas − costo) de los
 // repuestos vendidos POR TALLER se reconoce como "otros ing./egr." de
 // Servicios/Taller, y se descuenta el mismo importe de Repuestos. Es un traspaso
@@ -411,11 +449,13 @@ export function gestionImportada(
     if (p.cuentas && p.cuentas.length > 0) {
       // Reconstruye el cuadro desde cada cuenta, aplicando la parametrización.
       for (const c of p.cuentas) {
-        // Default de grupo: las cuentas marcadas "costo directo" (hoja CTO. SER.
-        // del EEFF) van a Costos, aunque por su código caerían en gastos. El
-        // ajuste manual en Plan de cuentas tiene prioridad sobre este default.
+        // Prioridad: 1) ajuste manual en Plan de cuentas · 2) regla de negocio de
+        // Planes (Suscripciones/Entregas) · 3) default de grupo: las cuentas
+        // "costo directo" (hoja CTO. SER. del EEFF) van a Costos aunque por su
+        // código caerían en gastos.
         const ov =
           overrides[c.codigo] ??
+          planesDefault(c.codigo) ??
           (clasificarGasto(c.codigo) === "costo_directo" ? { linea: "costo" as LineaCuenta } : {});
         const linea = ov.linea ?? c.linea;
         const rep = ov.reparto && ov.reparto.deptos.length > 0 ? ov.reparto : null;

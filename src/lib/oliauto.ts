@@ -25,18 +25,12 @@ export const DEPTOS_OLIAUTO: DeptoDef[] = [
   { key: "varios", label: "Resultados varios" },
 ];
 
-// Cuentas de Plan de Ahorro (516) que corresponden a "Entregas" (adjudicaciones);
-// el resto de las 516 son "Suscripciones". El corte NO sale del código (hay
-// entregas en 5161 y suscripciones en 5162): es una regla de negocio del grupo.
-// Se matchea por prefijo, así toma también las subcuentas.
-const ENTREGAS_PLANES = ["516120"];
-
 export function deptoDeCuenta(codigo: string): string | null {
   const c = codigo.trim();
   if (!c.startsWith("5")) return null; // solo cuentas de resultado
   if (c.startsWith("511") || c.startsWith("513")) return "0km";
   if (c.startsWith("512") || c.startsWith("514")) return "usados";
-  if (c.startsWith("516")) return ENTREGAS_PLANES.some((p) => c.startsWith(p)) ? "planes_ent" : "planes_susc"; // planes de ahorro: Entregas por cuenta, resto Suscripciones
+  if (c.startsWith("516")) return "planes_susc"; // planes de ahorro: Suscripciones por defecto; Entregas y repartos se definen en PLANES_DEFAULT
   if (c.startsWith("517")) return "0km"; // financiación de vehículos → otros ingresos 0km
   if (c.startsWith("51")) return "unidades"; // 515/518/519 gastos comunes del depto
   if (c.startsWith("52")) return "repuestos";
