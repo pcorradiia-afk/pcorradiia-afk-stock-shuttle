@@ -345,6 +345,13 @@ const PLANES_DEFAULT: OverridesCuentas = {
   // todos los débitos a fijos, así que hay que forzar la línea).
   "516117": { linea: "gvar" },
   "516118": { linea: "gvar" },
+  // Gastos variables comunes atribuidos 100% a Suscripciones (salen del pool común).
+  "5151111": { depto: "planes_susc", linea: "gvar" },
+  "5151112": { depto: "planes_susc", linea: "gvar" },
+  "5152109": { depto: "planes_susc", linea: "gvar" },
+  "5152110": { depto: "planes_susc", linea: "gvar" },
+  "5153109": { depto: "planes_susc", linea: "gvar" },
+  "5153110": { depto: "planes_susc", linea: "gvar" },
   // Gastos variables → Entregas
   "516202": { depto: "planes_ent", linea: "gvar" },
   "516203": { depto: "planes_ent", linea: "gvar" },
