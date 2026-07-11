@@ -462,7 +462,13 @@ export function gestionImportada(
           planesDefault(c.codigo) ??
           (clasificarGasto(c.codigo) === "costo_directo" ? { linea: "costo" as LineaCuenta } : {});
         const linea = ov.linea ?? c.linea;
-        const rep = ov.reparto && ov.reparto.deptos.length > 0 ? ov.reparto : null;
+        let rep = ov.reparto && ov.reparto.deptos.length > 0 ? ov.reparto : null;
+        // Todos los gastos fijos propios de Planes (516) se reparten 35% Susc /
+        // 65% Entregas, salvo ajuste manual. Las ventas y las variables ya tienen
+        // su línea/depto y no entran acá.
+        if (!rep && !overrides[c.codigo] && c.codigo.startsWith("516") && linea === "gfijo") {
+          rep = REPARTO_PLANES_FIJOS;
+        }
         if (!rep) {
           const d = ov.depto ?? deptoCuenta(c);
           cuentas.push({ ...c, depto: d, linea });
