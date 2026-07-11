@@ -360,6 +360,12 @@ export function gestionImportada(
 
   const celdaDe = (depto: string, per: string) => (((porDepto[depto] ??= {})[per] ??= vacia()));
 
+  // Compatibilidad: las importaciones guardadas antes de separar Planes de Ahorro
+  // traen las cuentas con el depto viejo "planes". Se leen como "planes_susc"
+  // (Suscripciones) para que sigan apareciendo sin necesidad de reimportar; las
+  // de Entregas se reasignan a mano desde Plan de cuentas.
+  const legacyDepto = (d: string) => (d === "planes" ? "planes_susc" : d);
+
   // Aplica el aporte (r = contribución al resultado, acreedor positivo) de una
   // cuenta a un depto/línea, y alimenta el desglose de comunes de Unidades.
   const aplicar = (depto: string, linea: LineaCuenta, per: string, r: number, codigo: string, nombre: string) => {
@@ -412,7 +418,7 @@ export function gestionImportada(
         const linea = ov.linea ?? c.linea;
         const rep = ov.reparto && ov.reparto.deptos.length > 0 ? ov.reparto : null;
         if (!rep) {
-          const d = ov.depto ?? c.depto;
+          const d = ov.depto ?? legacyDepto(c.depto);
           cuentas.push({ ...c, depto: d, linea });
           for (const [per, r] of Object.entries(c.valores)) aplicar(d, linea, per, r, c.codigo, c.nombre);
         } else {
@@ -442,9 +448,8 @@ export function gestionImportada(
           a.gastosVar += c.gastosVar;
         }
       }
-      for (const { key } of DEPTOS_OLIAUTO) {
-        const porPer = p.porDepto?.[key];
-        if (!porPer) continue;
+      for (const [rawKey, porPer] of Object.entries(p.porDepto ?? {})) {
+        const key = legacyDepto(rawKey);
         for (const [per, celda] of Object.entries(porPer)) {
           const a = celdaDe(key, per);
           a.ingresos += celda.ingresos;
