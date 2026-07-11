@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSesion } from "@/lib/session";
-import { empresaPorId } from "@/lib/demo-data";
+import { empresaPorId } from "@/lib/store";
 import { nombreRol, tienePermiso } from "@/lib/roles";
 import { MODO_DEMO } from "@/lib/supabase/client";
 import {

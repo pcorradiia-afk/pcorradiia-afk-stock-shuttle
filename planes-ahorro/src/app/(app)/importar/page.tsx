@@ -4,10 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSesion } from "@/lib/session";
 import { tienePermiso } from "@/lib/roles";
-import { empresaPorId } from "@/lib/demo-data";
+import { empresaPorId } from "@/lib/store";
 import {
   importarCartera, importarAdjudicatarios, importarGanadores, importarCtaCte, importarAdh,
-  type ReporteImportacion,
+  importarSolicitudes, type ReporteImportacion,
 } from "@/lib/store";
 import { analizarArchivo, TIPO_LABEL, type ArchivoAnalizado } from "@/lib/import-archivos";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,7 +43,7 @@ export default function ImportarPage() {
     try {
       const a = await analizarArchivo(file);
       if (a.tipo === "desconocido") {
-        setError("No reconocimos el formato del archivo. Formatos soportados: Novedades (cartera), Adjudicatarios sin pedido, Ganadores de acto, cta_cte y adh.");
+        setError("No reconocimos el formato del archivo. Formatos soportados: Novedades (cartera), Adjudicatarios sin pedido, Ganadores de acto, Solicitudes VOPA, cta_cte y adh.");
       } else {
         setAnalisis(a);
         setNombreArchivo(file.name);
@@ -61,6 +61,7 @@ export default function ImportarPage() {
     if (analisis.tipo === "novedades" && analisis.cartera) rep = importarCartera(analisis.cartera, empresaActivaId);
     if (analisis.tipo === "adjudicatarios" && analisis.adjudicatarios) rep = importarAdjudicatarios(analisis.adjudicatarios, empresaActivaId);
     if (analisis.tipo === "ganadores" && analisis.ganadores) rep = importarGanadores(analisis.ganadores, empresaActivaId);
+    if (analisis.tipo === "solicitudes" && analisis.solicitudes) rep = importarSolicitudes(analisis.solicitudes, empresaActivaId);
     if (analisis.tipo === "cta_cte" && analisis.movimientos) rep = importarCtaCte(analisis.movimientos, empresaActivaId);
     if (analisis.tipo === "adh" && analisis.adh) rep = importarAdh(analisis.adh, empresaActivaId);
     setReporte(rep);
@@ -72,8 +73,9 @@ export default function ImportarPage() {
         <h1 className="text-2xl font-bold">Importar archivos</h1>
         <p className="text-muted-foreground">
           Subí cualquiera de los archivos que hoy se importan al sistema actual: <strong>Novedades</strong> (cartera),{" "}
-          <strong>Adjudicatarios sin pedido</strong>, <strong>Ganadores de acto</strong>, <strong>cta_cte</strong> y{" "}
-          <strong>adh</strong>. El tipo se detecta solo. Se asigna a <strong>{empresa?.nombreComercial ?? "la empresa seleccionada"}</strong>.
+          <strong>Adjudicatarios sin pedido</strong>, <strong>Ganadores de acto</strong>, <strong>Solicitudes VOPA</strong>,{" "}
+          <strong>cta_cte</strong> y <strong>adh</strong>. El tipo se detecta solo. Se asigna a{" "}
+          <strong>{empresa?.nombreComercial ?? "la empresa seleccionada"}</strong>.
         </p>
       </div>
 
@@ -101,6 +103,7 @@ export default function ImportarPage() {
               {analisis.tipo === "novedades" && "Actualiza la cartera: match por N° de solicitud (o grupo+orden); si existe actualiza, si no crea."}
               {analisis.tipo === "adjudicatarios" && "Adjudicados que aún no cargaron el pedido: pasa los clientes al estadio Pedido con aging, observaciones y si pueden ingresar pedido."}
               {analisis.tipo === "ganadores" && "Ganadores de sorteo/licitación: pasa los clientes a Adjudicación y genera una alerta a Administración por cada uno."}
+              {analisis.tipo === "solicitudes" && "Solicitudes enviadas a fábrica (export de VOPA): trae DNI/CUIT, email, teléfonos y domicilio del titular. Completa los datos que falten en la ficha (sin pisar lo cargado a mano), actualiza el status de fábrica y crea los clientes que no existan."}
               {analisis.tipo === "cta_cte" && "Cuenta corriente de la concesionaria con la administradora: guarda los movimientos (los duplicados se rechazan)."}
               {analisis.tipo === "adh" && "Enriquece el domicilio (calle, localidad, provincia, CP) de los clientes ya existentes en la cartera. No crea clientes nuevos. ⚠️ Layout beta hasta tener el diseño de registro oficial."}
             </CardDescription>
@@ -170,6 +173,12 @@ function VistaPrevia({ analisis }: { analisis: ArchivoAnalizado }) {
     return (
       <Tabla headers={["Acto", "Nombre", "Grupo/Orden", "Modelo", "Tipo", "Oferta"]}
         rows={analisis.ganadores.slice(0, 8).map((f) => [f.nroActo, f.nombre, `${f.grupo}/${f.orden}`, f.modelo ?? "—", f.tipoAdjudicacion ?? "—", String(f.importeOferta ?? 0)])} />
+    );
+  }
+  if (analisis.tipo === "solicitudes" && analisis.solicitudes) {
+    return (
+      <Tabla headers={["Nombre", "N° solicitud", "N° manual", "DNI", "Modelo", "Status", "Firma pend."]}
+        rows={analisis.solicitudes.slice(0, 8).map((f) => [f.nombre, f.nroSolicitud, f.nroManual ?? "—", f.documento ?? "—", f.modelo ?? "—", f.status ?? "—", f.firmaPendiente ? "SÍ" : "NO"])} />
     );
   }
   if (analisis.tipo === "cta_cte" && analisis.movimientos) {

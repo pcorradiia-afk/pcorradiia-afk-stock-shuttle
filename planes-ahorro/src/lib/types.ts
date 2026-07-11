@@ -96,6 +96,12 @@ export interface Solicitud {
   licito?: number | null;
   adelanto?: number | null;
   debCred?: string | null; // adhesión a débito automático
+  // Datos del export "Solicitudes" de VOPA (solicitudes enviadas a fábrica)
+  nroManual?: string | null; // NRO_MANUAL: el número que muestra la pantalla de VOPA
+  statusVopa?: string | null; // "Nueva sin enviar", "Enviada", etc.
+  firmaPendiente?: boolean | null;
+  fechaCargaVopa?: string | null;
+  fechaEnvioVopa?: string | null;
 }
 
 // Datos que llegan de los archivos de adjudicación (Ganadores_Acto y Adjudicatarios_Sin_Pedido).

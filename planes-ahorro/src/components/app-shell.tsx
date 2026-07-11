@@ -9,8 +9,7 @@ import {
 } from "lucide-react";
 import { useSesion } from "@/lib/session";
 import { tienePermiso, nombreRol, type Permiso } from "@/lib/roles";
-import { EMPRESAS, empresaPorId } from "@/lib/demo-data";
-import { suscribir, contarAlertasNoLeidas, inicializar } from "@/lib/store";
+import { suscribir, contarAlertasNoLeidas, inicializar, listarEmpresas, empresaPorId } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -67,10 +66,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const items = NAV.filter((i) => !i.permiso || tienePermiso(roles, i.permiso));
 
   // Empresas que el usuario activo puede ver con su único login (una por vez; no se consolidan).
+  const todas = listarEmpresas();
   const empresasVisibles =
     usuarioActivo.alcance === "grupo"
-      ? EMPRESAS
-      : EMPRESAS.filter((e) => (usuarioActivo.alcance as string[]).includes(e.id));
+      ? todas
+      : todas.filter((e) => (usuarioActivo.alcance as string[]).includes(e.id));
 
   return (
     <div className="flex min-h-screen">

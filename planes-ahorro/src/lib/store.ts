@@ -6,11 +6,11 @@
 
 import type {
   PlantillaWhatsApp, CampaniaWhatsApp, EnvioWhatsApp, CategoriaPlantilla,
-  Cliente, Comunicacion, Estadio, EstadoCliente, Plan,
+  Cliente, Comunicacion, Empresa, Estadio, EstadoCliente, Plan,
   ObservacionScoring, ResultadoScoring, Alerta, GestionAdmin, RolId, Usuario,
   MovimientoCtaCte, Tarea,
 } from "./types";
-import { USUARIOS } from "./demo-data";
+import { USUARIOS, EMPRESAS, SUCURSALES, EQUIPOS } from "./demo-data";
 import { remote } from "./remote";
 import { MODO_DEMO } from "./supabase/client";
 
@@ -165,6 +165,67 @@ export function setUsuariosCache(us: Usuario[]) {
 }
 export function listarUsuariosCache(): Usuario[] {
   return USUARIOS_CACHE;
+}
+
+// --- Empresas (editables por el super admin; con Supabase la fuente es la tabla empresa) ---
+const K_EMPRESAS = "pa.empresas";
+
+export function listarEmpresas(): Empresa[] {
+  const cache = leer<Empresa>(K_EMPRESAS);
+  return cache.length ? cache : EMPRESAS;
+}
+export function empresaPorId(id: string): Empresa | undefined {
+  return listarEmpresas().find((e) => e.id === id);
+}
+export function setEmpresasCache(es: Empresa[]) {
+  if (typeof window === "undefined" || es.length === 0) return;
+  escribir(K_EMPRESAS, es);
+}
+export function actualizarEmpresa(id: string, datos: { nombre: string; nombreComercial: string; cuit: string }) {
+  const lista = listarEmpresas().map((e) => (e.id === id ? { ...e, ...datos } : e));
+  escribir(K_EMPRESAS, lista);
+  const tocada = lista.find((e) => e.id === id);
+  if (tocada) remote.empresa(tocada);
+}
+
+// --- Sucursales y equipos: configuración por empresa (meta "organizacion:{empresaId}") ---
+export interface EquipoOrg { id: string; nombre: string; tipo: "ventas" | "administracion" }
+export interface SucursalOrg { id: string; nombre: string; equipos: EquipoOrg[] }
+
+export function listarOrganizacion(empresaId: string): SucursalOrg[] {
+  const raw = getMeta(`organizacion:${empresaId}`);
+  if (raw) {
+    try { return JSON.parse(raw) as SucursalOrg[]; } catch { /* ignore */ }
+  }
+  if (MODO_DEMO) {
+    return SUCURSALES.filter((s) => s.empresaId === empresaId).map((s) => ({
+      id: s.id, nombre: s.nombre,
+      equipos: EQUIPOS.filter((q) => q.sucursalId === s.id).map((q) => ({ id: q.id, nombre: q.nombre, tipo: q.tipo })),
+    }));
+  }
+  return [];
+}
+function guardarOrganizacion(empresaId: string, sucursales: SucursalOrg[]) {
+  setMeta(`organizacion:${empresaId}`, JSON.stringify(sucursales), empresaId);
+}
+export function agregarSucursal(empresaId: string, nombre: string) {
+  guardarOrganizacion(empresaId, [...listarOrganizacion(empresaId), { id: uid(), nombre: nombre.trim(), equipos: [] }]);
+}
+export function renombrarSucursal(empresaId: string, sucursalId: string, nombre: string) {
+  guardarOrganizacion(empresaId, listarOrganizacion(empresaId).map((s) => (s.id === sucursalId ? { ...s, nombre: nombre.trim() } : s)));
+}
+export function eliminarSucursal(empresaId: string, sucursalId: string) {
+  guardarOrganizacion(empresaId, listarOrganizacion(empresaId).filter((s) => s.id !== sucursalId));
+}
+export function agregarEquipo(empresaId: string, sucursalId: string, nombre: string, tipo: EquipoOrg["tipo"]) {
+  guardarOrganizacion(empresaId, listarOrganizacion(empresaId).map((s) =>
+    s.id === sucursalId ? { ...s, equipos: [...s.equipos, { id: uid(), nombre: nombre.trim(), tipo }] } : s
+  ));
+}
+export function eliminarEquipo(empresaId: string, sucursalId: string, equipoId: string) {
+  guardarOrganizacion(empresaId, listarOrganizacion(empresaId).map((s) =>
+    s.id === sucursalId ? { ...s, equipos: s.equipos.filter((q) => q.id !== equipoId) } : s
+  ));
 }
 
 /** Reemplaza la caché local con los datos bajados de Supabase (una empresa por vez). */
@@ -653,6 +714,101 @@ export function importarAdh(
   });
   escribir(K_CLIENTES, lista);
   remote.clientes(empresaId, tocadosAdh);
+  return rep;
+}
+
+/**
+ * Solicitudes VOPA (export "Solicitudes" de Plan Óvalo): solicitudes enviadas a fábrica.
+ * Es la fuente que trae DNI/CUIT, email, teléfonos y domicilio del titular (la cartera no).
+ * Matchea por N° de solicitud (oficial o manual), documento o grupo/orden de arranque;
+ * enriquece SIN pisar datos cargados a mano y nunca retrocede estadios (C3).
+ */
+export function importarSolicitudes(
+  filas: {
+    nroSolicitud: string; nroManual: string | null; nombre: string; documento: string | null;
+    cuit: string | null; email: string | null; telefono: string | null; domicilio: string | null;
+    localidad: string | null; provincia: string | null; plan: string | null; modelo: string | null;
+    status: string | null; firmaPendiente: boolean; fechaAlta: string | null; fechaEnvio: string | null;
+    grupoArranque: string | null; ordenArranque: string | null;
+  }[],
+  empresaId: string
+): ReporteImportacion {
+  const lista = leer<Cliente>(K_CLIENTES);
+  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
+  const hoy = new Date().toISOString();
+  const tocados: Cliente[] = [];
+  const soloDigitos = (s: string | null | undefined) => (s || "").replace(/\D/g, "");
+  const docEnUso = (doc: string) =>
+    lista.some((c) => c.empresaId === empresaId && soloDigitos(c.documento) === soloDigitos(doc) && soloDigitos(doc) !== "");
+
+  filas.forEach((f) => {
+    // 1) por N° de solicitud (el oficial o el manual de VOPA, contra ambos campos nuestros)
+    let i = lista.findIndex((c) => {
+      if (c.empresaId !== empresaId) return false;
+      const nuestros = [c.solicitud.nroSolicitud, c.solicitud.nroManual].filter(Boolean);
+      return nuestros.includes(f.nroSolicitud) || (!!f.nroManual && nuestros.includes(f.nroManual));
+    });
+    // 2) por documento (DNI)
+    if (i < 0 && f.documento) {
+      const doc = soloDigitos(f.documento);
+      i = lista.findIndex((c) => c.empresaId === empresaId && soloDigitos(c.documento) === doc && doc !== "");
+    }
+    // 3) por grupo/orden de arranque (si ya vino agrupada)
+    if (i < 0 && f.grupoArranque && f.ordenArranque) {
+      i = buscarPorGrupoOrden(lista, empresaId, f.grupoArranque, f.ordenArranque);
+    }
+
+    if (i >= 0) {
+      const c = lista[i];
+      // El documento solo se completa si falta y no lo tiene otro cliente (unicidad §3.6).
+      const docNuevo = f.documento && !c.documento && !docEnUso(f.documento)
+        ? f.documento : c.documento;
+      lista[i] = {
+        ...c,
+        documento: docNuevo,
+        tipoDocumento: c.tipoDocumento ?? (docNuevo ? "DNI" : null),
+        email: c.email ?? f.email,
+        telefono: c.telefono ?? f.telefono,
+        domicilio: c.domicilio ?? f.domicilio,
+        localidad: c.localidad ?? f.localidad,
+        provincia: c.provincia ?? f.provincia,
+        solicitud: {
+          ...c.solicitud,
+          nroSolicitud: c.solicitud.nroSolicitud ?? f.nroSolicitud,
+          nroManual: f.nroManual ?? c.solicitud.nroManual,
+          plan: c.solicitud.plan ?? f.plan,
+          modelo: c.solicitud.modelo ?? f.modelo,
+          statusVopa: f.status,
+          firmaPendiente: f.firmaPendiente,
+          fechaCargaVopa: f.fechaAlta,
+          fechaEnvioVopa: f.fechaEnvio,
+        },
+      };
+      tocados.push(lista[i]);
+      rep.actualizados++;
+    } else {
+      lista.push({
+        id: uid(), empresaId, nombreCompleto: f.nombre,
+        documento: f.documento && !docEnUso(f.documento) ? f.documento : null,
+        tipoDocumento: f.documento ? "DNI" : null,
+        telefono: f.telefono, email: f.email, origenDato: "Importación solicitudes VOPA",
+        vendedorId: null, estado: "vendido", estadio: "scoring", nacidoComo: "importado_ovalo", fechaAlta: hoy,
+        domicilio: f.domicilio, localidad: f.localidad, provincia: f.provincia,
+        solicitud: {
+          nroSolicitud: f.nroSolicitud, nroManual: f.nroManual,
+          grupo: f.grupoArranque, orden: f.ordenArranque,
+          plan: f.plan, modelo: f.modelo, statusCartera: null, statusDesc: null, valorMovil: null,
+          statusVopa: f.status, firmaPendiente: f.firmaPendiente,
+          fechaCargaVopa: f.fechaAlta, fechaEnvioVopa: f.fechaEnvio,
+        },
+        pruebaManejo: null, necesidades: null, planId: null, presupuestoNombre: null, fechaVenta: null,
+      });
+      tocados.push(lista[lista.length - 1]);
+      rep.creados++;
+    }
+  });
+  escribir(K_CLIENTES, lista);
+  remote.clientes(empresaId, tocados);
   return rep;
 }
 

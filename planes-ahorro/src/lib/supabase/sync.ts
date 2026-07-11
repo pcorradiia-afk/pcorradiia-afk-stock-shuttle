@@ -4,7 +4,7 @@
 // todas las pantallas. Se ejecuta al iniciar sesión y al cambiar de empresa.
 
 import { getSupabase, MODO_DEMO } from "./client";
-import { reemplazarDatosEmpresa, setUsuariosCache } from "../store";
+import { reemplazarDatosEmpresa, setUsuariosCache, setEmpresasCache } from "../store";
 import type { Usuario, TipoPerfil, Estadio, RolId } from "../types";
 
 const TABLAS = [
@@ -84,12 +84,17 @@ export async function cargarPerfil(usuarioId: string): Promise<Usuario | null> {
 export async function cargarUsuarios(): Promise<void> {
   const sb = getSupabase();
   if (!sb) return;
-  const [us, roles, membresias, accesos] = await Promise.all([
+  const [us, roles, membresias, accesos, empresas] = await Promise.all([
     sb.from("usuario").select("*"),
     sb.from("usuario_rol").select("usuario_id, rol_id"),
     sb.from("membresia_empresa").select("usuario_id, empresa_id"),
     sb.from("acceso_estadio").select("usuario_id, estadio"),
+    sb.from("empresa").select("*"),
   ]);
+  setEmpresasCache(
+    ((empresas.data ?? []) as { id: string; nombre: string; nombre_comercial: string; cuit: string; activo: boolean }[])
+      .map((e) => ({ id: e.id, nombre: e.nombre, nombreComercial: e.nombre_comercial, cuit: e.cuit, activo: e.activo }))
+  );
   const lista: Usuario[] = ((us.data ?? []) as FilaUsuario[]).map((u) => ({
     id: u.id,
     nombre: u.nombre,

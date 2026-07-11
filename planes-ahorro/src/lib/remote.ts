@@ -36,6 +36,16 @@ export const remote = {
   plantillasWa: (empresaId: string, filas: { id: string }[]) => upsert("plantilla_wa", empresaId, filas),
   campaniasWa: (empresaId: string, filas: { id: string }[]) => upsert("campania_wa", empresaId, filas),
   enviosWa: (empresaId: string, filas: { id: string }[]) => upsert("envio_wa", empresaId, filas),
+  // La tabla empresa tiene columnas reales (no jsonb) y RLS: solo super admin modifica.
+  empresa: async (e: { id: string; nombre: string; nombreComercial: string; cuit: string; activo: boolean }) => {
+    if (MODO_DEMO) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    const { error } = await sb.from("empresa")
+      .update({ nombre: e.nombre, nombre_comercial: e.nombreComercial, cuit: e.cuit, activo: e.activo })
+      .eq("id", e.id);
+    if (error) avisarError("empresa", error.message);
+  },
   meta: async (empresaId: string, clave: string, valor: string) => {
     if (MODO_DEMO) return;
     const sb = getSupabase();

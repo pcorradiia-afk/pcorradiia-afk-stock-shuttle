@@ -348,6 +348,27 @@ El cliente entregó una herramienta HTML propia que digitaliza la planilla de ad
 **07/07/2026**; se refresca reemplazando el JSON (a futuro: derivarlo de las importaciones de
 cartera + lista de precios). Jurisdicciones configurables en `PARAMS` (N2).
 
+### 5.bis.9 `Solicitudes` de VOPA (recibido 2026-07-11) — SEXTO archivo importable ✅
+Export CSV (`sep=;`, comillas, UTF-8) de **VOPA** (planovalo.ar.ford.com — el sistema de Plan
+Óvalo): **solicitudes enviadas a fábrica** con su status (Nueva sin enviar / enviada / firmada,
+etc.). **Es la fuente que SÍ trae DNI (`DOCUMENTO`), `CUIT_CUIL`, email, teléfonos y domicilio
+del titular** (la cartera de Novedades no los trae). Columnas clave: `NRO_SOLICITUD` (oficial),
+`NRO_MANUAL` (el que muestra la pantalla de VOPA), `APELLIDO Y NOMBRE`, `PLAN_DESCRIPCION`,
+`MODELO`, `STATUS`, `FIRMA_PENDIENTE`, `FECHA_ALTA/FECHA_ENVIO`, `GRUPO_ARRANQUE/ORDEN_ARRANQUE`,
+`USUARIO_VENDEDOR`. Detección: por `CUIT_CUIL`/`FIRMA_PENDIENTE`/`NRO_MANUAL` **antes** que la
+cartera (también tiene NRO_SOLICITUD). Importador `importarSolicitudes()`: matchea por N° de
+solicitud (oficial o manual), documento o grupo/orden; **enriquece sin pisar lo cargado a mano**
+(documento respetando unicidad §3.6, email/tel/domicilio solo si faltan), refresca
+`statusVopa`/`firmaPendiente` (visibles en la ficha), crea como estado `vendido` estadio
+`scoring` (`nacidoComo: importado_ovalo`) y nunca retrocede estadios (C3). Verificado E2E con el
+archivo real (7 filas: import + reimport sin duplicados).
+**VOPA además exporta estos listados (menú Reportes, captura 2026-07-11):** Solicitudes
+Rechazadas · Ganadores del acto/reemplazo · Ganadores compromiso irrevocable · Ofertas
+Compromiso irrevocable · Aceptaciones de adjudicaciones · **Adjudicatarios sin pedido** ·
+Notificaciones · **Novedades** · Grupos formados · Rechazos de débitos · Equivalencias de
+grupos · Plan 50/50-base elegible · Pagos a Concesionarios. → VOPA es la fuente de varios
+archivos que ya importamos; los restantes quedan como backlog de importadores.
+
 ## 5.ter. Mapa del sistema actual (SIGNOS Gestión) → sistema nuevo (capturas 2026-07-02)
 
 El cliente compartió capturas de los menús de SIGNOS. Equivalencias y estado:
@@ -536,6 +557,17 @@ super_admin) y la reserva a `service_role`. **Pendiente del cliente:** correr 00
 Editor y cargar `SUPABASE_SERVICE_ROLE_KEY` en Vercel (Sensitive) + Redeploy; sin ella la
 pantalla avisa "Falta configurar SUPABASE_SERVICE_ROLE_KEY".
 
+## 10.quinquies Empresas editables (2026-07-11) ✅
+Pedido del cliente: "que pueda editar los datos de la empresa, las sucursales no están
+correctas" (las sucursales eran datos de ejemplo inventados). **/admin/empresas** ahora permite
+(solo super admin, permiso `config.empresas`): editar razón social / nombre comercial / CUIT
+(persiste en la tabla `empresa` de Supabase — RLS ya lo limita a super admin — y se refleja en
+el selector del header y todo el sistema vía caché `pa.empresas` cargada al iniciar sesión), y
+ABM de **sucursales y equipos** (persisten como JSON en `meta` clave `organizacion:{empresaId}`
+— sin migración nueva). `empresaPorId`/`listarEmpresas` ahora viven en el store (la versión de
+`demo-data` queda solo como semilla/fallback). En producción las sucursales arrancan vacías
+para que el cliente cargue las reales.
+
 ## 11. Preguntas abiertas (pendientes de confirmar con el cliente)
 
 | # | Tema | Estado |
@@ -544,7 +576,7 @@ pantalla avisa "Falta configurar SUPABASE_SERVICE_ROLE_KEY".
 | Q5 | Modelo de login multiempresa | ✅ Confirmado (login único con cambio de empresa) |
 | Q2 | Matriz de permisos Rol × Acción (§4.3) | ⏳ Pendiente de aprobación |
 | Q3 | Reglas de la etapa **Agrupamiento** (§6.2) | ⏳ A definir |
-| Q4 | Formatos reales de importación | ✅ Resuelto en parte: tenemos **Novedades/cartera** (§5.bis.1) y la planilla (§5.bis.2). Falta confirmar si además importan el export de **solicitudes Plan Óvalo** y para qué. |
+| Q4 | Formatos reales de importación | ✅ **Resuelto (2026-07-11)**: además de los 5 archivos de FIS, el cliente entregó el export **Solicitudes de VOPA** (§5.bis.9) — ya se importa (trae DNI/CUIT/email/teléfonos/domicilio + status de fábrica). |
 | Q6 | Herramienta/BSP de WhatsApp (§9) | ✅ **Twilio (decisión del cliente 2026-07-10; ya tienen cuenta)** — integrado vía ruta servidor `/api/whatsapp/enviar` (valida sesión Supabase + rol autorizado; credenciales solo en el servidor). Se activa con `NEXT_PUBLIC_WA_PROVIDER=twilio` + `TWILIO_ACCOUNT_SID/AUTH_TOKEN/WHATSAPP_FROM` en Vercel; sin esas variables sigue el simulado. Teléfonos AR normalizados a E.164 (`src/lib/telefono.ts`). |
 | — | Alcance de unicidad de documento: ¿global o por empresa? (§3.6) | ⏳ A confirmar |
 | — | Rol "Gerencia/Dirección (lectura)": ¿se incluye? (§4.2) | ⏳ A confirmar |

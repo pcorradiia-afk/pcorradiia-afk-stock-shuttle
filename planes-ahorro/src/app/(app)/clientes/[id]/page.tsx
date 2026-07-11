@@ -113,6 +113,10 @@ export default function FichaClientePage() {
             <Dato k="Modelo" v={cliente.solicitud.modelo ?? "—"} />
             <Dato k="Valor móvil" v={pesos(cliente.solicitud.valorMovil)} />
             <Dato k="Status cartera" v={cliente.solicitud.statusDesc ?? "—"} />
+            {cliente.solicitud.statusVopa && (
+              <Dato k="Status VOPA (fábrica)" v={`${cliente.solicitud.statusVopa}${cliente.solicitud.firmaPendiente ? " — ⚠️ firma pendiente" : ""}`} />
+            )}
+            {cliente.solicitud.nroManual && <Dato k="N° manual VOPA" v={cliente.solicitud.nroManual} />}
             {cliente.adjudicacion?.nroActo && <Dato k="Acto de adjudicación" v={`${cliente.adjudicacion.nroActo} (${cliente.adjudicacion.tipoAdjudicacion ?? "—"})`} />}
             {cliente.adjudicacion?.aging != null && <Dato k="Días sin pedido" v={String(cliente.adjudicacion.aging)} />}
             {cliente.adjudicacion?.puedeIngresarPedido != null && (

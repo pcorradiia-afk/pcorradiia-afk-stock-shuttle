@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSesion } from "@/lib/session";
 import { tienePermiso, nombreRol, ROLES } from "@/lib/roles";
-import { EMPRESAS, empresaPorId } from "@/lib/demo-data";
-import { listarUsuariosCache } from "@/lib/store";
+import { listarUsuariosCache, listarEmpresas, empresaPorId } from "@/lib/store";
 import { getSupabase, MODO_DEMO } from "@/lib/supabase/client";
 import { cargarUsuarios } from "@/lib/supabase/sync";
 import type { RolId } from "@/lib/types";
@@ -102,7 +101,7 @@ export default function UsuariosPage() {
       tipo: form.tipo,
       gestion: form.tipo === "terciarizada" ? form.gestion.trim() : null,
       roles: form.roles,
-      empresasExtra: form.otraEmpresa ? EMPRESAS.map((e) => e.id).filter((id) => id !== form.empresa) : [],
+      empresasExtra: form.otraEmpresa ? listarEmpresas().map((e) => e.id).filter((id) => id !== form.empresa) : [],
     });
     if (res.ok) {
       await cargarUsuarios();
@@ -197,7 +196,7 @@ export default function UsuariosPage() {
               <div className="space-y-1">
                 <label className="text-sm font-medium">Empresa principal</label>
                 <select className={`${selectCls} w-full`} value={form.empresa} onChange={(e) => setForm({ ...form, empresa: e.target.value })}>
-                  {EMPRESAS.map((e) => <option key={e.id} value={e.id}>{e.nombreComercial}</option>)}
+                  {listarEmpresas().map((e) => <option key={e.id} value={e.id}>{e.nombreComercial}</option>)}
                 </select>
               </div>
               <div className="space-y-1">

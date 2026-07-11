@@ -8,12 +8,13 @@ import { leerArchivo, mapearFilas, decodificarTexto, type Registro } from "./imp
 import type { FilaCartera } from "./store";
 import type { MovimientoCtaCte } from "./types";
 
-export type TipoArchivo = "novedades" | "adjudicatarios" | "ganadores" | "cta_cte" | "adh" | "desconocido";
+export type TipoArchivo = "novedades" | "adjudicatarios" | "ganadores" | "solicitudes" | "cta_cte" | "adh" | "desconocido";
 
 export const TIPO_LABEL: Record<TipoArchivo, string> = {
   novedades: "Cartera (Novedades)",
   adjudicatarios: "Adjudicatarios sin pedido",
   ganadores: "Ganadores de acto",
+  solicitudes: "Solicitudes VOPA (enviadas a fábrica)",
   cta_cte: "Cuenta corriente concesionaria",
   adh: "Movimiento por adherente (domicilios)",
   desconocido: "No reconocido",
@@ -44,6 +45,29 @@ export interface FilaGanador {
   importeOferta: number | null;
 }
 
+// Export "Solicitudes" de VOPA (Plan Óvalo): solicitudes enviadas a fábrica.
+// Es la fuente que SÍ trae DNI/CUIT, email, teléfonos y domicilio del titular.
+export interface FilaSolicitud {
+  nroSolicitud: string; // NRO_SOLICITUD (campo oficial)
+  nroManual: string | null; // NRO_MANUAL (el que muestra la pantalla de VOPA)
+  nombre: string;
+  documento: string | null; // DOCUMENTO (DNI)
+  cuit: string | null; // CUIT_CUIL
+  email: string | null;
+  telefono: string | null; // celular > particular > laboral
+  domicilio: string | null;
+  localidad: string | null;
+  provincia: string | null;
+  plan: string | null;
+  modelo: string | null;
+  status: string | null; // "Nueva sin enviar", etc.
+  firmaPendiente: boolean;
+  fechaAlta: string | null;
+  fechaEnvio: string | null;
+  grupoArranque: string | null;
+  ordenArranque: string | null;
+}
+
 export interface FilaAdh {
   grupo: string;
   orden: string;
@@ -62,6 +86,7 @@ export interface ArchivoAnalizado {
   cartera?: FilaCartera[];
   adjudicatarios?: FilaAdjudicatario[];
   ganadores?: FilaGanador[];
+  solicitudes?: FilaSolicitud[];
   movimientos?: MovimientoCrudo[];
   adh?: FilaAdh[];
 }
@@ -108,6 +133,12 @@ export async function analizarArchivo(file: File): Promise<ArchivoAnalizado> {
     const ganadores = registros.map(parseGanador).filter((f): f is FilaGanador => !!f);
     return { tipo: "ganadores", cantidad: ganadores.length, ganadores };
   }
+  // Solicitudes VOPA: también trae NRO_SOLICITUD, así que se detecta ANTES que la cartera
+  // por sus columnas exclusivas (CUIT_CUIL / FIRMA_PENDIENTE / NRO_MANUAL).
+  if (H.has("CUIT_CUIL") || H.has("FIRMA_PENDIENTE") || H.has("NRO_MANUAL")) {
+    const solicitudes = registros.map(parseSolicitud).filter((f): f is FilaSolicitud => !!f);
+    return { tipo: "solicitudes", cantidad: solicitudes.length, solicitudes };
+  }
   if (H.has("NRO_SOLICITUD") || H.has("STATUS_DESC")) {
     const cartera = mapearFilas(registros, headers);
     return { tipo: "novedades", cantidad: cartera.length, cartera };
@@ -145,6 +176,32 @@ function parseGanador(r: Registro): FilaGanador | null {
     tipoAdjudicacion: limpiar(r["TIPO_ADJUDICACION"]),
     condicional: limpiar(r["CONDICIONAL"]),
     importeOferta: num(r["IMPORTE_OFERTA"]),
+  };
+}
+
+function parseSolicitud(r: Registro): FilaSolicitud | null {
+  const nroSolicitud = limpiar(r["NRO_SOLICITUD"]);
+  const nombre = limpiar(r["APELLIDO Y NOMBRE"]);
+  if (!nroSolicitud || !nombre) return null;
+  return {
+    nroSolicitud,
+    nroManual: limpiar(r["NRO_MANUAL"]),
+    nombre,
+    documento: limpiar(r["DOCUMENTO"]),
+    cuit: limpiar(r["CUIT_CUIL"]),
+    email: limpiar(r["EMAIL"]),
+    telefono: limpiar(r["CELULAR"]) ?? limpiar(r["TELEFONO_PARTICULAR"]) ?? limpiar(r["TELEFONO_LABORAL"]),
+    domicilio: limpiar(r["DIRECCION_TITULAR"]),
+    localidad: limpiar(r["LOCALIDAD_TITULAR"]),
+    provincia: limpiar(r["PROVINCIA_TITULAR"]),
+    plan: limpiar(r["PLAN_DESCRIPCION"]),
+    modelo: limpiar(r["MODELO"]),
+    status: limpiar(r["STATUS"]),
+    firmaPendiente: (limpiar(r["FIRMA_PENDIENTE"]) ?? "NO").toUpperCase() === "SI",
+    fechaAlta: limpiar(r["FECHA_ALTA"]),
+    fechaEnvio: limpiar(r["FECHA_ENVIO"]),
+    grupoArranque: limpiar(r["GRUPO_ARRANQUE"]),
+    ordenArranque: limpiar(r["ORDEN_ARRANQUE"]),
   };
 }
 
