@@ -221,6 +221,20 @@ export interface Recordatorio {
   avisado: boolean; // ya se generó la alerta de vencimiento (para no duplicar)
 }
 
+// Comercializadora: empresa/gestión externa que vende planes por cuenta de la concesionaria.
+// Su "nombre" coincide con el gestionId de los clientes y usuarios terciarizados que le pertenecen.
+export interface Comercializadora {
+  id: string;
+  empresaId: string;
+  nombre: string;
+  cuit: string | null;
+  contacto: string | null;
+  telefono: string | null;
+  email: string | null;
+  esquema: { tipo: "monto_fijo" | "pct_valor_movil"; valor: number };
+  activo: boolean;
+}
+
 // Liquidación de comisiones a comercializadoras (gestiones terciarizadas).
 export interface ItemComision {
   clienteId: string;

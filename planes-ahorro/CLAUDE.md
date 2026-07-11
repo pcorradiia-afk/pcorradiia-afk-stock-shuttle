@@ -604,6 +604,35 @@ Cuatro pedidos hechos en vivo, todos implementados y verificados E2E:
 **Migración `0004_recordatorios_comisiones.sql` PENDIENTE de correr por el cliente** (mientras
 tanto los datos quedan en el navegador sin molestar: remote.ts silencia "tabla inexistente").
 
+## 10.septies Segundo lote (2026-07-11, tarde) ✅
+1. **Control de concesionario en importaciones** (pedido tras importar por error un archivo de
+   Corradi en Fiorasi): los archivos traen el código de concesionario (**177 = Pedro Corradi,
+   126 = Fiorasi**; editable en /admin/empresas, meta `codigoConce:{empresaId}`). Si el código
+   del archivo no coincide con la empresa activa, la importación se **bloquea** con aviso claro.
+2. **Deshacer última importación** (solo super admin / sup. administración): cada importación
+   guarda los ids de los registros que CREÓ (`importLog`, solo la última por tipo); el botón
+   "Deshacer" de la casilla los elimina local + nube (`remote.eliminarClientes/CtaCte`, delete
+   por lotes de 200). Los actualizados no se revierten. Lista de precios: deshacer = volver a
+   la lista anterior.
+3. **Limpieza** para el cruce YA hecho: botón rojo en /importar (mismos roles) que borra los
+   clientes importados SIN gestión propia (sin anotador/venta/vendedor) de la empresa activa —
+   confirma escribiendo el nombre de la empresa. Pensado para sacar la cartera de Corradi que
+   quedó en Fiorasi.
+4. **BUGFIX importante**: `importarCartera()` NO subía los clientes a la nube (solo la meta del
+   cotizador) — regresión del merge paralelo. Corregido (sube todas las filas tocadas; upserts
+   en lotes de 400). ⚠️ El cliente debe REIMPORTAR Novedades en producción para que la cartera
+   quede persistida en Supabase.
+5. **Lista de precios REAL de Ford** (`LISTA_PRECIOS_JULIO.xls`, hoja "Lista GZ", mensual):
+   encabezados en la 3ª fila, columnas MODELO/VERSION/SEQ y DOS snapshots de precios — se toma
+   el **"Valor Movil FINAL" más a la derecha** (vigente). Como no trae flete/origen ni el texto
+   exacto del catálogo, se **heredan por SEQ** de la lista anterior o de la base embebida
+   (`parsePreciosFord` + herencia en `importarListaPrecios`). Verificado con el archivo real
+   (43 precios).
+6. **Tabla de comercializadoras** (en /comisiones): ABM con nombre (= gestión de sus
+   clientes/usuarios), CUIT, contacto, teléfono, email, esquema de comisión y activa/inactiva.
+   Tabla nube `comercializadora` (agregada a **0004** — el cliente aún no la corrió, así que
+   0004 ya incluye las 3 tablas).
+
 ## 11. Preguntas abiertas (pendientes de confirmar con el cliente)
 
 | # | Tema | Estado |

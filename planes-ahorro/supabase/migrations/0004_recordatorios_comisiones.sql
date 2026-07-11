@@ -16,16 +16,24 @@ create table if not exists liquidacion_comision (
   data       jsonb not null
 );
 
+create table if not exists comercializadora (
+  id         text primary key,
+  empresa_id text not null references empresa(id),
+  data       jsonb not null
+);
+
 create index if not exists recordatorio_empresa on recordatorio (empresa_id);
 create index if not exists liquidacion_comision_empresa on liquidacion_comision (empresa_id);
+create index if not exists comercializadora_empresa on comercializadora (empresa_id);
 
 alter table recordatorio         enable row level security;
 alter table liquidacion_comision enable row level security;
+alter table comercializadora     enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['recordatorio','liquidacion_comision'] loop
+  foreach t in array array['recordatorio','liquidacion_comision','comercializadora'] loop
     execute format('drop policy if exists %I_select on %I', t, t);
     execute format(
       'create policy %I_select on %I for select using (empresa_id in (select empresas_visibles()))', t, t);

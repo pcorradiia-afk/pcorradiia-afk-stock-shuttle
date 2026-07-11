@@ -138,6 +138,14 @@ function splitCSVLine(line: string, sep: string): string[] {
   return out;
 }
 
+/** Matriz cruda de un Excel (para formatos con encabezados que no están en la fila 1). */
+export async function leerMatrizExcel(file: File): Promise<string[][]> {
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, { type: "array" });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json<string[]>(ws, { header: 1, defval: "", raw: false });
+}
+
 /** Lee el archivo subido (CSV o Excel) y devuelve encabezados + registros crudos. */
 export async function leerArchivo(file: File): Promise<{ headers: string[]; registros: Registro[] }> {
   const nombre = file.name.toLowerCase();

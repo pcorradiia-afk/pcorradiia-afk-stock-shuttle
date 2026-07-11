@@ -9,6 +9,8 @@ import {
   importarCartera, importarAdjudicatarios, importarGanadores, importarCtaCte, importarAdh,
   importarSolicitudes, importarListaPrecios,
   registrarImportacion, ultimaImportacion, historialListasPrecios,
+  codigoConcesionario, empresaPorCodigoConce, deshacerImportacion,
+  clientesImportadosSinGestion, eliminarClientesImportados,
   type ReporteImportacion,
 } from "@/lib/store";
 import { analizarArchivo, TIPO_LABEL, type ArchivoAnalizado, type TipoArchivo } from "@/lib/import-archivos";
@@ -51,6 +53,8 @@ export default function ImportarPage() {
   }
 
   const empresa = empresaActivaId ? empresaPorId(empresaActivaId) : null;
+  // Deshacer importaciones y limpiar datos: SOLO super admin y supervisor de administración.
+  const puedeBorrar = usuarioActivo.roles.some((r) => r === "super_admin" || r === "supervisor_administracion");
 
   const onArchivo = async (esperado: TipoArchivo, file: File | undefined) => {
     if (!file) return;
@@ -61,6 +65,17 @@ export default function ImportarPage() {
         setErrorEn({ tipo: esperado, texto: "No reconocimos el formato de este archivo." });
       } else if (a.tipo !== esperado) {
         setErrorEn({ tipo: esperado, texto: `Este archivo parece ser "${TIPO_LABEL[a.tipo]}". Subilo en su casilla para mantener el control.` });
+      } else if (empresaActivaId && a.concesionarios?.length && codigoConcesionario(empresaActivaId) &&
+                 !a.concesionarios.includes(codigoConcesionario(empresaActivaId))) {
+        // ⛔ Control de concesionario: 177 = Pedro Corradi, 126 = Fiorasi.
+        const ajena = empresaPorCodigoConce(a.concesionarios[0]);
+        setErrorEn({
+          tipo: esperado,
+          texto: `⛔ Este archivo es del concesionario ${a.concesionarios.join(" y ")}` +
+            `${ajena ? ` (${ajena.nombreComercial})` : ""}, pero estás trabajando en ` +
+            `${empresa?.nombreComercial} (código ${codigoConcesionario(empresaActivaId)}). ` +
+            `No se importó nada: cambiá de empresa arriba y volvé a subirlo.`,
+        });
       } else {
         setPendiente({ tipo: esperado, analisis: a, archivo: file.name });
         setTimeout(() => confirmarRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
@@ -70,6 +85,18 @@ export default function ImportarPage() {
     } finally {
       setCargando(false);
     }
+  };
+
+  const deshacer = (tipo: TipoArchivo) => {
+    if (!empresaActivaId) return;
+    const ult = ultimaImportacion(empresaActivaId, tipo);
+    const n = tipo === "precios" ? "la lista vigente (vuelve la anterior)" : `${ult?.idsCreados?.length ?? 0} registro(s) creados`;
+    if (!confirm(`¿Deshacer la última importación de "${TIPO_LABEL[tipo]}" (${ult?.archivo})?\nSe eliminará: ${n}. Los registros que solo se actualizaron no se revierten.`)) return;
+    const r = deshacerImportacion(empresaActivaId, tipo);
+    setReporte(null); setPendiente(null);
+    setErrorEn(r.ok
+      ? { tipo, texto: `✔ Importación deshecha: se eliminaron ${r.eliminados} registro(s).` }
+      : { tipo, texto: r.motivo ?? "No se pudo deshacer." });
   };
 
   const ejecutar = () => {
@@ -87,6 +114,7 @@ export default function ImportarPage() {
       registrarImportacion(empresaActivaId, a.tipo, {
         fecha: new Date().toISOString(), archivo: pendiente.archivo, usuario: usuarioActivo.nombre,
         total: rep.total, creados: rep.creados, actualizados: rep.actualizados, rechazados: rep.rechazados.length,
+        idsCreados: rep.idsCreados?.slice(0, 6000), // permite "Deshacer" la última importación
       });
       setReporte({ tipo: a.tipo, rep });
       setPendiente(null);
@@ -130,18 +158,28 @@ export default function ImportarPage() {
                 <p className="text-xs text-muted-foreground">Se baja de: {c.fuente}</p>
                 {ult ? (
                   <p>
-                    <Badge variant="success">Actualizado {new Date(ult.fecha).toLocaleDateString("es-AR")}</Badge>{" "}
+                    <Badge variant={ult.deshecha ? "outline" : "success"}>
+                      {ult.deshecha ? "Deshecha" : `Actualizado ${new Date(ult.fecha).toLocaleDateString("es-AR")}`}
+                    </Badge>{" "}
                     <span className="text-muted-foreground">
                       {new Date(ult.fecha).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" })} hs
                       · {ult.archivo} · {ult.total} reg. ({ult.actualizados} act. / {ult.creados} nuevos
                       {ult.rechazados ? ` / ${ult.rechazados} rech.` : ""}) · por {ult.usuario}
                     </span>
+                    {puedeBorrar && !ult.deshecha && (c.tipo === "precios" || (ult.idsCreados?.length ?? 0) > 0) && (
+                      <button
+                        className="ml-2 text-xs text-red-600 underline-offset-2 hover:underline"
+                        onClick={() => deshacer(c.tipo)}
+                      >
+                        Deshacer
+                      </button>
+                    )}
                   </p>
                 ) : (
                   <p><Badge variant="outline">Nunca se importó</Badge></p>
                 )}
                 {c.tipo === "precios" && empresaActivaId && <HistorialPrecios empresaId={empresaActivaId} />}
-                {error && <p className="text-destructive">{error}</p>}
+                {error && <p className={error.startsWith("✔") ? "text-emerald-700" : "text-destructive"}>{error}</p>}
               </CardContent>
             </Card>
           );
@@ -149,6 +187,8 @@ export default function ImportarPage() {
       </div>
 
       {cargando && <p className="text-sm text-muted-foreground">Leyendo archivo…</p>}
+
+      {puedeBorrar && empresaActivaId && <Limpieza empresaId={empresaActivaId} nombreEmpresa={empresa?.nombreComercial ?? ""} />}
 
       {pendiente && !reporte && (
         <Card ref={confirmarRef as React.RefObject<HTMLDivElement>}>
@@ -207,6 +247,52 @@ export default function ImportarPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+/**
+ * Limpieza para una importación cruzada YA hecha (antes del control de concesionario):
+ * borra los clientes importados sin gestión propia. Solo super admin / sup. administración.
+ */
+function Limpieza({ empresaId, nombreEmpresa }: { empresaId: string; nombreEmpresa: string }) {
+  const [hecho, setHecho] = useState<number | null>(null);
+  const candidatos = clientesImportadosSinGestion(empresaId).length;
+  if (candidatos === 0 && hecho === null) return null;
+  return (
+    <Card className="border-red-200">
+      <CardContent className="flex flex-wrap items-center gap-3 pt-6 text-sm">
+        {hecho !== null ? (
+          <p className="text-emerald-700">✔ Se eliminaron {hecho} clientes importados de {nombreEmpresa} (acá y en la nube).</p>
+        ) : (
+          <>
+            <p className="grow">
+              <strong>Limpieza (usar solo si importaste un archivo de la otra concesionaria por error):</strong>{" "}
+              {nombreEmpresa} tiene <strong>{candidatos}</strong> clientes importados <em>sin gestión propia</em>{" "}
+              (sin anotador, sin venta, sin vendedor). ⚠️ Esto borra TODOS esos clientes, incluidos los de una
+              importación correcta — si solo querés revertir la última, usá el botón &quot;Deshacer&quot; de la casilla.
+            </p>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                const esperado = nombreEmpresa.toUpperCase();
+                const escrito = prompt(
+                  `Se van a ELIMINAR ${candidatos} clientes importados de ${nombreEmpresa} (acá y en la nube).\n` +
+                  `Los clientes con anotador, venta o vendedor asignado NO se tocan.\n\n` +
+                  `Para confirmar, escribí: ${esperado}`
+                );
+                if ((escrito ?? "").trim().toUpperCase() === esperado) {
+                  setHecho(eliminarClientesImportados(empresaId));
+                } else if (escrito !== null) {
+                  alert("No coincide: no se borró nada.");
+                }
+              }}
+            >
+              Borrar {candidatos} clientes importados
+            </Button>
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 

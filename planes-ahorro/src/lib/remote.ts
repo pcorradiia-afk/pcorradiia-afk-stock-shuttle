@@ -21,14 +21,32 @@ async function upsert(tabla: string, empresaId: string, filas: { id: string }[])
   const sb = getSupabase();
   if (!sb) return;
   const payload = filas.map((f) => ({ id: f.id, empresa_id: empresaId, data: f }));
-  const { error } = await sb.from(tabla).upsert(payload);
-  if (error) {
-    // Tabla aún no creada (migración pendiente): queda en el navegador, sin alarmar.
-    if (/does not exist|42P01/i.test(error.message)) {
-      console.warn(`[nube:${tabla}] tabla pendiente de migración — el dato quedó local`);
+  // De a 400 filas por pedido (las importaciones grandes superan el límite de un POST).
+  for (let i = 0; i < payload.length; i += 400) {
+    const { error } = await sb.from(tabla).upsert(payload.slice(i, i + 400));
+    if (error) {
+      // Tabla aún no creada (migración pendiente): queda en el navegador, sin alarmar.
+      if (/does not exist|42P01/i.test(error.message)) {
+        console.warn(`[nube:${tabla}] tabla pendiente de migración — el dato quedó local`);
+        return;
+      }
+      avisarError(tabla, error.message);
       return;
     }
-    avisarError(tabla, error.message);
+  }
+}
+
+/** Borra filas por id (para deshacer importaciones). RLS limita a las empresas visibles. */
+async function eliminar(tabla: string, ids: string[]) {
+  if (MODO_DEMO || ids.length === 0) return;
+  const sb = getSupabase();
+  if (!sb) return;
+  for (let i = 0; i < ids.length; i += 200) {
+    const { error } = await sb.from(tabla).delete().in("id", ids.slice(i, i + 200));
+    if (error && !/does not exist|42P01/i.test(error.message)) {
+      avisarError(tabla, error.message);
+      return;
+    }
   }
 }
 
@@ -45,6 +63,9 @@ export const remote = {
   enviosWa: (empresaId: string, filas: { id: string }[]) => upsert("envio_wa", empresaId, filas),
   recordatorios: (empresaId: string, filas: { id: string }[]) => upsert("recordatorio", empresaId, filas),
   liquidaciones: (empresaId: string, filas: { id: string }[]) => upsert("liquidacion_comision", empresaId, filas),
+  comercializadoras: (empresaId: string, filas: { id: string }[]) => upsert("comercializadora", empresaId, filas),
+  eliminarClientes: (ids: string[]) => eliminar("cliente", ids),
+  eliminarCtaCte: (ids: string[]) => eliminar("movimiento_ctacte", ids),
   // La tabla empresa tiene columnas reales (no jsonb) y RLS: solo super admin modifica.
   empresa: async (e: { id: string; nombre: string; nombreComercial: string; cuit: string; activo: boolean }) => {
     if (MODO_DEMO) return;

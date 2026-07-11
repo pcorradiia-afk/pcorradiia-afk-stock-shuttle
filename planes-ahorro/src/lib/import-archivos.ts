@@ -4,7 +4,7 @@
 // (ver CLAUDE.md §5.bis): Novedades (cartera), Adjudicatarios sin pedido,
 // Ganadores de acto, cta_cte (posicional) y adh (posicional).
 
-import { leerArchivo, mapearFilas, decodificarTexto, type Registro } from "./import-cartera";
+import { leerArchivo, leerMatrizExcel, mapearFilas, decodificarTexto, type Registro } from "./import-cartera";
 import type { FilaCartera } from "./store";
 import type { MovimientoCtaCte } from "./types";
 
@@ -103,6 +103,21 @@ export interface ArchivoAnalizado {
   precios?: FilaPrecio[];
   movimientos?: MovimientoCrudo[];
   adh?: FilaAdh[];
+  /** Códigos de concesionario presentes en el archivo (177 = Corradi, 126 = Fiorasi),
+   *  sin ceros a la izquierda. Para bloquear importaciones cruzadas. */
+  concesionarios?: string[];
+}
+
+/** Códigos de concesionario distintos que trae el archivo (normalizados sin ceros). */
+function extraerConcesionarios(registros: Registro[], headers: string[]): string[] {
+  const col = headers.find((h) => ["ID_CONCESIONARIO", "CONCESIONARIO", "CONCE"].includes(h.trim().toUpperCase()));
+  if (!col) return [];
+  const s = new Set<string>();
+  for (const r of registros) {
+    const v = String(r[col] ?? "").replace(/\D/g, "").replace(/^0+/, "");
+    if (v) s.add(v);
+  }
+  return Array.from(s);
 }
 
 const limpiar = (s: string | undefined | null) => {
@@ -135,27 +150,35 @@ export async function analizarArchivo(file: File): Promise<ArchivoAnalizado> {
     return { tipo: "desconocido", cantidad: 0 };
   }
 
+  // Lista de precios mensual de Ford (.xls "Lista GZ"): encabezados en la 3ª fila y
+  // dos snapshots de precios (anterior y vigente). Se detecta ANTES del parser genérico.
+  if (nombre.endsWith(".xls") || nombre.endsWith(".xlsx")) {
+    const precios = parsePreciosFord(await leerMatrizExcel(file));
+    if (precios) return { tipo: "precios", cantidad: precios.length, precios };
+  }
+
   // CSV / Excel: detectar por encabezados.
   const { headers, registros } = await leerArchivo(file);
   const H = new Set(headers.map((h) => h.trim().toUpperCase()));
+  const concesionarios = extraerConcesionarios(registros, headers);
 
   if (H.has("PUEDE_INGRESAR_PEDIDO")) {
     const adjudicatarios = registros.map(parseAdjudicatario).filter((f): f is FilaAdjudicatario => !!f);
-    return { tipo: "adjudicatarios", cantidad: adjudicatarios.length, adjudicatarios };
+    return { tipo: "adjudicatarios", cantidad: adjudicatarios.length, adjudicatarios, concesionarios };
   }
   if (H.has("NRO_ACTO") && H.has("TIPO_ADJUDICACION")) {
     const ganadores = registros.map(parseGanador).filter((f): f is FilaGanador => !!f);
-    return { tipo: "ganadores", cantidad: ganadores.length, ganadores };
+    return { tipo: "ganadores", cantidad: ganadores.length, ganadores, concesionarios };
   }
   // Solicitudes VOPA: también trae NRO_SOLICITUD, así que se detecta ANTES que la cartera
   // por sus columnas exclusivas (CUIT_CUIL / FIRMA_PENDIENTE / NRO_MANUAL).
   if (H.has("CUIT_CUIL") || H.has("FIRMA_PENDIENTE") || H.has("NRO_MANUAL")) {
     const solicitudes = registros.map(parseSolicitud).filter((f): f is FilaSolicitud => !!f);
-    return { tipo: "solicitudes", cantidad: solicitudes.length, solicitudes };
+    return { tipo: "solicitudes", cantidad: solicitudes.length, solicitudes, concesionarios };
   }
   if (H.has("NRO_SOLICITUD") || H.has("STATUS_DESC")) {
     const cartera = mapearFilas(registros, headers);
-    return { tipo: "novedades", cantidad: cartera.length, cartera };
+    return { tipo: "novedades", cantidad: cartera.length, cartera, concesionarios };
   }
   // Lista de precios: SEQ + una columna de precio (solapa Precio2 de la planilla o equivalente).
   if (H.has("SEQ") && ["PRECIO", "VALOR_MOVIL_FINAL", "VALOR_MOVIL", "VALOR", "LISTA", "PRECIO_LISTA"].some((c) => H.has(c))) {
@@ -163,6 +186,51 @@ export async function analizarArchivo(file: File): Promise<ArchivoAnalizado> {
     return { tipo: "precios", cantidad: precios.length, precios };
   }
   return { tipo: "desconocido", cantidad: registros.length };
+}
+
+/**
+ * Lista de precios mensual de Ford (hoja "Lista GZ"): fila de encabezados con
+ * MODELO / VERSION / SEQ y grupos repetidos "Precio Lista … Valor Movil FINAL"
+ * (el grupo MÁS A LA DERECHA es la vigencia nueva). Devuelve null si no es este formato.
+ */
+function parsePreciosFord(matriz: string[][]): FilaPrecio[] | null {
+  const norm = (s: string) => String(s ?? "").trim().toUpperCase();
+  const iHeader = matriz.findIndex((fila) =>
+    fila.some((c) => norm(c) === "SEQ") && fila.some((c) => norm(c).includes("VALOR MOVIL")));
+  if (iHeader < 0) return null;
+  const header = matriz[iHeader];
+  const iSeq = header.findIndex((c) => norm(c) === "SEQ");
+  const iVersion = header.findIndex((c) => norm(c) === "VERSION");
+  const iModelo = header.findIndex((c) => norm(c) === "MODELO");
+  // Última columna "Valor Movil FINAL" = lista vigente (la anterior queda de referencia).
+  let iFinal = -1;
+  header.forEach((c, i) => { if (norm(c).includes("VALOR MOVIL")) iFinal = i; });
+  if (iSeq < 0 || iFinal < 0) return null;
+
+  const aNum = (s: string) => {
+    const d = String(s ?? "").replace(/[^\d]/g, "");
+    return d ? Number(d) : null;
+  };
+  const out: FilaPrecio[] = [];
+  let modeloGrupo = "";
+  for (const fila of matriz.slice(iHeader + 1)) {
+    if (iModelo >= 0 && String(fila[iModelo] ?? "").trim()) modeloGrupo = String(fila[iModelo]).trim();
+    const seq = String(fila[iSeq] ?? "").trim().toUpperCase();
+    if (!/^[A-Z0-9]{3,5}$/.test(seq)) continue;
+    const version = String((iVersion >= 0 ? fila[iVersion] : "") ?? "").trim();
+    const precio = aNum(fila[iFinal]);
+    if (!precio || precio <= 0) continue;
+    out.push({
+      seq,
+      modelo: version || modeloGrupo || seq,
+      precio,
+      promo: null,
+      flete: null, // no viene en este archivo: se hereda de la lista anterior/embebida
+      origen: null, // ídem
+      nota: modeloGrupo && version ? modeloGrupo : null,
+    });
+  }
+  return out.length >= 5 ? out : null;
 }
 
 function parsePrecio(r: Registro, headers: string[]): FilaPrecio | null {

@@ -8,9 +8,10 @@ import type {
   PlantillaWhatsApp, CampaniaWhatsApp, EnvioWhatsApp, CategoriaPlantilla,
   Cliente, Comunicacion, Empresa, Estadio, EstadoCliente, Plan,
   ObservacionScoring, ResultadoScoring, Alerta, GestionAdmin, RolId, Usuario,
-  MovimientoCtaCte, Tarea, Recordatorio, LiquidacionComision, ItemComision,
+  MovimientoCtaCte, Tarea, Recordatorio, LiquidacionComision, ItemComision, Comercializadora,
 } from "./types";
 import { USUARIOS, EMPRESAS, SUCURSALES, EQUIPOS } from "./demo-data";
+import DB_COTIZADOR from "@/data/cotizador-db.json";
 import { remote } from "./remote";
 import { MODO_DEMO } from "./supabase/client";
 
@@ -26,6 +27,7 @@ const K_ENVIOS_WA = "pa.enviosWa";
 const K_META = "pa.meta";
 const K_RECORDATORIOS = "pa.recordatorios";
 const K_LIQUIDACIONES = "pa.liquidaciones";
+const K_COMERCIALIZADORAS = "pa.comercializadoras";
 
 // Metadatos simples (ej. fecha de última actualización de cartera por empresa).
 export function getMeta(clave: string): string | null {
@@ -241,6 +243,7 @@ export function reemplazarDatosEmpresa(
     observaciones: K_OBS, alertas: K_ALERTAS, tareas: K_TAREAS, ctacte: K_CTACTE,
     plantillasWa: K_PLANTILLAS_WA, campaniasWa: K_CAMPANIAS_WA, enviosWa: K_ENVIOS_WA,
     recordatorios: K_RECORDATORIOS, liquidaciones: K_LIQUIDACIONES,
+    comercializadoras: K_COMERCIALIZADORAS,
   };
   for (const [clave, key] of Object.entries(mapa)) {
     localStorage.setItem(key, JSON.stringify(datos[clave] ?? []));
@@ -574,7 +577,7 @@ export function importarAdjudicatarios(
   empresaId: string
 ): ReporteImportacion {
   const lista = leer<Cliente>(K_CLIENTES);
-  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
+  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [], idsCreados: [] };
   const hoy = new Date().toISOString();
   const tocados: Cliente[] = [];
   filas.forEach((f, idx) => {
@@ -603,6 +606,7 @@ export function importarAdjudicatarios(
         pruebaManejo: null, necesidades: null, planId: null, presupuestoNombre: null, fechaVenta: null,
       });
       tocados.push(lista[lista.length - 1]);
+      rep.idsCreados!.push(lista[lista.length - 1].id);
       rep.creados++;
     }
   });
@@ -617,7 +621,7 @@ export function importarGanadores(
   empresaId: string
 ): ReporteImportacion {
   const lista = leer<Cliente>(K_CLIENTES);
-  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
+  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [], idsCreados: [] };
   const hoy = new Date().toISOString();
   const tocadosG: Cliente[] = [];
   filas.forEach((f, idx) => {
@@ -648,6 +652,7 @@ export function importarGanadores(
         pruebaManejo: null, necesidades: null, planId: null, presupuestoNombre: null, fechaVenta: null,
       });
       tocadosG.push(lista[lista.length - 1]);
+      rep.idsCreados!.push(lista[lista.length - 1].id);
       rep.creados++;
     }
     crearAlerta({
@@ -667,7 +672,7 @@ export function importarCtaCte(movs: Omit<MovimientoCtaCte, "id" | "empresaId">[
   const clave = (m: { fecha: string; codigo: string; importe: number; referencia: string; dc: string }) =>
     `${m.fecha}|${m.codigo}|${m.importe}|${m.referencia}|${m.dc}`;
   const existentes = new Set(lista.filter((m) => m.empresaId === empresaId).map(clave));
-  const rep: ReporteImportacion = { total: movs.length, creados: 0, actualizados: 0, rechazados: [] };
+  const rep: ReporteImportacion = { total: movs.length, creados: 0, actualizados: 0, rechazados: [], idsCreados: [] };
   const nuevosMovs: MovimientoCtaCte[] = [];
   movs.forEach((m, idx) => {
     if (existentes.has(clave(m))) {
@@ -678,6 +683,7 @@ export function importarCtaCte(movs: Omit<MovimientoCtaCte, "id" | "empresaId">[
     const nuevo = { ...m, id: uid(), empresaId };
     lista.push(nuevo);
     nuevosMovs.push(nuevo);
+    rep.idsCreados!.push(nuevo.id);
     rep.creados++;
   });
   escribir(K_CTACTE, lista);
@@ -697,7 +703,7 @@ export function importarAdh(
   empresaId: string
 ): ReporteImportacion {
   const lista = leer<Cliente>(K_CLIENTES);
-  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
+  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [], idsCreados: [] };
   const tocadosAdh: Cliente[] = [];
   filas.forEach((f, idx) => {
     const i = buscarPorGrupoOrden(lista, empresaId, f.grupo, f.orden);
@@ -737,7 +743,7 @@ export function importarSolicitudes(
   empresaId: string
 ): ReporteImportacion {
   const lista = leer<Cliente>(K_CLIENTES);
-  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
+  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [], idsCreados: [] };
   const hoy = new Date().toISOString();
   const tocados: Cliente[] = [];
   const soloDigitos = (s: string | null | undefined) => (s || "").replace(/\D/g, "");
@@ -807,6 +813,7 @@ export function importarSolicitudes(
         pruebaManejo: null, necesidades: null, planId: null, presupuestoNombre: null, fechaVenta: null,
       });
       tocados.push(lista[lista.length - 1]);
+      rep.idsCreados!.push(lista[lista.length - 1].id);
       rep.creados++;
     }
   });
@@ -824,6 +831,9 @@ export interface RegistroImportacion {
   creados: number;
   actualizados: number;
   rechazados: number;
+  /** Ids creados por esta importación (solo la última guarda la lista, para deshacer). */
+  idsCreados?: string[];
+  deshecha?: boolean;
 }
 
 function leerLogImports(empresaId: string): Record<string, RegistroImportacion[]> {
@@ -833,16 +843,96 @@ function leerLogImports(empresaId: string): Record<string, RegistroImportacion[]
     return {};
   }
 }
+function guardarLogImports(empresaId: string, log: Record<string, RegistroImportacion[]>) {
+  setMeta(`importLog:${empresaId}`, JSON.stringify(log), empresaId);
+}
 export function registrarImportacion(empresaId: string, tipo: string, reg: RegistroImportacion) {
   const log = leerLogImports(empresaId);
-  log[tipo] = [reg, ...(log[tipo] ?? [])].slice(0, 10); // se guardan las últimas 10 por tipo
-  setMeta(`importLog:${empresaId}`, JSON.stringify(log), empresaId);
+  const previas = (log[tipo] ?? []).map((r) => ({ ...r, idsCreados: undefined })); // ids solo en la última
+  log[tipo] = [reg, ...previas].slice(0, 10); // se guardan las últimas 10 por tipo
+  guardarLogImports(empresaId, log);
 }
 export function ultimaImportacion(empresaId: string, tipo: string): RegistroImportacion | null {
   return leerLogImports(empresaId)[tipo]?.[0] ?? null;
 }
 export function historialImportaciones(empresaId: string, tipo: string): RegistroImportacion[] {
   return leerLogImports(empresaId)[tipo] ?? [];
+}
+
+/**
+ * Deshace la ÚLTIMA importación de un tipo: elimina los registros que esa
+ * importación CREÓ (local + nube). Los actualizados no se revierten.
+ * Solo super admin / supervisor de administración (se valida en la UI).
+ */
+export function deshacerImportacion(empresaId: string, tipo: string): { ok: boolean; eliminados: number; motivo?: string } {
+  const log = leerLogImports(empresaId);
+  const ult = log[tipo]?.[0];
+  if (!ult) return { ok: false, eliminados: 0, motivo: "No hay importaciones de este tipo." };
+  if (ult.deshecha) return { ok: false, eliminados: 0, motivo: "La última importación ya fue deshecha." };
+  if (tipo === "precios") {
+    // La lista de precios se deshace descartando la vigente (vuelve la anterior).
+    const hist = historialListasPrecios(empresaId);
+    setMeta(`preciosHist:${empresaId}`, JSON.stringify(hist.slice(1)), empresaId);
+    log[tipo][0] = { ...ult, deshecha: true };
+    guardarLogImports(empresaId, log);
+    return { ok: true, eliminados: 1 };
+  }
+  const ids = ult.idsCreados ?? [];
+  if (ids.length === 0) {
+    return { ok: false, eliminados: 0, motivo: "Esa importación no creó registros nuevos (solo actualizó): no hay nada para borrar." };
+  }
+  const setIds = new Set(ids);
+  if (tipo === "cta_cte") {
+    escribir(K_CTACTE, leer<MovimientoCtaCte>(K_CTACTE).filter((m) => !setIds.has(m.id)));
+    remote.eliminarCtaCte(ids);
+  } else {
+    escribir(K_CLIENTES, leer<Cliente>(K_CLIENTES).filter((c) => !setIds.has(c.id)));
+    remote.eliminarClientes(ids);
+  }
+  log[tipo][0] = { ...ult, deshecha: true, idsCreados: undefined };
+  guardarLogImports(empresaId, log);
+  return { ok: true, eliminados: ids.length };
+}
+
+// --- Código de concesionario por empresa (177 = Pedro Corradi, 126 = Fiorasi) ---
+// Se usa para BLOQUEAR importar un archivo de una concesionaria en la otra.
+const CODIGO_CONCE_DEFAULT: Record<string, string> = { pc: "177", sapac: "126" };
+
+export function codigoConcesionario(empresaId: string): string {
+  return getMeta(`codigoConce:${empresaId}`) ?? CODIGO_CONCE_DEFAULT[empresaId] ?? "";
+}
+export function setCodigoConcesionario(empresaId: string, codigo: string) {
+  setMeta(`codigoConce:${empresaId}`, codigo.trim().replace(/^0+/, ""), empresaId);
+}
+/** Empresa dueña de un código de concesionario (para el mensaje de bloqueo). */
+export function empresaPorCodigoConce(codigo: string): Empresa | undefined {
+  const c = codigo.replace(/^0+/, "");
+  return listarEmpresas().find((e) => codigoConcesionario(e.id) === c);
+}
+
+/**
+ * Limpieza de una importación cruzada YA hecha (anterior al control de concesionario):
+ * clientes IMPORTADOS de la empresa sin gestión propia (sin bitácora, sin venta,
+ * sin vendedor asignado). Se listan primero y se borran con confirmación.
+ */
+export function clientesImportadosSinGestion(empresaId: string): Cliente[] {
+  const conBitacora = new Set(leer<Comunicacion>(K_COMS).map((c) => c.clienteId));
+  return leer<Cliente>(K_CLIENTES).filter((c) =>
+    c.empresaId === empresaId &&
+    c.nacidoComo !== "lead_interno" &&
+    !c.fechaVenta && !c.vendedorId &&
+    !conBitacora.has(c.id)
+  );
+}
+export function eliminarClientesImportados(empresaId: string): number {
+  const objetivo = clientesImportadosSinGestion(empresaId);
+  if (objetivo.length === 0) return 0;
+  const setIds = new Set(objetivo.map((c) => c.id));
+  escribir(K_CLIENTES, leer<Cliente>(K_CLIENTES).filter((c) => !setIds.has(c.id)));
+  remote.eliminarClientes(Array.from(setIds));
+  // La base del cotizador y la fecha de cartera quedan obsoletas para esta empresa.
+  setMeta(`cotizadorAct:${empresaId}`, "{}", empresaId);
+  return objetivo.length;
 }
 
 // --- Lista de precios: vigente + HISTORIAL completo (pedido del cliente 2026-07-11) ---
@@ -863,16 +953,25 @@ export function importarListaPrecios(
   archivo: string,
   usuario: string
 ): ReporteImportacion {
-  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
+  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [], idsCreados: [] };
   const precio: ListaPrecios["precio"] = {};
   const prec2: ListaPrecios["prec2"] = {};
+  // La lista mensual de Ford no trae flete/origen ni usa exactamente los mismos textos
+  // de modelo que el catálogo: se heredan de la lista anterior (o de la embebida) por SEQ.
+  const anterior = listaPreciosVigente(empresaId)?.prec2 ?? {};
+  const embebida = (DB_COTIZADOR as unknown as { prec2: Record<string, [string, number, number, string]> }).prec2 ?? {};
   filas.forEach((f, idx) => {
     if (prec2[f.seq]) {
       rep.rechazados.push({ fila: idx + 1, motivo: `SEQ ${f.seq} repetido en el archivo`, nombre: f.modelo });
       return;
     }
-    precio[f.modelo] = [f.precio, f.promo ?? 0, f.nota ?? ""];
-    prec2[f.seq] = [f.modelo, f.precio, f.flete ?? 0, f.origen === "IMPORTADO" ? "IMPORTADO" : "NACIONAL"];
+    const ref = anterior[f.seq] ?? embebida[f.seq];
+    const desc = (ref?.[0] ?? f.modelo).trim(); // texto canónico del catálogo si el SEQ ya existe
+    const flete = f.flete ?? ref?.[2] ?? 0;
+    const origen = (f.origen ?? ref?.[3]) === "IMPORTADO" ? "IMPORTADO" : "NACIONAL";
+    precio[desc] = [f.precio, f.promo ?? 0, f.nota ?? ""];
+    if (f.modelo.trim() && desc !== f.modelo.trim()) precio[f.modelo.trim()] = [f.precio, f.promo ?? 0, f.nota ?? ""];
+    prec2[f.seq] = [desc, f.precio, flete, origen];
     rep.creados++;
   });
   const nueva: ListaPrecios = { fecha: new Date().toISOString(), archivo, usuario, precio, prec2 };
@@ -1067,12 +1166,15 @@ export interface ReporteImportacion {
   creados: number;
   actualizados: number;
   rechazados: { fila: number; motivo: string; nombre: string }[];
+  /** Ids de los registros CREADOS por esta importación (para poder deshacerla). */
+  idsCreados?: string[];
 }
 
 export function importarCartera(filas: FilaCartera[], empresaId: string): ReporteImportacion {
   const lista = leer<Cliente>(K_CLIENTES);
-  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [] };
+  const rep: ReporteImportacion = { total: filas.length, creados: 0, actualizados: 0, rechazados: [], idsCreados: [] };
   const hoy = new Date().toISOString();
+  const tocados: Cliente[] = [];
 
   filas.forEach((f, idx) => {
     if (!f.nombreCompleto?.trim()) {
@@ -1125,6 +1227,7 @@ export function importarCartera(filas: FilaCartera[], empresaId: string): Report
           nroSolicitud: solicitud.nroSolicitud ?? lista[i].solicitud.nroSolicitud,
         },
       };
+      tocados.push(lista[i]);
       rep.actualizados++;
     } else {
       lista.push({
@@ -1144,11 +1247,14 @@ export function importarCartera(filas: FilaCartera[], empresaId: string): Report
         solicitud,
         pruebaManejo: null, necesidades: null, planId: null, presupuestoNombre: null, fechaVenta: null,
       });
+      tocados.push(lista[lista.length - 1]);
+      rep.idsCreados!.push(lista[lista.length - 1].id);
       rep.creados++;
     }
   });
 
   escribir(K_CLIENTES, lista);
+  remote.clientes(empresaId, tocados); // sube TODAS las filas tocadas a la nube
   setMeta(`carteraActualizada:${empresaId}`, hoy, empresaId);
 
   // La misma cartera actualiza la base del Cotizador del adjudicado:
@@ -1376,9 +1482,32 @@ export function guardarEsquemaComision(empresaId: string, comercializadora: stri
   setMeta(`comisiones:${empresaId}`, JSON.stringify(m), empresaId);
 }
 
-/** Comercializadoras conocidas: las gestiones terciarizadas presentes en clientes y usuarios. */
+// --- Tabla de comercializadoras (ABM; el nombre enlaza con gestionId de clientes/usuarios) ---
+export function listarComercializadorasTabla(empresaId: string, soloActivas = false): Comercializadora[] {
+  return leer<Comercializadora>(K_COMERCIALIZADORAS)
+    .filter((c) => c.empresaId === empresaId && (!soloActivas || c.activo))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+export function guardarComercializadora(input: Omit<Comercializadora, "id"> & { id?: string }): Comercializadora {
+  const lista = leer<Comercializadora>(K_COMERCIALIZADORAS);
+  let fila: Comercializadora;
+  const i = input.id ? lista.findIndex((c) => c.id === input.id) : -1;
+  if (i >= 0) {
+    fila = { ...lista[i], ...input, id: lista[i].id };
+    lista[i] = fila;
+  } else {
+    fila = { ...input, id: uid() };
+    lista.push(fila);
+  }
+  escribir(K_COMERCIALIZADORAS, lista);
+  remote.comercializadoras(input.empresaId, [fila]);
+  return fila;
+}
+
+/** Nombres de comercializadoras: la tabla + gestiones sueltas vistas en clientes/usuarios. */
 export function listarComercializadoras(empresaId: string): string[] {
   const s = new Set<string>();
+  listarComercializadorasTabla(empresaId).forEach((c) => s.add(c.nombre));
   leer<Cliente>(K_CLIENTES).forEach((c) => { if (c.empresaId === empresaId && c.gestionId) s.add(c.gestionId); });
   listarUsuariosCache().forEach((u) => { if (u.empresaId === empresaId && u.gestionId) s.add(u.gestionId); });
   Object.keys(esquemasComision(empresaId)).forEach((k) => s.add(k));

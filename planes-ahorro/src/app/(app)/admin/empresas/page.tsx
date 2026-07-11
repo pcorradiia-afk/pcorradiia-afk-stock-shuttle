@@ -6,6 +6,7 @@ import { tienePermiso } from "@/lib/roles";
 import {
   suscribir, listarEmpresas, actualizarEmpresa, listarOrganizacion,
   agregarSucursal, renombrarSucursal, eliminarSucursal, agregarEquipo, eliminarEquipo,
+  codigoConcesionario, setCodigoConcesionario,
 } from "@/lib/store";
 import type { Empresa } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +39,10 @@ export default function EmpresasPage() {
 
 function FichaEmpresa({ empresa }: { empresa: Empresa }) {
   const [editando, setEditando] = useState(false);
-  const [form, setForm] = useState({ nombre: empresa.nombre, nombreComercial: empresa.nombreComercial, cuit: empresa.cuit });
+  const [form, setForm] = useState({
+    nombre: empresa.nombre, nombreComercial: empresa.nombreComercial, cuit: empresa.cuit,
+    codigoConce: codigoConcesionario(empresa.id),
+  });
   const [nuevaSucursal, setNuevaSucursal] = useState("");
   const [equipoEn, setEquipoEn] = useState<string | null>(null); // sucursal a la que se agrega equipo
   const [nuevoEquipo, setNuevoEquipo] = useState({ nombre: "", tipo: "ventas" as "ventas" | "administracion" });
@@ -50,6 +54,7 @@ function FichaEmpresa({ empresa }: { empresa: Empresa }) {
     actualizarEmpresa(empresa.id, {
       nombre: form.nombre.trim(), nombreComercial: form.nombreComercial.trim(), cuit: form.cuit.trim(),
     });
+    setCodigoConcesionario(empresa.id, form.codigoConce);
     setEditando(false);
   }
 
@@ -71,11 +76,16 @@ function FichaEmpresa({ empresa }: { empresa: Empresa }) {
                 <label className="text-sm font-medium">CUIT</label>
                 <Input value={form.cuit} onChange={(ev) => setForm({ ...form, cuit: ev.target.value })} />
               </div>
+              <div className="space-y-1">
+                <label className="text-sm font-medium">Código de concesionario (VOPA/FIS)</label>
+                <Input value={form.codigoConce} onChange={(ev) => setForm({ ...form, codigoConce: ev.target.value })} placeholder="Ej: 177" />
+                <p className="text-xs text-muted-foreground">Se usa para bloquear la importación de archivos de otra concesionaria.</p>
+              </div>
             </div>
             <div className="flex gap-2">
               <Button size="sm" onClick={guardarDatos}>Guardar</Button>
               <Button size="sm" variant="outline" onClick={() => {
-                setForm({ nombre: empresa.nombre, nombreComercial: empresa.nombreComercial, cuit: empresa.cuit });
+                setForm({ nombre: empresa.nombre, nombreComercial: empresa.nombreComercial, cuit: empresa.cuit, codigoConce: codigoConcesionario(empresa.id) });
                 setEditando(false);
               }}>Cancelar</Button>
             </div>
@@ -86,6 +96,7 @@ function FichaEmpresa({ empresa }: { empresa: Empresa }) {
               <CardTitle className="flex items-center gap-2">
                 {empresa.nombre}
                 <Badge variant="secondary">{empresa.nombreComercial}</Badge>
+                {codigoConcesionario(empresa.id) && <Badge variant="outline">Conce {codigoConcesionario(empresa.id)}</Badge>}
               </CardTitle>
               <CardDescription>CUIT {empresa.cuit}</CardDescription>
             </div>
