@@ -31,7 +31,8 @@ import { cn } from "@/lib/utils";
 const DEPTOS_AJUSTE = [
   { key: "0km", label: "Unidades 0km" },
   { key: "usados", label: "Unidades usados" },
-  { key: "planes", label: "Planes de Ahorro" },
+  { key: "planes_susc", label: "Suscripciones de planes" },
+  { key: "planes_ent", label: "Entregas de planes" },
   { key: "repuestos", label: "Repuestos" },
   { key: "posventa", label: "Servicios / Taller" },
   { key: "admin", label: "Estructura / Administración" },
