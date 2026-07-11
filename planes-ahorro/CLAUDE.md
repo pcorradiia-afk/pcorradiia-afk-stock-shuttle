@@ -553,9 +553,9 @@ contraseña. Desactivar corta el acceso (login y restauración de sesión verifi
 sin borrar historial. En modo demo el alta queda oculta.
 **Seguridad:** `0003_seguridad_alta_usuario.sql` revoca `alta_usuario()` a `authenticated`
 (en 0001 solo se revocaba `anon`: cualquier usuario logueado podía auto-asignarse
-super_admin) y la reserva a `service_role`. **Pendiente del cliente:** correr 0003 en el SQL
-Editor y cargar `SUPABASE_SERVICE_ROLE_KEY` en Vercel (Sensitive) + Redeploy; sin ella la
-pantalla avisa "Falta configurar SUPABASE_SERVICE_ROLE_KEY".
+super_admin) y la reserva a `service_role`.
+✅ **OPERATIVO EN PRODUCCIÓN (2026-07-11):** el cliente corrió 0003, cargó
+`SUPABASE_SERVICE_ROLE_KEY` en Vercel y confirmó que el alta de usuarios funciona.
 
 ## 10.quinquies Empresas editables (2026-07-11) ✅
 Pedido del cliente: "que pueda editar los datos de la empresa, las sucursales no están
