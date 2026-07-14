@@ -601,8 +601,7 @@ Cuatro pedidos hechos en vivo, todos implementados y verificados E2E:
    cartera); tabla **por colaborador** (asignaciones, cumplimiento con barra, atrasadas,
    recordatorios vencidos, gestionados, última actividad, export Excel) y **avance por
    gestión** (de cada cola, % con registro en el anotador en el período).
-**Migración `0004_recordatorios_comisiones.sql` PENDIENTE de correr por el cliente** (mientras
-tanto los datos quedan en el navegador sin molestar: remote.ts silencia "tabla inexistente").
+✅ Migración 0004 CORRIDA por el cliente (2026-07-14).
 
 ## 10.septies Segundo lote (2026-07-11, tarde) ✅
 1. **Control de concesionario en importaciones** (pedido tras importar por error un archivo de
@@ -630,8 +629,7 @@ tanto los datos quedan en el navegador sin molestar: remote.ts silencia "tabla i
    (43 precios).
 6. **Tabla de comercializadoras** (en /comisiones): ABM con nombre (= gestión de sus
    clientes/usuarios), CUIT, contacto, teléfono, email, esquema de comisión y activa/inactiva.
-   Tabla nube `comercializadora` (agregada a **0004** — el cliente aún no la corrió, así que
-   0004 ya incluye las 3 tablas).
+   Tabla nube `comercializadora` (en 0004 — ✅ corrida por el cliente 2026-07-14).
 
 ## 10.octies Ajustes de cotizador y ficha (2026-07-11, tarde) ✅
 1. **Jurisdicciones de patentamiento POR EMPRESA** (Cotizador → "Patenta en"): Corradi =
@@ -654,7 +652,7 @@ texto y export a Excel. Registra: **importaciones** (tipo, archivo, cantidades),
 empresas**, **ventas cerradas**, **campañas de WhatsApp enviadas** y **liquidaciones de
 comisiones** (generar/aprobar/pagar). Implementación: `auditar(empresaId, usuario, accion,
 detalle)` llamado explícitamente desde las pantallas (que conocen al usuario); tabla nube
-`log_auditoria` (**0005_auditoria.sql — correr en SQL Editor**) con RLS de SOLO INSERT: el log
+`log_auditoria` (0005 — ✅ corrida por el cliente 2026-07-14) con RLS de SOLO INSERT: el log
 no se puede editar ni borrar desde la app. Verificado E2E (registro + filtro + bloqueo a
 vendedor por menú y por URL directa).
 
