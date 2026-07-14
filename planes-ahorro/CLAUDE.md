@@ -656,6 +656,15 @@ detalle)` llamado explícitamente desde las pantallas (que conocen al usuario); 
 no se puede editar ni borrar desde la app. Verificado E2E (registro + filtro + bloqueo a
 vendedor por menú y por URL directa).
 
+## 10.decies Piloto con usuarias reales (2026-07-14) 🚀
+El cliente dio de alta a las dos referentes de plan de ahorro para que PRUEBEN TODO el sistema:
+**Claudia Gomez** (cgomez@pedrocorradi.com.ar, Pedro Corradi) y **Paula Maripe**
+(paula.maripe@fiorasiford.com.ar, Fiorasi). Decisión del cliente: por ahora tienen roles
+amplios (incluido super_admin) para explorar todo; al terminar la prueba se acotan con
+re-alta. El botón **"Clave"** de /admin/usuarios restablece contraseñas (PATCH con password,
+solo super admin). El feedback de ellas alimenta el repaso de usabilidad pendiente. Se les
+entregó una guía de prueba módulo por módulo (en la conversación).
+
 ## 11. Preguntas abiertas (pendientes de confirmar con el cliente)
 
 | # | Tema | Estado |
