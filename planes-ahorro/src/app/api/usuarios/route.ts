@@ -83,21 +83,37 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true, detalle: String(data), yaExistiaCredencial: !!authErr });
 }
 
+// PATCH: activar/desactivar ({ email, activo }) o cambiar contraseña ({ email, password }).
 export async function PATCH(req: NextRequest) {
   const gate = await requesterEsSuperAdmin(req);
   if (!gate.ok) return gate.error!;
-  let b: { email?: string; activo?: boolean };
+  let b: { email?: string; activo?: boolean; password?: string };
   try {
     b = await req.json();
   } catch {
     return NextResponse.json({ error: "Cuerpo inválido." }, { status: 400 });
   }
   const email = (b.email ?? "").trim().toLowerCase();
-  if (!email || typeof b.activo !== "boolean") return NextResponse.json({ error: "Faltan datos." }, { status: 400 });
+  if (!email) return NextResponse.json({ error: "Faltan datos." }, { status: 400 });
+  const service = serviceClient();
+
+  // Cambio de contraseña (el super admin la restablece y se la pasa al usuario).
+  if (typeof b.password === "string") {
+    if (b.password.length < 8) {
+      return NextResponse.json({ error: "La contraseña debe tener al menos 8 caracteres." }, { status: 400 });
+    }
+    const { data: fila, error: e1 } = await service.from("usuario").select("id").eq("email", email).single();
+    if (e1 || !fila) return NextResponse.json({ error: `No encontramos el usuario ${email}.` }, { status: 400 });
+    const { error: e2 } = await service.auth.admin.updateUserById(fila.id as string, { password: b.password });
+    if (e2) return NextResponse.json({ error: `Auth: ${e2.message}` }, { status: 400 });
+    return NextResponse.json({ ok: true, detalle: "Contraseña actualizada." });
+  }
+
+  if (typeof b.activo !== "boolean") return NextResponse.json({ error: "Faltan datos." }, { status: 400 });
   if (email === gate.email?.toLowerCase() && b.activo === false) {
     return NextResponse.json({ error: "No podés desactivarte a vos mismo." }, { status: 400 });
   }
-  const { error } = await serviceClient().from("usuario").update({ activo: b.activo }).eq("email", email);
+  const { error } = await service.from("usuario").update({ activo: b.activo }).eq("email", email);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ ok: true });
 }

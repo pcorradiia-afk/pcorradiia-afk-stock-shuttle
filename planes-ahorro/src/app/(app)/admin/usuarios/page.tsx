@@ -122,6 +122,24 @@ export default function UsuariosPage() {
     setGuardando(false);
   }
 
+  async function cambiarClave(email: string, nombre: string) {
+    setAviso(null);
+    const nueva = prompt(`Nueva contraseña para ${nombre} (mínimo 8 caracteres).\nDespués pasásela por un canal privado:`);
+    if (nueva === null) return;
+    if (nueva.length < 8) {
+      setAviso({ tipo: "error", texto: "La contraseña debe tener al menos 8 caracteres. No se cambió." });
+      return;
+    }
+    const res = await llamarApi("PATCH", { email, password: nueva });
+    if (res.ok) {
+      const emp = listarUsuariosCache().find((u) => u.email === email)?.empresaId ?? "pc";
+      auditar(emp, usuarioReal?.nombre ?? "", "usuario", `Restableció la contraseña de ${email}`);
+      setAviso({ tipo: "ok", texto: `Listo: la nueva contraseña de ${nombre} ya está activa. Pasásela por un canal privado.` });
+    } else {
+      setAviso({ tipo: "error", texto: res.mensaje });
+    }
+  }
+
   async function toggleActivo(email: string, activo: boolean) {
     setAviso(null);
     setTogglingEmail(email);
@@ -288,6 +306,11 @@ export default function UsuariosPage() {
                           <UserCog className="h-4 w-4" /> Impersonar
                         </Button>
                       )}
+                      {puedeGestionar && (
+                        <Button variant="outline" size="sm" onClick={() => cambiarClave(u.email, u.nombre)}>
+                          Clave
+                        </Button>
+                      )}
                       {puedeGestionar && u.id !== usuarioReal?.id && (
                         <Button
                           variant={u.activo ? "outline" : "default"}
@@ -310,7 +333,7 @@ export default function UsuariosPage() {
       <p className="text-sm text-muted-foreground">
         {MODO_DEMO
           ? "En modo demo el alta/baja de usuarios está deshabilitada (se habilita con Supabase conectado)."
-          : "Desactivar un usuario le corta el acceso sin borrar su historial. La edición de roles de un usuario existente se hace dando de alta de nuevo el mismo email con los roles correctos."}
+          : "Desactivar corta el acceso sin borrar historial. \"Clave\" restablece la contraseña. Para corregir roles: \"Nuevo usuario\" con el mismo email y los roles correctos (reemplaza los anteriores)."}
       </p>
     </div>
   );
