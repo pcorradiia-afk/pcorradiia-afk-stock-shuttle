@@ -9,6 +9,7 @@ import type {
   Cliente, Comunicacion, Empresa, Estadio, EstadoCliente, Plan,
   ObservacionScoring, ResultadoScoring, Alerta, GestionAdmin, RolId, Usuario,
   MovimientoCtaCte, Tarea, Recordatorio, LiquidacionComision, ItemComision, Comercializadora,
+  RegistroAuditoria,
 } from "./types";
 import { USUARIOS, EMPRESAS, SUCURSALES, EQUIPOS } from "./demo-data";
 import DB_COTIZADOR from "@/data/cotizador-db.json";
@@ -28,6 +29,7 @@ const K_META = "pa.meta";
 const K_RECORDATORIOS = "pa.recordatorios";
 const K_LIQUIDACIONES = "pa.liquidaciones";
 const K_COMERCIALIZADORAS = "pa.comercializadoras";
+const K_AUDITORIA = "pa.auditoria";
 
 // Metadatos simples (ej. fecha de última actualización de cartera por empresa).
 export function getMeta(clave: string): string | null {
@@ -243,7 +245,7 @@ export function reemplazarDatosEmpresa(
     observaciones: K_OBS, alertas: K_ALERTAS, tareas: K_TAREAS, ctacte: K_CTACTE,
     plantillasWa: K_PLANTILLAS_WA, campaniasWa: K_CAMPANIAS_WA, enviosWa: K_ENVIOS_WA,
     recordatorios: K_RECORDATORIOS, liquidaciones: K_LIQUIDACIONES,
-    comercializadoras: K_COMERCIALIZADORAS,
+    comercializadoras: K_COMERCIALIZADORAS, auditoria: K_AUDITORIA,
   };
   for (const [clave, key] of Object.entries(mapa)) {
     localStorage.setItem(key, JSON.stringify(datos[clave] ?? []));
@@ -1574,3 +1576,31 @@ export function eliminarLiquidacion(id: string) {
   const baja: LiquidacionComision = { ...l, items: [], total: 0, comercializadora: `[eliminada] ${l.comercializadora}` };
   remote.liquidaciones(l.empresaId, [baja]);
 }
+
+// ===================== Auditoría (log de acciones — solo se agrega) =====================
+
+export function auditar(empresaId: string, usuarioNombre: string, accion: string, detalle: string) {
+  const lista = leer<RegistroAuditoria>(K_AUDITORIA);
+  const reg: RegistroAuditoria = { id: uid(), empresaId, fecha: new Date().toISOString(), usuarioNombre, accion, detalle };
+  lista.push(reg);
+  escribir(K_AUDITORIA, lista);
+  remote.auditoria(empresaId, [reg]);
+}
+
+export function listarAuditoria(empresaId: string): RegistroAuditoria[] {
+  return leer<RegistroAuditoria>(K_AUDITORIA)
+    .filter((r) => r.empresaId === empresaId)
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+}
+
+export const ACCION_AUDITORIA_LABEL: Record<string, string> = {
+  importacion: "Importación",
+  importacion_deshecha: "Importación deshecha",
+  limpieza: "Limpieza de datos",
+  usuario: "Usuarios",
+  empresa: "Empresas",
+  venta: "Venta",
+  solicitud_corregida: "N° de solicitud corregido",
+  campania_wa: "Campaña WhatsApp",
+  comisiones: "Comisiones",
+};

@@ -12,7 +12,7 @@ import {
   suscribir, listarComercializadoras, esquemasComision, guardarEsquemaComision,
   ventasComercializadora, generarLiquidacion, listarLiquidaciones,
   cambiarEstadoLiquidacion, eliminarLiquidacion, type EsquemaComision,
-  listarComercializadorasTabla, guardarComercializadora,
+  listarComercializadorasTabla, guardarComercializadora, auditar,
 } from "@/lib/store";
 import { exportarExcel } from "@/lib/exportar";
 import { pesos } from "@/lib/labels";
@@ -235,6 +235,7 @@ export default function ComisionesPage() {
     const ent = listarComercializadorasTabla(empresaActivaId).find((c) => c.nombre === comercializadora);
     if (ent) guardarComercializadora({ ...ent, esquema });
     const liq = generarLiquidacion(empresaActivaId, comercializadora, periodo, esquema, usuarioActivo.nombre);
+    auditar(empresaActivaId, usuarioActivo.nombre, "comisiones", `Generó liquidación de ${comercializadora} (${periodo}): ${liq.items.length} ventas, total ${liq.total.toLocaleString("es-AR")}`);
     setDetalle(liq);
   };
 
@@ -384,10 +385,10 @@ export default function ComisionesPage() {
                       <Button size="sm" variant="ghost" onClick={() => setDetalle(l)}>Ver</Button>
                       <Button size="sm" variant="ghost" onClick={() => exportar(l)}><Download className="h-4 w-4" /></Button>
                       {!soloLectura && l.estado === "borrador" && (
-                        <Button size="sm" variant="outline" onClick={() => cambiarEstadoLiquidacion(l.id, "aprobada")}>Aprobar</Button>
+                        <Button size="sm" variant="outline" onClick={() => { cambiarEstadoLiquidacion(l.id, "aprobada"); auditar(l.empresaId, usuarioActivo.nombre, "comisiones", `Aprobó la liquidación de ${l.comercializadora} (${l.periodo})`); }}>Aprobar</Button>
                       )}
                       {!soloLectura && l.estado === "aprobada" && (
-                        <Button size="sm" variant="outline" onClick={() => cambiarEstadoLiquidacion(l.id, "pagada")}>Marcar pagada</Button>
+                        <Button size="sm" variant="outline" onClick={() => { cambiarEstadoLiquidacion(l.id, "pagada"); auditar(l.empresaId, usuarioActivo.nombre, "comisiones", `Marcó pagada la liquidación de ${l.comercializadora} (${l.periodo})`); }}>Marcar pagada</Button>
                       )}
                       {!soloLectura && l.estado !== "pagada" && (
                         <Button size="sm" variant="ghost" title="Eliminar" onClick={() => {

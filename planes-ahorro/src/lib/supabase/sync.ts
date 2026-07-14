@@ -21,6 +21,7 @@ const TABLAS = [
   ["recordatorio", "recordatorios"],
   ["liquidacion_comision", "liquidaciones"],
   ["comercializadora", "comercializadoras"],
+  ["log_auditoria", "auditoria"],
 ] as const;
 
 /** Descarga todos los datos de una empresa y reemplaza la caché local. */

@@ -6,7 +6,7 @@ import { tienePermiso } from "@/lib/roles";
 import {
   suscribir, listarEmpresas, actualizarEmpresa, listarOrganizacion,
   agregarSucursal, renombrarSucursal, eliminarSucursal, agregarEquipo, eliminarEquipo,
-  codigoConcesionario, setCodigoConcesionario,
+  codigoConcesionario, setCodigoConcesionario, auditar,
 } from "@/lib/store";
 import type { Empresa } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,12 +32,12 @@ export default function EmpresasPage() {
         </p>
       </div>
 
-      {listarEmpresas().map((e) => <FichaEmpresa key={e.id} empresa={e} />)}
+      {listarEmpresas().map((e) => <FichaEmpresa key={e.id} empresa={e} usuarioNombre={usuarioActivo.nombre} />)}
     </div>
   );
 }
 
-function FichaEmpresa({ empresa }: { empresa: Empresa }) {
+function FichaEmpresa({ empresa, usuarioNombre }: { empresa: Empresa; usuarioNombre: string }) {
   const [editando, setEditando] = useState(false);
   const [form, setForm] = useState({
     nombre: empresa.nombre, nombreComercial: empresa.nombreComercial, cuit: empresa.cuit,
@@ -55,6 +55,7 @@ function FichaEmpresa({ empresa }: { empresa: Empresa }) {
       nombre: form.nombre.trim(), nombreComercial: form.nombreComercial.trim(), cuit: form.cuit.trim(),
     });
     setCodigoConcesionario(empresa.id, form.codigoConce);
+    auditar(empresa.id, usuarioNombre, "empresa", `Editó los datos de ${form.nombreComercial.trim()} (CUIT ${form.cuit.trim()}, conce ${form.codigoConce || "—"})`);
     setEditando(false);
   }
 

@@ -17,7 +17,7 @@
 | Fase 2 | Ventas: recepción, vendedor, presupuestos, planes, cierre, reasignación, supervisión | ✅ **Hecho (modo demo)** — **catálogo de planes** (ABM), **asignación/reasignación** de vendedor, **gestión comercial** del vendedor (prueba de manejo, necesidades, plan, presupuesto), **cierre de venta** con datos obligatorios (DNI/CUIT + tel + email + N° solicitud) que pasa el caso a Administración (scoring), y **tablero de supervisión de ventas** (por vendedor, efectividad, leads pendientes). |
 | Fase 3 | Administración por estadios (Scoring → … → Entrega) | 🟡 **Parcial (modo demo)** — panel de **estadios** en la ficha, **Scoring** con resultados y **alertas** (campanita + /alertas) al observar, **gestión de la observación** por Sup. de ventas, formularios de Adjudicación/Pedido/Patentamiento/Entrega, **avance entre estadios**, accesos por `acceso_estadio` y restricción **terciarizada**. Pendiente: reglas de **Agrupamiento** (N3/§6.2, hoy mínimo) y el **motor de cálculo** de patentamiento/requisitos (N1). |
 | Fase 4 | Campañas y notificaciones por WhatsApp | ✅ **Hecho con PROVEEDOR SIMULADO (2026-07-10)** — opt-in por cliente en la ficha (regla dura: sin opt-in no se envía), catálogo de plantillas con categoría Meta y costo estimado (Marketing/Utility/Authentication, valores A CONFIRMAR con el BSP), campañas por segmento (las 7 gestiones o toda la cartera) con alcance/exclusiones/costo y vista previa antes de confirmar, historial con export de envíos. Interfaz `EnviadorWhatsApp` en `src/lib/whatsapp.ts`: conectar el BSP real (Q6) = una clase nueva, sin tocar campañas. Tablas nube en `0002_whatsapp.sql` (**correr en SQL Editor**). |
-| Fase 5 | Informes, tableros gerenciales, exportaciones, auditoría completa | 🟡 **Parcial (modo demo)** — página **/informes** con filtros (fecha de alta, vendedor, estado), KPIs, **embudo por estadio**, **ventas y efectividad por vendedor**, **observaciones de scoring** (abiertas + tiempo de resolución promedio) y **exportación a Excel** (ahorristas y scoring; también desde el listado de ahorristas). **Tablero** con datos reales. Pendiente: auditoría completa (log de acciones) e informes por sucursal/equipo cuando haya datos reales multi-equipo. |
+| Fase 5 | Informes, tableros gerenciales, exportaciones, auditoría completa | 🟡 **Parcial (modo demo)** — página **/informes** con filtros (fecha de alta, vendedor, estado), KPIs, **embudo por estadio**, **ventas y efectividad por vendedor**, **observaciones de scoring** (abiertas + tiempo de resolución promedio) y **exportación a Excel** (ahorristas y scoring; también desde el listado de ahorristas). **Tablero** con datos reales. ✅ Auditoría completa hecha (2026-07-13, ver §10.nonies). Pendiente: informes por sucursal/equipo cuando haya datos reales multi-equipo. |
 
 > **Decisión del cliente (2026-06-24):** este sistema se construye como **proyecto separado**
 > en la subcarpeta `planes-ahorro/`, sin tocar el sistema existente "Grupo Fiorasi · Control &
@@ -645,6 +645,18 @@ tanto los datos quedan en el navegador sin molestar: remote.ts silencia "tabla i
    se le vendió, no suma nada"): la sección del vendedor (prueba de manejo, plan ofrecido,
    presupuesto, cierre de venta) solo aparece si `estado !== "cartera"` — leads y vendidos sí,
    importados de la cartera no. Bitácora y estadios quedan igual.
+
+## 10.nonies Auditoría completa (2026-07-13) ✅
+Cierra el pendiente de Fase 5 (y el hallazgo I2): página **/auditoria** (permiso
+`auditoria.ver`: super admin, sup. administración y gerencia) con filtros por acción/fechas/
+texto y export a Excel. Registra: **importaciones** (tipo, archivo, cantidades),
+**deshacer/limpieza** de importaciones, **alta/activación de usuarios**, **edición de
+empresas**, **ventas cerradas**, **campañas de WhatsApp enviadas** y **liquidaciones de
+comisiones** (generar/aprobar/pagar). Implementación: `auditar(empresaId, usuario, accion,
+detalle)` llamado explícitamente desde las pantallas (que conocen al usuario); tabla nube
+`log_auditoria` (**0005_auditoria.sql — correr en SQL Editor**) con RLS de SOLO INSERT: el log
+no se puede editar ni borrar desde la app. Verificado E2E (registro + filtro + bloqueo a
+vendedor por menú y por URL directa).
 
 ## 11. Preguntas abiertas (pendientes de confirmar con el cliente)
 

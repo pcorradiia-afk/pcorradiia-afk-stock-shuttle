@@ -66,6 +66,14 @@ export const remote = {
   comercializadoras: (empresaId: string, filas: { id: string }[]) => upsert("comercializadora", empresaId, filas),
   eliminarClientes: (ids: string[]) => eliminar("cliente", ids),
   eliminarCtaCte: (ids: string[]) => eliminar("movimiento_ctacte", ids),
+  // Auditoría: SOLO insert (la política RLS no permite editar ni borrar el log).
+  auditoria: async (empresaId: string, filas: { id: string }[]) => {
+    if (MODO_DEMO || filas.length === 0) return;
+    const sb = getSupabase();
+    if (!sb) return;
+    const { error } = await sb.from("log_auditoria").insert(filas.map((f) => ({ id: f.id, empresa_id: empresaId, data: f })));
+    if (error && !/does not exist|42P01/i.test(error.message)) console.error("[nube:log_auditoria]", error.message);
+  },
   // La tabla empresa tiene columnas reales (no jsonb) y RLS: solo super admin modifica.
   empresa: async (e: { id: string; nombre: string; nombreComercial: string; cuit: string; activo: boolean }) => {
     if (MODO_DEMO) return;

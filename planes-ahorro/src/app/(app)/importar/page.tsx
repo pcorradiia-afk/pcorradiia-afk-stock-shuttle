@@ -10,7 +10,7 @@ import {
   importarSolicitudes, importarListaPrecios,
   registrarImportacion, ultimaImportacion, historialListasPrecios,
   codigoConcesionario, empresaPorCodigoConce, deshacerImportacion,
-  clientesImportadosSinGestion, eliminarClientesImportados,
+  clientesImportadosSinGestion, eliminarClientesImportados, auditar,
   type ReporteImportacion,
 } from "@/lib/store";
 import { analizarArchivo, TIPO_LABEL, type ArchivoAnalizado, type TipoArchivo } from "@/lib/import-archivos";
@@ -93,6 +93,7 @@ export default function ImportarPage() {
     const n = tipo === "precios" ? "la lista vigente (vuelve la anterior)" : `${ult?.idsCreados?.length ?? 0} registro(s) creados`;
     if (!confirm(`¿Deshacer la última importación de "${TIPO_LABEL[tipo]}" (${ult?.archivo})?\nSe eliminará: ${n}. Los registros que solo se actualizaron no se revierten.`)) return;
     const r = deshacerImportacion(empresaActivaId, tipo);
+    if (r.ok) auditar(empresaActivaId, usuarioActivo!.nombre, "importacion_deshecha", `${TIPO_LABEL[tipo]}: ${ult?.archivo} — ${r.eliminados} registro(s) eliminados`);
     setReporte(null); setPendiente(null);
     setErrorEn(r.ok
       ? { tipo, texto: `✔ Importación deshecha: se eliminaron ${r.eliminados} registro(s).` }
@@ -116,6 +117,8 @@ export default function ImportarPage() {
         total: rep.total, creados: rep.creados, actualizados: rep.actualizados, rechazados: rep.rechazados.length,
         idsCreados: rep.idsCreados?.slice(0, 6000), // permite "Deshacer" la última importación
       });
+      auditar(empresaActivaId, usuarioActivo.nombre, "importacion",
+        `${TIPO_LABEL[a.tipo]}: ${pendiente.archivo} — ${rep.total} reg. (${rep.actualizados} act. / ${rep.creados} nuevos / ${rep.rechazados.length} rech.)`);
       setReporte({ tipo: a.tipo, rep });
       setPendiente(null);
     }
@@ -188,7 +191,7 @@ export default function ImportarPage() {
 
       {cargando && <p className="text-sm text-muted-foreground">Leyendo archivo…</p>}
 
-      {puedeBorrar && empresaActivaId && <Limpieza empresaId={empresaActivaId} nombreEmpresa={empresa?.nombreComercial ?? ""} />}
+      {puedeBorrar && empresaActivaId && <Limpieza empresaId={empresaActivaId} nombreEmpresa={empresa?.nombreComercial ?? ""} usuarioNombre={usuarioActivo.nombre} />}
 
       {pendiente && !reporte && (
         <Card ref={confirmarRef as React.RefObject<HTMLDivElement>}>
@@ -254,7 +257,7 @@ export default function ImportarPage() {
  * Limpieza para una importación cruzada YA hecha (antes del control de concesionario):
  * borra los clientes importados sin gestión propia. Solo super admin / sup. administración.
  */
-function Limpieza({ empresaId, nombreEmpresa }: { empresaId: string; nombreEmpresa: string }) {
+function Limpieza({ empresaId, nombreEmpresa, usuarioNombre }: { empresaId: string; nombreEmpresa: string; usuarioNombre: string }) {
   const [hecho, setHecho] = useState<number | null>(null);
   const candidatos = clientesImportadosSinGestion(empresaId).length;
   if (candidatos === 0 && hecho === null) return null;
@@ -281,7 +284,9 @@ function Limpieza({ empresaId, nombreEmpresa }: { empresaId: string; nombreEmpre
                   `Para confirmar, escribí: ${esperado}`
                 );
                 if ((escrito ?? "").trim().toUpperCase() === esperado) {
-                  setHecho(eliminarClientesImportados(empresaId));
+                  const n = eliminarClientesImportados(empresaId);
+                  auditar(empresaId, usuarioNombre, "limpieza", `Borrados ${n} clientes importados sin gestión de ${nombreEmpresa}`);
+                  setHecho(n);
                 } else if (escrito !== null) {
                   alert("No coincide: no se borró nada.");
                 }

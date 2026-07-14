@@ -8,7 +8,7 @@ import {
   inicializar, getCliente, listarComunicaciones, agregarComunicacion, suscribir,
   listarPlanes, getPlan, vendedoresDeEmpresa, asignarVendedor, actualizarGestionVenta,
   actualizarCliente, cerrarVenta, buscarPorNroSolicitud, puedeVerCliente, listarTareas,
-  setOptInWhatsApp,
+  setOptInWhatsApp, auditar,
 } from "@/lib/store";
 import { tienePermiso } from "@/lib/roles";
 import { ESTADIO_LABEL, ESTADO_LABEL, ESTADIOS, pesos, fechaHora } from "@/lib/labels";
@@ -218,6 +218,7 @@ function GestionComercial({ cliente, usuario }: { cliente: Cliente; usuario: Usu
   const vender = () => {
     if (!guardar()) return;
     const r = cerrarVenta(cliente.id);
+    if (r.ok) auditar(cliente.empresaId, usuario.nombre, "venta", `Cerró la venta de ${cliente.nombreCompleto} (N° solicitud ${nroSolicitud.trim()})`);
     if (r.ok) setMsg({ tipo: "ok", texto: "¡Venta cerrada! El caso pasó a Administración (Scoring)." });
     else if (r.error) setMsg({ tipo: "err", texto: r.error });
     else setMsg({ tipo: "err", texto: `Para cerrar la venta faltan datos obligatorios: ${r.faltan?.join(", ")}.` });

@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import {
   LayoutDashboard, Building2, Users, ShieldCheck, LogOut, UserCog, X, Contact, Upload,
   Package, TrendingUp, Bell, BarChart3, Landmark, PhoneCall, MessageCircle, Headphones, Calculator, HandCoins,
-  ClipboardCheck,
+  ClipboardCheck, ScrollText,
 } from "lucide-react";
 import { useSesion } from "@/lib/session";
 import { tienePermiso, nombreRol, type Permiso } from "@/lib/roles";
@@ -38,6 +38,7 @@ const NAV: NavItem[] = [
   { href: "/comisiones", label: "Comisiones", icon: HandCoins, permiso: "importar" },
   { href: "/admin/empresas", label: "Empresas", icon: Building2, permiso: "config.empresas" },
   { href: "/admin/usuarios", label: "Usuarios", icon: Users, permiso: "config.usuarios" },
+  { href: "/auditoria", label: "Auditoría", icon: ScrollText, permiso: "auditoria.ver" },
   { href: "/admin/roles", label: "Roles y permisos", icon: ShieldCheck, permiso: "config.roles" },
 ];
 

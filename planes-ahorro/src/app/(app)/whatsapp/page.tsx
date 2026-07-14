@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSesion } from "@/lib/session";
 import { tienePermiso } from "@/lib/roles";
 import {
-  suscribir, listarPlantillasWa, crearPlantillaWa, previaCampania, enviarCampania,
+  suscribir, listarPlantillasWa, crearPlantillaWa, previaCampania, enviarCampania, auditar,
   listarCampanias, listarEnviosCampania, SEGMENTOS_CAMPANIA, type SegmentoCampania,
 } from "@/lib/store";
 import { CATEGORIA_LABEL, COSTO_CATEGORIA, VARIABLES_AYUDA, getEnviador, renderPlantilla, estadoProveedor } from "@/lib/whatsapp";
@@ -157,7 +157,8 @@ function Campanias({ empresaId, tick, usuario }: { empresaId: string; tick: numb
     if (!window.confirm(msj)) return;
     setEnviando(true);
     try {
-      await enviarCampania({ empresaId, usuario, nombre: nombre.trim() || plantilla.nombre, plantilla, segmento });
+      const camp = await enviarCampania({ empresaId, usuario, nombre: nombre.trim() || plantilla.nombre, plantilla, segmento });
+      auditar(empresaId, usuario.nombre, "campania_wa", `Envió la campaña "${camp.nombre}" (${camp.enviados} enviados de ${camp.totalSegmento} del segmento)`);
       setOk(`Campaña enviada (${getEnviador().esSimulado ? "SIMULADA — ningún mensaje real salió" : "real"}).`);
       setNombre("");
     } finally {

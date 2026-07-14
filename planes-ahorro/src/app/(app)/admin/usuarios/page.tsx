@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSesion } from "@/lib/session";
 import { tienePermiso, nombreRol, ROLES } from "@/lib/roles";
-import { listarUsuariosCache, listarEmpresas, empresaPorId } from "@/lib/store";
+import { listarUsuariosCache, listarEmpresas, empresaPorId, auditar } from "@/lib/store";
 import { getSupabase, MODO_DEMO } from "@/lib/supabase/client";
 import { cargarUsuarios } from "@/lib/supabase/sync";
 import type { RolId } from "@/lib/types";
@@ -104,6 +104,8 @@ export default function UsuariosPage() {
       empresasExtra: form.otraEmpresa ? listarEmpresas().map((e) => e.id).filter((id) => id !== form.empresa) : [],
     });
     if (res.ok) {
+      auditar(form.empresa, usuarioReal?.nombre ?? "", "usuario",
+        `Alta/actualización de usuario ${form.email.trim()} (${form.roles.join(", ")})`);
       await cargarUsuarios();
       setTick((t) => t + 1);
       setForm(FORM_INICIAL);
@@ -125,6 +127,8 @@ export default function UsuariosPage() {
     setTogglingEmail(email);
     const res = await llamarApi("PATCH", { email, activo });
     if (res.ok) {
+      const u = listarUsuariosCache().find((x) => x.email === email);
+      auditar(u?.empresaId ?? "pc", usuarioReal?.nombre ?? "", "usuario", `${activo ? "Activó" : "Desactivó"} a ${email}`);
       await cargarUsuarios();
       setTick((t) => t + 1);
     } else {

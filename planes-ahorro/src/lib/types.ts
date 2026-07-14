@@ -63,14 +63,14 @@ export interface Usuario {
   activo: boolean;
 }
 
+// Registro de auditoría: quién hizo qué y cuándo. Solo se agrega — nunca se edita ni borra.
 export interface RegistroAuditoria {
   id: string;
-  usuarioId: string;
-  accion: string;
-  entidad: string;
-  entidadId: string | null;
-  fechaHora: string;
-  detalle?: string;
+  empresaId: string;
+  fecha: string; // ISO
+  usuarioNombre: string;
+  accion: string; // "importacion" | "usuario" | "venta" | "campania_wa" | "comisiones" | "empresa" | …
+  detalle: string;
 }
 
 // --------- Fase 1: cliente / ahorrista, solicitud y bitácora ---------
