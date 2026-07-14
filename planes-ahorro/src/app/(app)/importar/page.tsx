@@ -260,7 +260,16 @@ export default function ImportarPage() {
 function Limpieza({ empresaId, nombreEmpresa, usuarioNombre }: { empresaId: string; nombreEmpresa: string; usuarioNombre: string }) {
   const [hecho, setHecho] = useState<number | null>(null);
   const candidatos = clientesImportadosSinGestion(empresaId).length;
-  if (candidatos === 0 && hecho === null) return null;
+  if (candidatos === 0 && hecho === null) {
+    return (
+      <Card>
+        <CardContent className="pt-6 text-sm text-muted-foreground">
+          🧹 <strong>Limpieza:</strong> {nombreEmpresa} no tiene clientes importados sin gestión para borrar.
+          Si acá hubo una importación equivocada, ya no quedan rastros de esos clientes.
+        </CardContent>
+      </Card>
+    );
+  }
   return (
     <Card className="border-red-200">
       <CardContent className="flex flex-wrap items-center gap-3 pt-6 text-sm">

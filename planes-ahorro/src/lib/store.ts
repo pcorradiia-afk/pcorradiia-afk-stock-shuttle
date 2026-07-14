@@ -934,6 +934,7 @@ export function eliminarClientesImportados(empresaId: string): number {
   remote.eliminarClientes(Array.from(setIds));
   // La base del cotizador y la fecha de cartera quedan obsoletas para esta empresa.
   setMeta(`cotizadorAct:${empresaId}`, "{}", empresaId);
+  setMeta(`carteraActualizada:${empresaId}`, "", empresaId);
   return objetivo.length;
 }
 
