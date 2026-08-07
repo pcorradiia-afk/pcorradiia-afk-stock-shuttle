@@ -286,9 +286,15 @@
 
       <p class="eyebrow setup-label">Tiempo para responder</p>
       <div class="opt-row" id="opt-timer">
-        <button class="opt sel" data-v="0">Sin tiempo</button>
+        <button class="opt" data-v="0">Sin tiempo</button>
+        <button class="opt sel" data-v="60">1 min</button>
         <button class="opt" data-v="30">30 seg</button>
-        <button class="opt" data-v="15">15 seg</button>
+      </div>
+
+      <p class="eyebrow setup-label">¿Quién tiene el teléfono?</p>
+      <div class="opt-row" id="opt-mode">
+        <button class="opt sel" data-v="1">Un presentador lee</button>
+        <button class="opt" data-v="0">Se pasa el teléfono</button>
       </div>
 
       <div style="margin-top:22px">
@@ -296,7 +302,8 @@
       </div>
     </div>
     <p style="text-align:center;color:var(--muted);font-size:.85rem;margin-top:14px">
-      Se juega pasándose el teléfono. 10 puntos por acierto,<br>+5 de bonus con racha de 3 o más.
+      Con presentador: uno lee las preguntas en voz alta y marca<br>lo que responde cada uno (ideal si alguien maneja).<br>
+      10 puntos por acierto, +5 de bonus con racha de 3 o más.
     </p>
   </section>
 
@@ -496,7 +503,7 @@ const BANK = {
 /* ============ ESTADO ============ */
 const S = {
   players: [], scores: [], streaks: [],
-  totalRounds: 8, timerSecs: 0,
+  totalRounds: 8, timerSecs: 60, presenter: true,
   round: 0, turn: 0,          // ronda actual (0-index), jugador actual
   qIdx: null, catKey: null,   // pregunta en juego
   used: {}, order: {},        // por categoría: índices barajados y puntero
@@ -524,6 +531,7 @@ function bindOptRow(rowId, apply) {
 }
 bindOptRow("opt-rounds", v => S.totalRounds = v);
 bindOptRow("opt-timer", v => S.timerSecs = v);
+bindOptRow("opt-mode", v => S.presenter = !!v);
 
 $("btn-start").addEventListener("click", () => {
   const players = [];
@@ -597,6 +605,10 @@ function nextTurn() {
   const cat = BANK[S.catKey];
   $("turn-round").textContent = `Ronda ${S.round + 1} de ${S.totalRounds}`;
   $("turn-name").textContent = S.players[S.turn];
+  document.querySelector(".turn-sub").textContent = S.presenter
+    ? "Leele la pregunta en voz alta."
+    : "¡Te toca! Agarrá el teléfono.";
+  $("btn-show-q").textContent = S.presenter ? "Leer la pregunta" : "Ver la pregunta";
   const banner = $("turn-cat");
   banner.innerHTML = `<span class="ico">${cat.icon}</span>${cat.name}`;
   banner.style.background = `var(${cat.css})`;
@@ -688,8 +700,10 @@ function answer(btn, ok, timedOut = false) {
   // ¿quién sigue?
   const lastOfRound = S.turn === S.players.length - 1;
   const gameOver = lastOfRound && S.round === S.totalRounds - 1;
+  const nextPlayer = S.players[(S.turn + 1) % S.players.length];
   $("btn-next").textContent = gameOver ? "Ver resultado final 🏁"
-    : `Pasale el teléfono a ${S.players[(S.turn + 1) % S.players.length]}`;
+    : S.presenter ? `Siguiente: le toca a ${nextPlayer}`
+    : `Pasale el teléfono a ${nextPlayer}`;
 
   renderScores();
   $("verdict").classList.add("show");
