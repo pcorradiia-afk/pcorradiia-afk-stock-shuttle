@@ -24,6 +24,8 @@
     --c-rut: #B26B12;
     --c-gen: #8A7B2A;
     --c-act: #B03A48;
+    --c-cap: #4A5FA5;
+    --c-ref: #8A6642;
     --shadow: 0 2px 10px rgba(60, 45, 20, .10);
   }
   @media (prefers-color-scheme: dark) {
@@ -49,6 +51,8 @@
       --c-rut: #F2B23E;
       --c-gen: #C9B84E;
       --c-act: #E06A78;
+      --c-cap: #8A9EE8;
+      --c-ref: #C7A16B;
       --shadow: 0 2px 12px rgba(0, 0, 0, .35);
     }
   }
@@ -74,6 +78,8 @@
     --c-rut: #F2B23E;
     --c-gen: #C9B84E;
     --c-act: #E06A78;
+    --c-cap: #8A9EE8;
+    --c-ref: #C7A16B;
     --shadow: 0 2px 12px rgba(0, 0, 0, .35);
   }
 
@@ -405,7 +411,24 @@ const BANK = {
     ["¿Qué torneo grande ganó el golfista Roberto De Vicenzo en 1967?", "El Abierto Británico", "El Masters de Augusta", "El US Open", "El PGA Championship"],
     ["¿Quién fue el goleador del Mundial 78, apodado 'el Matador'?", "Mario Kempes", "Leopoldo Luque", "Daniel Passarella", "René Houseman"],
     ["¿En qué Juegos Olímpicos ganó el oro la Generación Dorada de básquet?", "Atenas 2004", "Sídney 2000", "Pekín 2008", "Barcelona 1992"],
-    ["¿En qué deporte fue campeón olímpico Juan Curuchet en 2008?", "Ciclismo de pista", "Remo", "Yachting", "Canotaje"]
+    ["¿En qué deporte fue campeón olímpico Juan Curuchet en 2008?", "Ciclismo de pista", "Remo", "Yachting", "Canotaje"],
+    ["¿Qué club argentino ganó cuatro Libertadores seguidas en los 70?", "Independiente", "Boca Juniors", "Estudiantes", "River Plate"],
+    ["¿Qué tenista argentina ganó el US Open en 1990?", "Gabriela Sabatini", "Mercedes Paz", "Patricia Tarabini", "Florencia Labat"],
+    ["¿En qué año descendió River a la B Nacional?", "2011", "2008", "2013", "1983"],
+    ["¿Qué maratonista argentino ganó el oro olímpico en Londres 1948?", "Delfo Cabrera", "Juan Carlos Zabala", "Osvaldo Suárez", "Reinaldo Gorno"],
+    ["¿Qué piloto argentino era apodado 'el Lole'?", "Carlos Reutemann", "Juan Manuel Fangio", "José Froilán González", "Ricardo Zunino"],
+    ["¿A qué selección le ganó Argentina la semifinal del Mundial 86?", "Bélgica", "Inglaterra", "Uruguay", "Francia"],
+    ["¿Quién fue el arquero titular de Argentina en el Mundial 78?", "Ubaldo Fillol", "Hugo Gatti", "Nery Pumpido", "Amadeo Carrizo"],
+    ["¿Qué boxeador argentino de los años 30 fue 'el Torito de Mataderos'?", "Justo Suárez", "Luis Ángel Firpo", "José María Gatica", "Pascual Pérez"],
+    ["¿Qué argentino ganó Roland Garros en 2004?", "Gastón Gaudio", "Guillermo Coria", "David Nalbandian", "Juan Ignacio Chela"],
+    ["¿Quién es el máximo goleador de la historia de Boca?", "Martín Palermo", "Diego Maradona", "Juan Román Riquelme", "Guillermo Barros Schelotto"],
+    ["¿Qué futbolista rosarino de culto era 'el Trinche'?", "Tomás Carlovich", "Mario Kempes", "José Luis Cuciuffo", "Aldo Poy"],
+    ["¿Qué DT apodado 'el Bambino' salió campeón con River en 1986?", "Héctor Veira", "Alfio Basile", "Carlos Griguol", "Roberto Perfumo"],
+    ["¿En qué año fue el 'Maracanazo' de Uruguay a Brasil?", "1950", "1954", "1946", "1958"],
+    ["¿Qué delantero argentino ganó la Champions 2023 con el Manchester City?", "Julián Álvarez", "Lautaro Martínez", "Ángel Di María", "Paulo Dybala"],
+    ["¿Qué basquetbolista argentino brilló en los San Antonio Spurs?", "Manu Ginóbili", "Luis Scola", "Fabricio Oberto", "Andrés Nocioni"],
+    ["¿En qué año se jugó el primer Mundial de fútbol?", "1930", "1926", "1934", "1938"],
+    ["¿Qué arquero de Boca era 'el Loco'?", "Hugo Gatti", "Carlos Navarro Montoya", "Roberto Abbondanzieri", "Óscar Córdoba"]
   ]},
   his: { name: "Historia", icon: "📜", css: "--c-his", qs: [
     ["¿Quién fue el primer presidente de la Argentina, en 1826?", "Bernardino Rivadavia", "Justo José de Urquiza", "Bartolomé Mitre", "Cornelio Saavedra"],
@@ -423,25 +446,59 @@ const BANK = {
     ["¿Entre qué años gobernó Rosas en su segundo mandato?", "1835-1852", "1820-1835", "1852-1861", "1829-1832"],
     ["¿Qué guerra enfrentó a Argentina, Brasil y Uruguay contra Paraguay?", "La Guerra de la Triple Alianza", "La Guerra del Chaco", "La Guerra del Pacífico", "La Guerra Grande"],
     ["¿En qué año cayó el Muro de Berlín?", "1989", "1991", "1987", "1985"],
-    ["¿Quién era presidente de EE.UU. durante la crisis de los misiles de Cuba?", "John F. Kennedy", "Dwight Eisenhower", "Lyndon Johnson", "Richard Nixon"]
+    ["¿Quién era presidente de EE.UU. durante la crisis de los misiles de Cuba?", "John F. Kennedy", "Dwight Eisenhower", "Lyndon Johnson", "Richard Nixon"],
+    ["¿Quién fue la primera mujer presidenta de la Argentina?", "Isabel Perón", "Cristina Kirchner", "Eva Perón", "Alicia Moreau de Justo"],
+    ["¿En qué año se sancionó la Constitución Nacional argentina?", "1853", "1810", "1862", "1880"],
+    ["¿Quién fundó la ciudad de La Plata en 1882?", "Dardo Rocha", "Julio A. Roca", "Bartolomé Mitre", "Bernardino Rivadavia"],
+    ["¿Cómo se llamó el desembarco argentino en Malvinas del 2 de abril?", "Operación Rosario", "Operación Soberanía", "Operación Cóndor", "Operación Azul y Blanca"],
+    ["¿Qué rey de España estaba cautivo durante la Revolución de Mayo?", "Fernando VII", "Carlos IV", "Felipe V", "Alfonso XIII"],
+    ["¿Qué presidente de EE.UU. abolió la esclavitud?", "Abraham Lincoln", "George Washington", "Thomas Jefferson", "Ulysses Grant"],
+    ["¿En qué año terminó la Segunda Guerra Mundial?", "1945", "1944", "1946", "1943"],
+    ["¿Qué presidente argentino indultó a los militares condenados, en 1990?", "Carlos Menem", "Raúl Alfonsín", "Fernando de la Rúa", "Eduardo Duhalde"],
+    ["¿Qué presidente dijo 'la casa está en orden' en Semana Santa de 1987?", "Raúl Alfonsín", "Carlos Menem", "Ítalo Luder", "Antonio Cafiero"],
+    ["¿En qué año votaron por primera vez las mujeres en Argentina?", "1951", "1947", "1955", "1946"],
+    ["¿Quién fue el primer hombre en pisar la Luna?", "Neil Armstrong", "Buzz Aldrin", "Yuri Gagarin", "John Glenn"],
+    ["¿En qué año fue la Revolución Francesa?", "1789", "1776", "1804", "1799"],
+    ["¿Qué archiduque fue asesinado en Sarajevo en 1914?", "Francisco Fernando", "Francisco José", "Maximiliano", "Rodolfo"],
+    ["¿Qué emperador francés fue derrotado en Waterloo?", "Napoleón Bonaparte", "Luis XVI", "Carlomagno", "Napoleón III"],
+    ["¿Qué reina de Egipto sedujo a Julio César y a Marco Antonio?", "Cleopatra", "Nefertiti", "Hatshepsut", "Zenobia"],
+    ["¿En qué año llegó Magallanes a la Patagonia?", "1520", "1492", "1536", "1550"],
+    ["¿Qué líder sudafricano estuvo 27 años preso y llegó a presidente?", "Nelson Mandela", "Desmond Tutu", "Kofi Annan", "Steve Biko"]
   ]},
   geo: { name: "Geografía", icon: "🗺️", css: "--c-geo", qs: [
     ["¿Qué estrecho separa a Tierra del Fuego del continente?", "Estrecho de Magallanes", "Canal de Beagle", "Estrecho de Drake", "Canal de San Sebastián"],
-    ["¿Cuál es la capital de Turquía?", "Ankara", "Estambul", "Esmirna", "Antalya"],
     ["¿Cuál es el lago navegable más alto del mundo?", "Titicaca", "Nahuel Huapi", "Maracaibo", "Atitlán"],
     ["¿Entre qué dos países se encuentra el monte Everest?", "Nepal y China", "India y China", "Nepal e India", "Bután y China"],
     ["¿Qué provincia argentina concentra la mayor producción de vino?", "Mendoza", "San Juan", "La Rioja", "Salta"],
     ["¿Cuál es hoy el país más poblado del mundo?", "India", "China", "Estados Unidos", "Indonesia"],
     ["¿Cuántas provincias tiene la Argentina?", "23", "24", "22", "25"],
-    ["¿Cuál es la capital de Australia?", "Canberra", "Sídney", "Melbourne", "Perth"],
     ["¿Qué río forma la frontera entre Misiones y Paraguay?", "Paraná", "Uruguay", "Iguazú", "Pilcomayo"],
     ["¿Cuál es el desierto cálido más grande del mundo?", "Sahara", "Gobi", "Atacama", "Kalahari"],
-    ["¿Cuál es la capital de Canadá?", "Ottawa", "Toronto", "Montreal", "Vancouver"],
     ["¿En qué país está la cordillera del Atlas?", "Marruecos", "Egipto", "Sudáfrica", "Kenia"],
     ["¿Cuál es el punto más bajo de la superficie terrestre?", "El mar Muerto", "El Valle de la Muerte", "La fosa de las Marianas", "El lago Assal"],
     ["¿Cuál es el océano más profundo?", "Pacífico", "Atlántico", "Índico", "Ártico"],
     ["Además de Bolivia, ¿qué país sudamericano no tiene salida al mar?", "Paraguay", "Uruguay", "Ecuador", "Surinam"],
-    ["¿Cuál es la isla más grande del mundo?", "Groenlandia", "Madagascar", "Borneo", "Nueva Guinea"]
+    ["¿Cuál es la isla más grande del mundo?", "Groenlandia", "Madagascar", "Borneo", "Nueva Guinea"],
+    ["¿Cuál es la provincia más poblada después de Buenos Aires?", "Córdoba", "Santa Fe", "Mendoza", "Tucumán"],
+    ["¿Qué país es el que tiene más islas en el mundo?", "Suecia", "Indonesia", "Filipinas", "Canadá"],
+    ["¿Cuál es el salar más grande del mundo?", "El salar de Uyuni", "Las Salinas Grandes", "El salar de Atacama", "El salar de Arizaro"],
+    ["¿Qué provincia argentina produce más yerba mate?", "Misiones", "Corrientes", "Entre Ríos", "Chaco"],
+    ["¿Cuál es el país más pequeño del mundo?", "El Vaticano", "Mónaco", "San Marino", "Liechtenstein"],
+    ["¿Qué cordillera separa Europa de Asia en Rusia?", "Los Urales", "El Cáucaso", "Los Cárpatos", "Los Alpes"],
+    ["¿Cuál es la catarata más alta del mundo?", "El Salto Ángel", "Las Cataratas del Iguazú", "Las Cataratas Victoria", "El Niágara"],
+    ["¿Cuál es el volcán activo más alto del mundo, entre Argentina y Chile?", "Ojos del Salado", "Aconcagua", "Llullaillaco", "Tupungato"],
+    ["¿Qué canal une el Atlántico con el Pacífico en Centroamérica?", "El Canal de Panamá", "El Canal de Suez", "El Canal de Nicaragua", "El Estrecho de Magallanes"],
+    ["¿Cuál es el lago más profundo del mundo?", "El Baikal", "El Titicaca", "El Superior", "El Victoria"],
+    ["¿Qué mar baña la costa norte de Turquía?", "El mar Negro", "El mar Rojo", "El mar Caspio", "El Mediterráneo"],
+    ["¿Qué río es considerado tradicionalmente el más largo del mundo?", "El Nilo", "El Amazonas", "El Misisipi", "El Yangtsé"],
+    ["¿En qué país está el desierto de Atacama?", "Chile", "Perú", "Bolivia", "Argentina"],
+    ["¿Cuál de estas provincias NO limita con Chile?", "Córdoba", "Mendoza", "Salta", "Chubut"],
+    ["¿A qué país pertenecen las islas Galápagos?", "Ecuador", "Perú", "Colombia", "Chile"],
+    ["¿Qué río atraviesa París?", "El Sena", "El Támesis", "El Rin", "El Danubio"],
+    ["¿Cuál es el único continente atravesado por todos los meridianos?", "La Antártida", "África", "Asia", "Oceanía"],
+    ["¿Qué estrecho separa Europa de África?", "Gibraltar", "El Bósforo", "Bering", "Ormuz"],
+    ["¿Cuál es el segundo país más grande de Sudamérica?", "Argentina", "Perú", "Colombia", "Bolivia"],
+    ["¿En qué océano están las islas Maldivas?", "Índico", "Pacífico", "Atlántico", "Ártico"]
   ]},
   mus: { name: "Música", icon: "🎸", css: "--c-mus", qs: [
     ["¿Cuál era el verdadero nombre de Sandro?", "Roberto Sánchez", "Ramón Ortega", "Carlos Groisman", "Juan Moreno"],
@@ -459,7 +516,24 @@ const BANK = {
     ["¿Qué cantautor español grabó 'Mediterráneo'?", "Joan Manuel Serrat", "Julio Iglesias", "Camilo Sesto", "Nino Bravo"],
     ["¿Quién fue el fundador y cantante de Los Abuelos de la Nada?", "Miguel Abuelo", "Andrés Calamaro", "Cachorro López", "Gustavo Bazterrica"],
     ["¿Qué integrante de los Beatles fue asesinado en 1980?", "John Lennon", "George Harrison", "Ringo Starr", "Paul McCartney"],
-    ["¿Qué disco solista de 1983 de Charly García incluye 'Los dinosaurios'?", "Clics modernos", "Piano bar", "Yendo de la cama al living", "Parte de la religión"]
+    ["¿Qué disco solista de 1983 de Charly García incluye 'Los dinosaurios'?", "Clics modernos", "Piano bar", "Yendo de la cama al living", "Parte de la religión"],
+    ["¿Qué grupo grabó 'La balsa' en 1967?", "Los Gatos", "Almendra", "Manal", "Vox Dei"],
+    ["¿Quién era el cantante de Virus?", "Federico Moura", "Julio Moura", "Marcelo Moura", "Daniel Sbarra"],
+    ["¿Qué folklorista compuso 'El arriero'?", "Atahualpa Yupanqui", "Horacio Guarany", "Jorge Cafrune", "Los Chalchaleros"],
+    ["¿Quién escribió 'Como la cigarra'?", "María Elena Walsh", "Mercedes Sosa", "Eladia Blázquez", "Chabuca Granda"],
+    ["¿Qué banda grabó 'Hotel California'?", "Eagles", "Fleetwood Mac", "Creedence", "The Doobie Brothers"],
+    ["¿Quién compuso 'Honrar la vida'?", "Eladia Blázquez", "María Elena Walsh", "Astor Piazzolla", "Chico Novarro"],
+    ["¿Qué banda argentina grabó 'En la ciudad de la furia'?", "Soda Stereo", "Los Enanitos Verdes", "GIT", "Virus"],
+    ["¿En qué año fue el festival de Woodstock?", "1969", "1967", "1971", "1965"],
+    ["¿Qué cuarteto de Liverpool dio su último show en una azotea en 1969?", "Los Beatles", "Los Rolling Stones", "The Who", "The Kinks"],
+    ["¿Qué cantante española popularizó 'Un año de amor'?", "Luz Casal", "Rocío Jurado", "Ana Belén", "Mecano"],
+    ["¿A qué cantante mexicano le dicen 'el Sol'?", "Luis Miguel", "Juan Gabriel", "Vicente Fernández", "José José"],
+    ["¿Qué cantautor cubano compuso 'Ojalá'?", "Silvio Rodríguez", "Pablo Milanés", "Compay Segundo", "Osvaldo Farrés"],
+    ["¿Qué banda argentina grabó 'Mil horas'?", "Los Abuelos de la Nada", "Virus", "Soda Stereo", "Los Twist"],
+    ["¿Quién compuso la ópera 'La flauta mágica'?", "Mozart", "Beethoven", "Verdi", "Puccini"],
+    ["¿Qué pianista y director argentino es una leyenda mundial de la música clásica?", "Daniel Barenboim", "Martha Argerich", "Bruno Gelber", "Lalo Schifrin"],
+    ["¿De qué país era el grupo humorístico-musical Les Luthiers?", "Argentina", "España", "México", "Uruguay"],
+    ["¿Quién era 'el Rey del rock and roll'?", "Elvis Presley", "Chuck Berry", "Jerry Lee Lewis", "Little Richard"]
   ]},
   cin: { name: "Cine y TV", icon: "🎬", css: "--c-cin", qs: [
     ["¿Quién dirigió 'La historia oficial', primer Oscar argentino?", "Luis Puenzo", "Adolfo Aristarain", "María Luisa Bemberg", "Eliseo Subiela"],
@@ -477,7 +551,24 @@ const BANK = {
     ["¿Qué actor fue el primer James Bond en el cine, en 'El satánico Dr. No'?", "Sean Connery", "Roger Moore", "David Niven", "George Lazenby"],
     ["¿Qué actor protagonizó 'El hombre nuclear'?", "Lee Majors", "David Hasselhoff", "Tom Selleck", "Lorne Greene"],
     ["¿Quién conducía 'Feliz Domingo'?", "Silvio Soldán", "Héctor Larrea", "Cacho Fontana", "Juan Carlos Mareco"],
-    ["¿Qué película argentina ganó el Oscar en 2010?", "El secreto de sus ojos", "Nueve reinas", "Relatos salvajes", "El hijo de la novia"]
+    ["¿Qué película argentina ganó el Oscar en 2010?", "El secreto de sus ojos", "Nueve reinas", "Relatos salvajes", "El hijo de la novia"],
+    ["¿Quién condujo durante décadas 'Grandes valores del tango'?", "Silvio Soldán", "Antonio Carrizo", "Cacho Fontana", "Juan Alberto Badía"],
+    ["¿Cómo se llamaba el Superagente 86?", "Maxwell Smart", "Napoleon Solo", "James West", "Frank Cannon"],
+    ["¿Qué dúo protagonizó la comedia 'Mi cuñado'?", "Luis Brandoni y Ricardo Darín", "Alberto Olmedo y Jorge Porcel", "Guillermo Francella y Adrián Suar", "Rodolfo Ranni y Arturo Puig"],
+    ["¿Quién dirigió la película 'Tiburón'?", "Steven Spielberg", "George Lucas", "Francis Ford Coppola", "Martin Scorsese"],
+    ["¿Qué actor interpretó a Rocky Balboa?", "Sylvester Stallone", "Arnold Schwarzenegger", "Bruce Willis", "Chuck Norris"],
+    ["¿Qué actriz interpretó a la Mujer Maravilla en la serie de los 70?", "Lynda Carter", "Farrah Fawcett", "Jaclyn Smith", "Lindsay Wagner"],
+    ["¿Qué actriz creó a los personajes Catita y Cándida?", "Niní Marshall", "Tita Merello", "Libertad Lamarque", "Niní Gambier"],
+    ["¿Qué actor del terror protagonizó 'El pulpo negro'?", "Narciso Ibáñez Menta", "Alfredo Alcón", "Federico Luppi", "Duilio Marzio"],
+    ["¿Qué actor protagonizó 'Superman' en 1978?", "Christopher Reeve", "Christopher Walken", "Michael Keaton", "Harrison Ford"],
+    ["¿Cómo se llamaba el papá de 'La familia Ingalls'?", "Charles", "John", "Michael", "Charly"],
+    ["¿Qué actor argentino protagonizó 'La tregua' (1974)?", "Héctor Alterio", "Federico Luppi", "Alfredo Alcón", "Lautaro Murúa"],
+    ["¿Qué cómico interpretaba al 'Contra'?", "Juan Carlos Calabró", "Jorge Porcel", "Tristán", "Javier Portales"],
+    ["¿Cómo se llamaba el compañero del Llanero Solitario?", "Toro", "Águila", "Caballo Loco", "Cochise"],
+    ["¿Quién condujo el legendario 'Sábados Circulares'?", "Pipo Mancera", "Cacho Fontana", "Héctor Larrea", "Augusto Bonardo"],
+    ["¿Qué musical de 1978 protagonizaron John Travolta y Olivia Newton-John?", "Grease", "Fiebre de sábado por la noche", "Hair", "Flashdance"],
+    ["¿Qué detective de gabardina decía siempre 'una cosa más...'?", "Columbo", "Kojak", "Baretta", "Cannon"],
+    ["¿Qué cantante interpretó a Evita en el cine en 1996?", "Madonna", "Whitney Houston", "Cher", "Barbra Streisand"]
   ]},
   cie: { name: "Ciencia", icon: "🔬", css: "--c-cie", qs: [
     ["¿Qué médico argentino desarrolló el bypass coronario?", "René Favaloro", "Luis Agote", "Bernardo Houssay", "Domingo Liotta"],
@@ -495,7 +586,24 @@ const BANK = {
     ["¿Qué metal es líquido a temperatura ambiente?", "Mercurio", "Plomo", "Estaño", "Aluminio"],
     ["¿Cuántos cromosomas tiene una célula humana normal?", "46", "23", "48", "44"],
     ["¿Qué planeta tiene el día más largo, porque rota más lento?", "Venus", "Mercurio", "Marte", "Júpiter"],
-    ["¿Cómo se llamaba la oveja clonada en 1996?", "Dolly", "Molly", "Daisy", "Lola"]
+    ["¿Cómo se llamaba la oveja clonada en 1996?", "Dolly", "Molly", "Daisy", "Lola"],
+    ["¿Qué órgano del cuerpo consume más energía?", "El cerebro", "El corazón", "El hígado", "Los músculos"],
+    ["¿Cuántos litros de sangre tiene aproximadamente un adulto?", "5", "3", "8", "10"],
+    ["¿Qué astro dejó de ser considerado planeta en 2006?", "Plutón", "Neptuno", "Ceres", "Caronte"],
+    ["¿Qué científica ganó dos premios Nobel?", "Marie Curie", "Rosalind Franklin", "Lise Meitner", "Ada Lovelace"],
+    ["¿Cuál es el hueso más pequeño del cuerpo humano?", "El estribo", "El martillo", "La falange", "El yunque"],
+    ["¿Contra qué enfermedad es la vacuna Sabin?", "La poliomielitis", "El sarampión", "La viruela", "La tuberculosis"],
+    ["¿Cuál es la estrella más cercana a la Tierra?", "El Sol", "Alfa Centauri", "Sirio", "La Estrella Polar"],
+    ["¿Qué gas forma las burbujas de la soda y la gaseosa?", "Dióxido de carbono", "Oxígeno", "Nitrógeno", "Helio"],
+    ["¿Qué aparato mide los terremotos?", "El sismógrafo", "El barómetro", "El altímetro", "El anemómetro"],
+    ["¿Cuál es el planeta más cercano al Sol?", "Mercurio", "Venus", "Marte", "La Tierra"],
+    ["¿Qué tipo de animal es la ballena?", "Mamífero", "Pez", "Anfibio", "Reptil"],
+    ["¿Quién desarrolló la vacuna contra la rabia?", "Louis Pasteur", "Alexander Fleming", "Robert Koch", "Edward Jenner"],
+    ["¿Qué capa de la atmósfera nos protege de los rayos ultravioletas?", "La capa de ozono", "La ionosfera", "La estratosfera", "La troposfera"],
+    ["¿Qué órganos filtran la sangre y producen la orina?", "Los riñones", "El hígado", "Los pulmones", "El bazo"],
+    ["¿Cuántos dientes tiene un adulto contando las muelas de juicio?", "32", "28", "30", "36"],
+    ["¿Qué naturalista propuso la teoría de la evolución?", "Charles Darwin", "Gregor Mendel", "Louis Pasteur", "Alexander von Humboldt"],
+    ["¿En qué unidad se mide la intensidad del sonido?", "Decibeles", "Vatios", "Hercios", "Julios"]
   ]},
   rut: { name: "La Ruta", icon: "🛣️", css: "--c-rut", qs: [
     ["¿Qué significa 'Trelew' en galés?", "Pueblo de Luis", "Valle verde", "Río grande", "Tierra nueva"],
@@ -513,7 +621,24 @@ const BANK = {
     ["¿Qué ciudad es la puerta de entrada a Península Valdés?", "Puerto Madryn", "Rawson", "Comodoro Rivadavia", "Esquel"],
     ["¿En qué ciudad está el Museo Paleontológico Egidio Feruglio (MEF)?", "Trelew", "Puerto Madryn", "Neuquén", "Rawson"],
     ["¿Qué volcán neuquino da nombre a un parque nacional en la frontera con Chile?", "Lanín", "Domuyo", "Copahue", "Tromen"],
-    ["¿Cuál es la capital de la provincia de Chubut?", "Rawson", "Trelew", "Comodoro Rivadavia", "Puerto Madryn"]
+    ["¿Cuál es la capital de la provincia de Chubut?", "Rawson", "Trelew", "Comodoro Rivadavia", "Puerto Madryn"],
+    ["¿Cómo se llama el encuentro de ríos que da origen a la ciudad de Neuquén?", "La Confluencia", "La Horqueta", "El Encuentro", "La Junta"],
+    ["¿Qué ciudad rionegrina es sede de la Fiesta Nacional de la Manzana?", "General Roca", "Cipolletti", "Villa Regina", "Allen"],
+    ["¿En qué provincia está el balneario Las Grutas?", "Río Negro", "Chubut", "Buenos Aires", "Santa Cruz"],
+    ["¿Qué ciudad cordillerana de Chubut es famosa por la Fiesta Nacional del Esquí?", "Esquel", "El Bolsón", "Trevelin", "El Maitén"],
+    ["¿Qué pueblo galés de Chubut es famoso por sus casas de té?", "Gaiman", "Dolavon", "Trevelin", "28 de Julio"],
+    ["Además de El Chocón, ¿qué otra gran represa está sobre el Limay?", "Piedra del Águila", "Casa de Piedra", "Cerros Colorados", "Futaleufú"],
+    ["¿Qué centro termal es famoso en la cordillera neuquina?", "Copahue", "Domuyo", "Epulafquen", "Lahuen Co"],
+    ["¿A orillas de qué río está la ciudad de Trelew?", "Río Chubut", "Río Chico", "Río Senguer", "Río Deseado"],
+    ["¿Qué ruta nacional cruza Chubut desde Trelew hacia la cordillera?", "Ruta 25", "Ruta 3", "Ruta 40", "Ruta 26"],
+    ["¿Qué dique regula el río Chubut aguas arriba de Trelew?", "Florentino Ameghino", "El Chocón", "Futaleufú", "Los Altares"],
+    ["¿Cuál es la ciudad petrolera del sur de Chubut?", "Comodoro Rivadavia", "Puerto Deseado", "Caleta Olivia", "Sarmiento"],
+    ["¿En qué año se descubrió petróleo en Comodoro Rivadavia?", "1907", "1930", "1890", "1950"],
+    ["¿Qué villa turística neuquina está junto al lago Nahuel Huapi?", "Villa La Angostura", "San Martín de los Andes", "Junín de los Andes", "Villa Pehuenia"],
+    ["¿Qué parque nacional protege un famoso bosque de arrayanes?", "Los Arrayanes", "Lanín", "Los Alerces", "Laguna Blanca"],
+    ["¿Qué animal patagónico es pariente silvestre de la llama?", "El guanaco", "La vicuña", "El huemul", "La mara"],
+    ["¿Qué ave corredora no voladora habita la estepa patagónica?", "El choique", "El cóndor", "La martineta", "El carancho"],
+    ["¿Qué complejo de represas está sobre el río Neuquén?", "Cerros Colorados", "El Chocón", "Alicurá", "Futaleufú"]
   ]},
   gen: { name: "Cultura General", icon: "💡", css: "--c-gen", qs: [
     ["¿Quién pintó 'La noche estrellada'?", "Vincent van Gogh", "Claude Monet", "Pablo Picasso", "Salvador Dalí"],
@@ -531,7 +656,24 @@ const BANK = {
     ["En el truco, ¿cuál es la segunda carta más alta?", "El ancho de bastos", "El ancho de espadas", "El siete de espadas", "El siete de oros"],
     ["¿Quién escribió 'Cien años de soledad'?", "Gabriel García Márquez", "Mario Vargas Llosa", "Pablo Neruda", "Carlos Fuentes"],
     ["¿Cuál es el idioma con más hablantes nativos del mundo?", "Chino mandarín", "Inglés", "Español", "Hindi"],
-    ["¿Qué filósofo griego fue maestro de Alejandro Magno?", "Aristóteles", "Platón", "Sócrates", "Pitágoras"]
+    ["¿Qué filósofo griego fue maestro de Alejandro Magno?", "Aristóteles", "Platón", "Sócrates", "Pitágoras"],
+    ["¿Cuántas teclas tiene un piano estándar?", "88", "76", "92", "100"],
+    ["¿Cómo se llama el clásico juego de mesa argentino de comprar campos?", "El Estanciero", "El Monopolio", "La Oca", "El TEG"],
+    ["¿Cuántos husos horarios atraviesa Rusia?", "11", "7", "9", "13"],
+    ["¿Quién pintó el 'Guernica'?", "Pablo Picasso", "Salvador Dalí", "Joan Miró", "Diego Rivera"],
+    ["¿De qué color es en realidad la caja negra de los aviones?", "Naranja", "Negra", "Roja", "Amarilla"],
+    ["¿Cuántos dados se usan para jugar a la generala?", "5", "6", "4", "3"],
+    ["¿Qué escritor creó a Sherlock Holmes?", "Arthur Conan Doyle", "Agatha Christie", "Edgar Allan Poe", "Charles Dickens"],
+    ["¿Qué país le regaló la Estatua de la Libertad a EE.UU.?", "Francia", "Inglaterra", "España", "Italia"],
+    ["¿Cuántas casillas tiene un tablero de ajedrez?", "64", "60", "72", "56"],
+    ["¿De qué planta se destila el tequila?", "El agave", "La caña de azúcar", "El maíz", "La cebada"],
+    ["¿Cuál es el libro más vendido de la historia?", "La Biblia", "El Quijote", "Harry Potter", "El Principito"],
+    ["¿Qué artista pintó la Mona Lisa?", "Leonardo da Vinci", "Miguel Ángel", "Rafael", "Botticelli"],
+    ["¿Cuántos colores tiene el arcoíris?", "7", "6", "8", "5"],
+    ["¿Cuál es el número más alto de la ruleta?", "36", "40", "38", "32"],
+    ["¿Qué queso italiano se ralla tradicionalmente sobre la pasta?", "Parmesano", "Mozzarella", "Provolone", "Gorgonzola"],
+    ["¿De qué país es originario el baile flamenco?", "España", "Portugal", "México", "Cuba"],
+    ["¿Qué moneda se usa en Japón?", "El yen", "El yuan", "El won", "El dólar japonés"]
   ]},
   act: { name: "Actualidad", icon: "📰", css: "--c-act", qs: [
     ["¿Qué papa asumió en 2025 tras la muerte de Francisco?", "León XIV", "Benedicto XVII", "Juan XXIV", "Pío XIII"],
@@ -549,7 +691,94 @@ const BANK = {
     ["¿Qué serie coreana fue furor mundial en Netflix?", "El juego del calamar", "La casa de papel", "Dark", "Parásitos"],
     ["¿A qué club de Estados Unidos se fue Messi en 2023?", "Inter Miami", "Los Angeles FC", "New York City", "Orlando City"],
     ["¿Quién asumió como rey del Reino Unido tras la muerte de Isabel II?", "Carlos III", "Guillermo V", "Enrique IX", "Jorge VII"],
-    ["¿Qué película sobre el creador de la bomba atómica arrasó en los Oscar 2024?", "Oppenheimer", "Barbie", "Duna", "Maestro"]
+    ["¿Qué película sobre el creador de la bomba atómica arrasó en los Oscar 2024?", "Oppenheimer", "Barbie", "Duna", "Maestro"],
+    ["¿Qué piloto argentino llegó a la Fórmula 1 en 2024?", "Franco Colapinto", "Agustín Canapino", "José María López", "Sacha Fenestraz"],
+    ["¿Qué app china de videos cortos es furor entre los jóvenes?", "TikTok", "Instagram", "Snapchat", "Telegram"],
+    ["¿Quién fundó Amazon?", "Jeff Bezos", "Elon Musk", "Bill Gates", "Steve Jobs"],
+    ["¿Qué cantante pop argentina, ex 'Casi Ángeles', llenó estadios con sus giras?", "Lali Espósito", "Tini Stoessel", "María Becerra", "Emilia Mernes"],
+    ["¿Qué selección ganó el Mundial femenino de fútbol 2023?", "España", "Inglaterra", "Estados Unidos", "Alemania"],
+    ["¿Quién creó Facebook?", "Mark Zuckerberg", "Elon Musk", "Steve Jobs", "Larry Page"],
+    ["¿Quién ganó el Balón de Oro 2023, el octavo de su carrera?", "Lionel Messi", "Erling Haaland", "Kylian Mbappé", "Cristiano Ronaldo"],
+    ["¿Qué enfermedad provocó la pandemia declarada en 2020?", "El COVID-19", "La gripe A", "El ébola", "El zika"],
+    ["¿Qué arquero argentino atajó en la definición por penales de la final de Qatar 2022?", "El 'Dibu' Martínez", "Franco Armani", "Gerónimo Rulli", "Juan Musso"],
+    ["¿Qué empresa creó el iPhone?", "Apple", "Samsung", "Google", "Nokia"],
+    ["¿Qué marca de autos eléctricos fundó Elon Musk?", "Tesla", "Rivian", "BYD", "Lucid"],
+    ["¿Quién es el presidente de Brasil desde 2023?", "Lula da Silva", "Jair Bolsonaro", "Dilma Rousseff", "Fernando Haddad"],
+    ["¿Qué evento deportivo organizan juntos EE.UU., México y Canadá en 2026?", "El Mundial de fútbol", "Los Juegos Olímpicos", "Los Panamericanos", "La Copa América"],
+    ["¿Cómo se llama el género musical de L-Gante?", "Cumbia 420", "Trap", "Reggaetón", "Cuarteto"],
+    ["¿Qué actor protagonizó la serie 'El Eternauta' en Netflix?", "Ricardo Darín", "Guillermo Francella", "Leonardo Sbaraglia", "Joaquín Furriel"],
+    ["¿Qué grupo atacó a Israel el 7 de octubre de 2023?", "Hamás", "Hezbolá", "ISIS", "Al Qaeda"],
+    ["¿Qué red social de fotos tiene las 'historias' que duran 24 horas?", "Instagram", "Twitter", "LinkedIn", "YouTube"]
+  ]},
+  cap: { name: "Capitales del Mundo", icon: "🌍", css: "--c-cap", qs: [
+    ["¿Cuál es la capital de Australia?", "Canberra", "Sídney", "Melbourne", "Perth"],
+    ["¿Cuál es la capital de Canadá?", "Ottawa", "Toronto", "Montreal", "Vancouver"],
+    ["¿Cuál es la capital de Turquía?", "Ankara", "Estambul", "Esmirna", "Antalya"],
+    ["¿Cuál es la capital de Suiza?", "Berna", "Zúrich", "Ginebra", "Basilea"],
+    ["¿Cuál es la capital de Brasil?", "Brasilia", "Río de Janeiro", "San Pablo", "Salvador"],
+    ["¿Cuál es la capital de Marruecos?", "Rabat", "Casablanca", "Marrakech", "Fez"],
+    ["¿Cuál es la capital de Egipto?", "El Cairo", "Alejandría", "Luxor", "Giza"],
+    ["¿Cuál es la capital de Japón?", "Tokio", "Kioto", "Osaka", "Yokohama"],
+    ["¿Cuál es la capital administrativa de Sudáfrica?", "Pretoria", "Ciudad del Cabo", "Johannesburgo", "Durban"],
+    ["¿Cuál es la capital de la India?", "Nueva Delhi", "Bombay", "Calcuta", "Bangalore"],
+    ["¿Cuál es la capital de Polonia?", "Varsovia", "Cracovia", "Gdansk", "Poznan"],
+    ["¿Cuál es la capital de Noruega?", "Oslo", "Bergen", "Estocolmo", "Copenhague"],
+    ["¿Cuál es la capital de Grecia?", "Atenas", "Salónica", "Esparta", "Creta"],
+    ["¿Cuál es la capital oficial de los Países Bajos?", "Ámsterdam", "La Haya", "Róterdam", "Utrecht"],
+    ["¿Cuál es la capital de Nueva Zelanda?", "Wellington", "Auckland", "Christchurch", "Hamilton"],
+    ["¿Cuál es la capital de Estados Unidos?", "Washington D.C.", "Nueva York", "Los Ángeles", "Chicago"],
+    ["¿Cuál es la capital de China?", "Pekín", "Shanghái", "Hong Kong", "Cantón"],
+    ["¿Cuál es la capital de Vietnam?", "Hanói", "Ho Chi Minh", "Da Nang", "Hue"],
+    ["¿Cuál es la capital de Cuba?", "La Habana", "Santiago de Cuba", "Varadero", "Camagüey"],
+    ["¿Cuál es la capital de Jordania?", "Ammán", "Petra", "Aqaba", "Damasco"],
+    ["¿Cuál es la capital de Kenia?", "Nairobi", "Mombasa", "Kampala", "Dar es Salaam"],
+    ["¿Cuál es la capital de Portugal?", "Lisboa", "Oporto", "Coímbra", "Braga"],
+    ["¿Cuál es la capital de Escocia?", "Edimburgo", "Glasgow", "Aberdeen", "Dundee"],
+    ["¿Cuál es la capital de Uruguay?", "Montevideo", "Punta del Este", "Colonia", "Paysandú"],
+    ["¿Cuál es la capital de Austria?", "Viena", "Salzburgo", "Innsbruck", "Graz"],
+    ["¿Cuál es la capital de Suecia?", "Estocolmo", "Gotemburgo", "Oslo", "Malmö"],
+    ["¿Cuál es la capital de Dinamarca?", "Copenhague", "Aarhus", "Odense", "Ámsterdam"],
+    ["¿Cuál es la capital de Finlandia?", "Helsinki", "Tampere", "Turku", "Oslo"],
+    ["¿Cuál es la capital de Irlanda?", "Dublín", "Belfast", "Cork", "Galway"],
+    ["¿Cuál es la capital de Colombia?", "Bogotá", "Medellín", "Cali", "Cartagena"],
+    ["¿Cuál es la capital de Venezuela?", "Caracas", "Maracaibo", "Valencia", "Barquisimeto"],
+    ["¿Cuál es la capital de Tailandia?", "Bangkok", "Phuket", "Chiang Mai", "Hanói"],
+    ["¿Cuál es la capital de Corea del Sur?", "Seúl", "Busan", "Pyongyang", "Incheon"]
+  ]},
+  ref: { name: "Dichos y Refranes", icon: "🗣️", css: "--c-ref", qs: [
+    ["Complete: 'Más vale pájaro en mano...'", "que cien volando", "que nido vacío", "que dos en la jaula", "que pichón en el techo"],
+    ["Complete: 'A caballo regalado...'", "no se le miran los dientes", "no se le pide galope", "no se le cuenta la edad", "no se le pone montura"],
+    ["Complete: 'El que se quema con leche...'", "ve la vaca y llora", "no toma más café", "sopla el mate", "le teme al fuego"],
+    ["Complete: 'No por mucho madrugar...'", "se amanece más temprano", "se trabaja mejor", "canta el gallo", "rinde más el día"],
+    ["Complete: 'Cría cuervos...'", "y te sacarán los ojos", "y tendrás plumas", "y volarán del nido", "y no cantarán jamás"],
+    ["Complete: 'A falta de pan...'", "buenas son tortas", "buena es la galleta", "se come polenta", "buenas son las sobras"],
+    ["Complete: 'Dime con quién andas...'", "y te diré quién eres", "y te diré adónde vas", "y sabré qué buscas", "y te diré qué haces"],
+    ["Complete: 'Camarón que se duerme...'", "se lo lleva la corriente", "pierde la marea", "no llega al mar", "amanece en la red"],
+    ["Complete: 'En casa de herrero...'", "cuchillo de palo", "no falta el martillo", "sobran los clavos", "todo es de hierro"],
+    ["Complete: 'El que mucho abarca...'", "poco aprieta", "todo lo pierde", "nada termina", "poco agarra"],
+    ["Complete: 'Perro que ladra...'", "no muerde", "cuida la casa", "asusta al ladrón", "pide comida"],
+    ["Complete: 'Al que madruga...'", "Dios lo ayuda", "el sueño lo alcanza", "el día le rinde", "nadie lo apura"],
+    ["Complete: 'No hay mal...'", "que por bien no venga", "que dure cien años", "que no se cure", "que valga la pena"],
+    ["Complete: 'Árbol que nace torcido...'", "jamás su tronco endereza", "no da buena sombra", "no llega a viejo", "da frutos amargos"],
+    ["Complete: 'Aunque la mona se vista de seda...'", "mona queda", "no va a la fiesta", "sigue en la selva", "no engaña a nadie"],
+    ["Complete: 'Quien siembra vientos...'", "cosecha tempestades", "no junta trigo", "pierde la semilla", "espera lluvias"],
+    ["Complete: 'Ojos que no ven...'", "corazón que no siente", "boca que no habla", "pena que no duele", "mente que no piensa"],
+    ["Complete: 'Agua que no has de beber...'", "déjala correr", "no la ensucies", "dásela a otro", "guárdala en la jarra"],
+    ["Complete: 'El hábito no hace...'", "al monje", "al elegante", "a la persona", "al caballero"],
+    ["Complete: 'A río revuelto...'", "ganancia de pescadores", "pérdida de nadadores", "cuidado con la creciente", "no cruces el vado"],
+    ["Complete: 'Más sabe el diablo por viejo...'", "que por diablo", "que por malo", "que por vivo", "que por astuto"],
+    ["Complete: 'Al mal tiempo...'", "buena cara", "paraguas grande", "mejor abrigo", "pronta salida"],
+    ["Complete: 'El que ríe último...'", "ríe mejor", "ríe solo", "no entendió el chiste", "ríe dos veces"],
+    ["Complete: 'Haz el bien...'", "sin mirar a quién", "y espera el mal", "que Dios te mira", "aunque cueste"],
+    ["Complete: 'De tal palo...'", "tal astilla", "tal viruta", "tal carpintero", "tal madera"],
+    ["Complete: 'Quien mal anda...'", "mal acaba", "mal camina", "tarde llega", "solo termina"],
+    ["Complete: 'Mal de muchos...'", "consuelo de tontos", "remedio de pocos", "alivio de todos", "pena compartida"],
+    ["Complete: 'A palabras necias...'", "oídos sordos", "respuestas cortas", "boca cerrada", "silencio santo"],
+    ["Complete: 'Cada loco...'", "con su tema", "en su mundo", "con su locura", "por su lado"],
+    ["Complete: 'Lo que abunda...'", "no daña", "empalaga", "se pierde", "sobra"],
+    ["Complete: 'Zapatero...'", "a tus zapatos", "a tu taller", "a tu cuero", "a tu horma"],
+    ["Complete: 'La curiosidad...'", "mató al gato", "abrió la puerta", "perdió al hombre", "no tiene cura"],
+    ["Complete: 'Donde manda capitán...'", "no manda marinero", "obedece el grumete", "calla el sargento", "no opina el timonel"]
   ]}
 };
 
