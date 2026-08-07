@@ -505,10 +505,9 @@ const S = {
   players: [], scores: [], streaks: [],
   totalRounds: 8, timerSecs: 60, presenter: true,
   round: 0, turn: 0,          // ronda actual (0-index), jugador actual
-  qIdx: null, catKey: null,   // pregunta en juego
+  qIdx: null, catKey: null, lastCat: null,  // pregunta en juego
   used: {}, order: {},        // por categoría: índices barajados y puntero
-  catCount: {},               // cuántas veces salió cada categoría (para variar)
-  timerId: null, answered: false
+  timerId: null, spinId: null, answered: false
 };
 
 const $ = id => document.getElementById(id);
@@ -550,10 +549,8 @@ $("btn-start").addEventListener("click", () => {
 function startGame() {
   S.scores = S.players.map(() => 0);
   S.streaks = S.players.map(() => 0);
-  S.round = 0; S.turn = 0;
-  S.catCount = {};
+  S.round = 0; S.turn = 0; S.lastCat = null;
   for (const k of Object.keys(BANK)) {
-    S.catCount[k] = 0;
     if (!S.order[k] || S.order[k].ptr >= S.order[k].idx.length) {
       S.order[k] = { idx: shuffle([...BANK[k].qs.keys()]), ptr: 0 };
     }
@@ -584,11 +581,10 @@ function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(
 
 /* ---- selección de categoría y pregunta ---- */
 function pickCategory() {
-  const keys = Object.keys(BANK);
-  const min = Math.min(...keys.map(k => S.catCount[k]));
-  const candidates = keys.filter(k => S.catCount[k] === min);
-  const k = candidates[Math.floor(Math.random() * candidates.length)];
-  S.catCount[k]++;
+  // totalmente al azar; solo se evita repetir la misma del turno anterior
+  const keys = Object.keys(BANK).filter(k => k !== S.lastCat);
+  const k = keys[Math.floor(Math.random() * keys.length)];
+  S.lastCat = k;
   return k;
 }
 function drawQuestion(k) {
@@ -602,24 +598,48 @@ function nextTurn() {
   if (S.round >= S.totalRounds) { endGame(); return; }
   S.catKey = pickCategory();
   S.qIdx = drawQuestion(S.catKey);
-  const cat = BANK[S.catKey];
   $("turn-round").textContent = `Ronda ${S.round + 1} de ${S.totalRounds}`;
   $("turn-name").textContent = S.players[S.turn];
   document.querySelector(".turn-sub").textContent = S.presenter
     ? "Leele la pregunta en voz alta."
     : "¡Te toca! Agarrá el teléfono.";
   $("btn-show-q").textContent = S.presenter ? "Leer la pregunta" : "Ver la pregunta";
-  const banner = $("turn-cat");
-  banner.innerHTML = `<span class="ico">${cat.icon}</span>${cat.name}`;
-  banner.style.background = `var(${cat.css})`;
   renderScores();
   renderTrip();
   show("scr-turn");
+  spinRoulette();
+}
+
+/* ruleta: el cartel gira entre categorías y clava en la sorteada */
+function spinRoulette() {
+  const banner = $("turn-cat");
+  const setCat = k => {
+    const c = BANK[k];
+    banner.innerHTML = `<span class="ico">${c.icon}</span>${c.name}`;
+    banner.style.background = `var(${c.css})`;
+  };
+  if (S.spinId) { clearInterval(S.spinId); S.spinId = null; }
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) { setCat(S.catKey); return; }
+  const keys = Object.keys(BANK);
+  let i = Math.floor(Math.random() * keys.length), ticks = 0;
+  const total = 12 + Math.floor(Math.random() * 5);
+  S.spinId = setInterval(() => {
+    ticks++;
+    if (ticks >= total) {
+      clearInterval(S.spinId); S.spinId = null;
+      setCat(S.catKey);
+      return;
+    }
+    i = (i + 1) % keys.length;
+    setCat(keys[i]);
+  }, 90);
 }
 
 $("btn-show-q").addEventListener("click", showQuestion);
 
 function showQuestion() {
+  if (S.spinId) { clearInterval(S.spinId); S.spinId = null; }
   const cat = BANK[S.catKey];
   const q = cat.qs[S.qIdx];
   S.answered = false;
