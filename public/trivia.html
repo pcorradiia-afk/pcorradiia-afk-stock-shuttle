@@ -1,0 +1,730 @@
+<title>Ruta 25 — Trivia de viaje</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<style>
+  :root {
+    --bg: #F6F1E7;
+    --surface: #FFFFFF;
+    --surface-2: #EFE7D6;
+    --ink: #282217;
+    --muted: #7A6F5C;
+    --line: #DDD2BC;
+    --accent: #B26B12;
+    --accent-ink: #FFF8EC;
+    --good: #2E7D4F;
+    --bad: #B3402E;
+    --good-bg: #E3F1E8;
+    --bad-bg: #F7E4E0;
+    --c-dep: #2E8B57;
+    --c-his: #C05A2E;
+    --c-geo: #3E7CB1;
+    --c-mus: #7C5CB8;
+    --c-cin: #C24A6E;
+    --c-cie: #2B9187;
+    --c-rut: #B26B12;
+    --c-gen: #8A7B2A;
+    --shadow: 0 2px 10px rgba(60, 45, 20, .10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141B26;
+      --surface: #1D2735;
+      --surface-2: #253143;
+      --ink: #F1EDE3;
+      --muted: #9BA4B0;
+      --line: #334054;
+      --accent: #F2B23E;
+      --accent-ink: #221A08;
+      --good: #6FCE96;
+      --bad: #F09080;
+      --good-bg: #1E3A2C;
+      --bad-bg: #46251F;
+      --c-dep: #4DB37C;
+      --c-his: #E08355;
+      --c-geo: #6BA5D8;
+      --c-mus: #A98BE0;
+      --c-cin: #E27795;
+      --c-cie: #4FC0B4;
+      --c-rut: #F2B23E;
+      --c-gen: #C9B84E;
+      --shadow: 0 2px 12px rgba(0, 0, 0, .35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141B26;
+    --surface: #1D2735;
+    --surface-2: #253143;
+    --ink: #F1EDE3;
+    --muted: #9BA4B0;
+    --line: #334054;
+    --accent: #F2B23E;
+    --accent-ink: #221A08;
+    --good: #6FCE96;
+    --bad: #F09080;
+    --good-bg: #1E3A2C;
+    --bad-bg: #46251F;
+    --c-dep: #4DB37C;
+    --c-his: #E08355;
+    --c-geo: #6BA5D8;
+    --c-mus: #A98BE0;
+    --c-cin: #E27795;
+    --c-cie: #4FC0B4;
+    --c-rut: #F2B23E;
+    --c-gen: #C9B84E;
+    --shadow: 0 2px 12px rgba(0, 0, 0, .35);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .app { max-width: 480px; margin: 0 auto; padding: 0 16px 32px; }
+
+  /* ---- cabecera de ruta ---- */
+  header { padding: 14px 0 10px; }
+  .route-badge {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    font-weight: 800; font-size: .8rem; letter-spacing: .14em;
+    color: var(--muted);
+  }
+  .route-badge .shield {
+    background: var(--accent); color: var(--accent-ink);
+    border-radius: 6px; padding: 3px 8px; font-size: .72rem; letter-spacing: .08em;
+  }
+  h1.title {
+    margin: 6px 0 0; text-align: center;
+    font-size: 1.9rem; font-weight: 900; letter-spacing: -.01em;
+    text-wrap: balance;
+  }
+  .lane {
+    height: 0; border: 0;
+    border-top: 4px dashed var(--accent);
+    opacity: .8; margin: 14px 0;
+  }
+
+  /* ---- progreso del viaje ---- */
+  .trip {
+    margin: 4px 0 14px;
+  }
+  .trip .ends {
+    display: flex; justify-content: space-between;
+    font-size: .7rem; font-weight: 800; letter-spacing: .12em; color: var(--muted);
+  }
+  .trip .road {
+    position: relative; height: 22px; margin-top: 2px;
+    background: var(--surface-2); border-radius: 11px; overflow: hidden;
+  }
+  .trip .road::after {
+    content: ""; position: absolute; left: 8px; right: 8px; top: 50%;
+    border-top: 2px dashed var(--muted); opacity: .5;
+  }
+  .trip .car {
+    position: absolute; top: 50%; transform: translate(-50%, -54%);
+    font-size: 16px; z-index: 1; transition: left .6s ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .trip .car { transition: none; }
+    * { animation: none !important; }
+  }
+
+  /* ---- marcador ---- */
+  .scores { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .score-chip {
+    flex: 1 1 40%;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 8px 12px; font-size: .95rem;
+  }
+  .score-chip.turn { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .score-chip .pts { font-weight: 900; font-variant-numeric: tabular-nums; }
+  .score-chip .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* ---- pantallas ---- */
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 16px; padding: 20px; box-shadow: var(--shadow);
+  }
+  .eyebrow {
+    font-size: .72rem; font-weight: 800; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 6px;
+  }
+
+  button {
+    font-family: inherit; cursor: pointer; border: 0;
+    -webkit-user-select: none; user-select: none;
+  }
+  button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .btn-primary {
+    display: block; width: 100%;
+    background: var(--accent); color: var(--accent-ink);
+    font-size: 1.15rem; font-weight: 900; letter-spacing: .02em;
+    padding: 16px; border-radius: 12px;
+  }
+  .btn-ghost {
+    display: block; width: 100%;
+    background: transparent; color: var(--muted);
+    font-size: .95rem; font-weight: 700; padding: 12px; border-radius: 12px;
+  }
+
+  /* ---- setup ---- */
+  .setup-players { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 4px; }
+  .setup-players input {
+    width: 100%; font-family: inherit; font-size: 1.05rem; font-weight: 600;
+    padding: 12px 14px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
+  }
+  .setup-players input:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+  .opt-row { display: flex; gap: 8px; margin-top: 10px; }
+  .opt-row .opt {
+    flex: 1; padding: 10px 6px; border-radius: 10px; font-weight: 800; font-size: .9rem;
+    background: var(--surface-2); color: var(--muted); border: 1px solid var(--line);
+  }
+  .opt-row .opt.sel { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .setup-label { margin: 18px 0 0; }
+
+  /* ---- turno ---- */
+  .turn-card { text-align: center; padding: 30px 20px; }
+  .turn-name { font-size: 2.1rem; font-weight: 900; margin: 4px 0 2px; text-wrap: balance; }
+  .turn-sub { color: var(--muted); font-weight: 600; margin: 0; }
+  .cat-banner {
+    display: inline-flex; align-items: center; gap: 10px;
+    margin: 20px auto 22px; padding: 10px 20px; border-radius: 999px;
+    color: #fff; font-weight: 900; font-size: 1.1rem; letter-spacing: .03em;
+  }
+  .cat-banner .ico { font-size: 1.3rem; }
+
+  /* ---- pregunta ---- */
+  .q-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .q-cat {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: #fff; font-weight: 800; font-size: .78rem; letter-spacing: .08em;
+    padding: 5px 12px; border-radius: 999px; text-transform: uppercase;
+  }
+  .q-turn { font-size: .85rem; font-weight: 700; color: var(--muted); }
+  .q-text {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.45rem; line-height: 1.35; margin: 6px 0 18px;
+    text-wrap: balance;
+  }
+  .timerbar { height: 6px; border-radius: 3px; background: var(--surface-2); margin-bottom: 14px; overflow: hidden; }
+  .timerbar .fill { height: 100%; background: var(--accent); width: 100%; }
+  .answers { display: flex; flex-direction: column; gap: 10px; }
+  .answers button {
+    text-align: left; font-size: 1.12rem; font-weight: 700;
+    padding: 15px 16px; border-radius: 12px;
+    background: var(--surface-2); color: var(--ink);
+    border: 1px solid var(--line);
+  }
+  .answers button:disabled { cursor: default; }
+  .answers button.ok    { background: var(--good-bg); border-color: var(--good); color: var(--ink); }
+  .answers button.no    { background: var(--bad-bg);  border-color: var(--bad);  color: var(--ink); }
+  .answers button.dim   { opacity: .45; }
+
+  .verdict {
+    display: none; text-align: center; margin-top: 16px;
+  }
+  .verdict.show { display: block; }
+  .verdict .big { font-size: 1.3rem; font-weight: 900; margin: 0 0 2px; }
+  .verdict .big.ok { color: var(--good); }
+  .verdict .big.no { color: var(--bad); }
+  .verdict .sub { color: var(--muted); font-weight: 600; margin: 0 0 14px; font-size: .95rem; }
+
+  /* ---- final ---- */
+  .podium { display: flex; flex-direction: column; gap: 10px; margin: 16px 0 20px; }
+  .podium .row {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 16px;
+  }
+  .podium .row.win { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+  .podium .medal { font-size: 1.4rem; width: 34px; text-align: center; }
+  .podium .nm { flex: 1; font-weight: 800; font-size: 1.1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .podium .pts { font-weight: 900; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+  .end-title { text-align: center; font-size: 1.6rem; font-weight: 900; margin: 4px 0 0; text-wrap: balance; }
+  .end-sub { text-align: center; color: var(--muted); font-weight: 600; margin: 4px 0 0; }
+</style>
+
+<div class="app">
+  <header>
+    <div class="route-badge">
+      <span>TRELEW</span><span class="shield">RN 25</span><span>→</span><span class="shield">RN 237</span><span>NEUQUÉN</span>
+    </div>
+    <h1 class="title">Trivia de viaje</h1>
+    <hr class="lane">
+  </header>
+
+  <div class="trip" id="trip" hidden>
+    <div class="ends"><span>TW</span><span id="trip-label"></span><span>NQN</span></div>
+    <div class="road"><span class="car" id="trip-car" style="left:4%">🚗</span></div>
+  </div>
+
+  <div class="scores" id="scores" hidden></div>
+
+  <!-- SETUP -->
+  <section class="screen active" id="scr-setup">
+    <div class="card">
+      <p class="eyebrow">¿Quiénes juegan?</p>
+      <div class="setup-players" id="setup-players">
+        <input maxlength="14" placeholder="Jugador 1" value="">
+        <input maxlength="14" placeholder="Jugador 2" value="">
+        <input maxlength="14" placeholder="Jugador 3" value="">
+        <input maxlength="14" placeholder="Jugador 4" value="">
+      </div>
+
+      <p class="eyebrow setup-label">Largo del viaje (rondas)</p>
+      <div class="opt-row" id="opt-rounds">
+        <button class="opt" data-v="5">Corto · 5</button>
+        <button class="opt sel" data-v="8">Medio · 8</button>
+        <button class="opt" data-v="12">Largo · 12</button>
+      </div>
+
+      <p class="eyebrow setup-label">Tiempo para responder</p>
+      <div class="opt-row" id="opt-timer">
+        <button class="opt sel" data-v="0">Sin tiempo</button>
+        <button class="opt" data-v="30">30 seg</button>
+        <button class="opt" data-v="15">15 seg</button>
+      </div>
+
+      <div style="margin-top:22px">
+        <button class="btn-primary" id="btn-start">Arrancar 🚗</button>
+      </div>
+    </div>
+    <p style="text-align:center;color:var(--muted);font-size:.85rem;margin-top:14px">
+      Se juega pasándose el teléfono. 10 puntos por acierto,<br>+5 de bonus con racha de 3 o más.
+    </p>
+  </section>
+
+  <!-- TURNO -->
+  <section class="screen" id="scr-turn">
+    <div class="card turn-card">
+      <p class="eyebrow" id="turn-round"></p>
+      <p class="turn-name" id="turn-name"></p>
+      <p class="turn-sub">¡Te toca! Agarrá el teléfono.</p>
+      <div><span class="cat-banner" id="turn-cat"></span></div>
+      <button class="btn-primary" id="btn-show-q">Ver la pregunta</button>
+    </div>
+  </section>
+
+  <!-- PREGUNTA -->
+  <section class="screen" id="scr-q">
+    <div class="card">
+      <div class="q-head">
+        <span class="q-cat" id="q-cat"></span>
+        <span class="q-turn" id="q-turn"></span>
+      </div>
+      <div class="timerbar" id="timerbar" hidden><div class="fill" id="timerfill"></div></div>
+      <p class="q-text" id="q-text"></p>
+      <div class="answers" id="answers"></div>
+      <div class="verdict" id="verdict">
+        <p class="big" id="verdict-big"></p>
+        <p class="sub" id="verdict-sub"></p>
+        <button class="btn-primary" id="btn-next"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINAL -->
+  <section class="screen" id="scr-end">
+    <div class="card">
+      <p class="end-title" id="end-title"></p>
+      <p class="end-sub">¡Llegamos a Neuquén! 🏁</p>
+      <div class="podium" id="podium"></div>
+      <button class="btn-primary" id="btn-rematch">Revancha (mismos jugadores)</button>
+      <button class="btn-ghost" id="btn-new">Cambiar jugadores</button>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+
+/* ============ BANCO DE PREGUNTAS ============
+   Formato: [pregunta, correcta, mala1, mala2, mala3] */
+const BANK = {
+  dep: { name: "Deportes", icon: "⚽", css: "--c-dep", qs: [
+    ["¿En qué año ganó Argentina su primer Mundial de fútbol?", "1978", "1974", "1982", "1986"],
+    ["¿Contra qué selección hizo Maradona 'la mano de Dios' en el 86?", "Inglaterra", "Alemania", "Brasil", "Italia"],
+    ["¿En qué deporte fue campeón mundial Carlos Monzón?", "Boxeo", "Lucha libre", "Judo", "Levantamiento de pesas"],
+    ["¿Cómo se conoce popularmente al estadio de Boca Juniors?", "La Bombonera", "El Monumental", "El Cilindro", "La Fortaleza"],
+    ["¿Qué tenista argentino ganó el US Open en 2009?", "Juan Martín Del Potro", "Guillermo Vilas", "David Nalbandian", "Gastón Gaudio"],
+    ["¿En qué año ganó Messi el Mundial con Argentina?", "2022", "2018", "2014", "2010"],
+    ["¿Qué piloto argentino fue cinco veces campeón de Fórmula 1?", "Juan Manuel Fangio", "Carlos Reutemann", "José Froilán González", "Oscar Gálvez"],
+    ["¿Cómo se conoce a la selección de básquet campeona olímpica en Atenas 2004?", "La Generación Dorada", "Los Gigantes", "La Banda Naranja", "Los Pumas"],
+    ["¿Qué equipo argentino ganó la Copa Intercontinental en 1986?", "River Plate", "Boca Juniors", "Independiente", "Racing"],
+    ["¿Quién es el máximo goleador histórico de la selección argentina?", "Lionel Messi", "Gabriel Batistuta", "Diego Maradona", "Hernán Crespo"],
+    ["¿En qué estadio se jugó la final del Mundial 78?", "El Monumental", "La Bombonera", "El Cilindro", "Mar del Plata"],
+    ["¿Qué deporte juegan Las Leonas?", "Hockey sobre césped", "Vóley", "Handball", "Rugby"],
+    ["¿Quién fue el goleador del Mundial 78, apodado 'el Matador'?", "Mario Kempes", "Leopoldo Luque", "Daniel Passarella", "René Houseman"],
+    ["¿En qué club debutó Diego Maradona en primera?", "Argentinos Juniors", "Boca Juniors", "Independiente", "Huracán"],
+    ["¿Qué golfista argentino ganó el Masters de Augusta en 2009?", "Ángel Cabrera", "Roberto De Vicenzo", "Eduardo Romero", "Andrés Romero"],
+    ["¿Cuántos Mundiales de fútbol ganó Argentina hasta 2022 inclusive?", "3", "2", "4", "1"]
+  ]},
+  his: { name: "Historia", icon: "📜", css: "--c-his", qs: [
+    ["¿En qué año fue la Revolución de Mayo?", "1810", "1816", "1806", "1820"],
+    ["¿En qué provincia se declaró la Independencia argentina?", "Tucumán", "Buenos Aires", "Córdoba", "Salta"],
+    ["¿Qué general cruzó los Andes para liberar Chile?", "José de San Martín", "Manuel Belgrano", "Martín Güemes", "Juan Lavalle"],
+    ["¿Cuál era el nombre de soltera de Evita?", "Eva Duarte", "Eva Ibarguren de Toledo", "Eva Martínez", "Eva Quiroga"],
+    ["¿En qué año volvió la democracia a la Argentina?", "1983", "1982", "1985", "1989"],
+    ["¿Quién fue el primer presidente tras la vuelta de la democracia?", "Raúl Alfonsín", "Carlos Menem", "Arturo Illia", "Fernando de la Rúa"],
+    ["¿En qué año fue la guerra de Malvinas?", "1982", "1978", "1985", "1980"],
+    ["¿Quién creó la bandera argentina?", "Manuel Belgrano", "José de San Martín", "Mariano Moreno", "Juan José Castelli"],
+    ["¿En qué año llegó Colón a América?", "1492", "1512", "1482", "1502"],
+    ["¿Cómo se llamaba la moneda argentina entre 1985 y 1991?", "Austral", "Peso ley", "Patacón", "Peso moneda nacional"],
+    ["¿Qué presidente gobernó durante la convertibilidad del '1 a 1'?", "Carlos Menem", "Raúl Alfonsín", "Eduardo Duhalde", "Fernando de la Rúa"],
+    ["¿Quién escribió el 'Martín Fierro'?", "José Hernández", "Domingo F. Sarmiento", "Esteban Echeverría", "Leopoldo Lugones"],
+    ["¿En qué año cayó el Muro de Berlín?", "1989", "1991", "1987", "1985"],
+    ["¿Qué libertador es conocido como el padre de la independencia de Venezuela?", "Simón Bolívar", "José de San Martín", "Antonio José de Sucre", "Bernardo O'Higgins"],
+    ["¿Qué caudillo riojano fue apodado 'El Tigre de los Llanos'?", "Facundo Quiroga", "Juan Manuel de Rosas", "Chacho Peñaloza", "Estanislao López"],
+    ["¿Qué civilización construyó Machu Picchu?", "Los incas", "Los mayas", "Los aztecas", "Los guaraníes"]
+  ]},
+  geo: { name: "Geografía", icon: "🗺️", css: "--c-geo", qs: [
+    ["¿Cuál es el río más caudaloso de la Argentina?", "Paraná", "Colorado", "Negro", "Salado"],
+    ["¿Cuál es la capital de Australia?", "Canberra", "Sídney", "Melbourne", "Perth"],
+    ["¿Cuál es la montaña más alta de América?", "Aconcagua", "Lanín", "Tupungato", "Fitz Roy"],
+    ["¿Con qué país comparte Argentina las Cataratas del Iguazú?", "Brasil", "Paraguay", "Uruguay", "Bolivia"],
+    ["¿Cuál es la provincia argentina más grande en superficie?", "Buenos Aires", "Santa Cruz", "Chubut", "Córdoba"],
+    ["¿Cuál es la capital de Canadá?", "Ottawa", "Toronto", "Montreal", "Vancouver"],
+    ["¿Qué océano baña las costas de Chubut?", "Atlántico", "Pacífico", "Índico", "Ártico"],
+    ["¿Cuál es el país más grande del mundo?", "Rusia", "Canadá", "China", "Estados Unidos"],
+    ["¿Cuál es la capital de Brasil?", "Brasilia", "Río de Janeiro", "San Pablo", "Salvador"],
+    ["¿En qué provincia sale el Tren a las Nubes?", "Salta", "Jujuy", "Tucumán", "Catamarca"],
+    ["¿Qué río separa a Argentina de Uruguay?", "Río Uruguay", "Río de la Plata", "Río Paraná", "Río Salado"],
+    ["¿Cuál es el desierto cálido más grande del mundo?", "Sahara", "Gobi", "Atacama", "Kalahari"],
+    ["¿En qué provincia está La Quiaca?", "Jujuy", "Salta", "Tucumán", "Formosa"],
+    ["¿Cuántas provincias tiene la Argentina?", "23", "24", "22", "25"],
+    ["¿Cuál es la capital de Entre Ríos?", "Paraná", "Concordia", "Gualeguaychú", "Victoria"],
+    ["¿Qué país europeo tiene forma de bota?", "Italia", "España", "Grecia", "Portugal"]
+  ]},
+  mus: { name: "Música", icon: "🎸", css: "--c-mus", qs: [
+    ["¿Quién compuso 'El amor después del amor'?", "Fito Páez", "Charly García", "Andrés Calamaro", "Luis Alberto Spinetta"],
+    ["¿Cómo se llamaba el cantante de Soda Stereo?", "Gustavo Cerati", "Charly Alberti", "Zeta Bosio", "Andrés Ciro"],
+    ["¿A qué músico argentino le decían 'El Flaco'?", "Luis Alberto Spinetta", "Charly García", "Pappo", "León Gieco"],
+    ["¿De qué dúo es el clásico 'Rasguña las piedras'?", "Sui Generis", "Pedro y Pablo", "Vivencia", "Pastoral"],
+    ["¿Qué cantante tucumana fue la gran voz del folklore latinoamericano?", "Mercedes Sosa", "Ramona Galarza", "Suma Paz", "Chabuca Granda"],
+    ["¿Qué banda británica lideraba Freddie Mercury?", "Queen", "The Rolling Stones", "Led Zeppelin", "The Police"],
+    ["¿A quién se conoce como 'el Rey del Pop'?", "Michael Jackson", "Elvis Presley", "Prince", "George Michael"],
+    ["¿En qué banda tocaron juntos Charly García, David Lebón, Pedro Aznar y Oscar Moro?", "Serú Girán", "Sui Generis", "La Máquina de Hacer Pájaros", "Almendra"],
+    ["¿Cómo se llamaba 'El Potro' del cuarteto cordobés?", "Rodrigo", "La Mona Jiménez", "Ulises Bueno", "Sebastián"],
+    ["¿Qué tango dice 'que veinte años no es nada'?", "Volver", "Mi Buenos Aires querido", "Cambalache", "El día que me quieras"],
+    ["¿A qué cantante le decían 'El Zorzal Criollo'?", "Carlos Gardel", "Julio Sosa", "Edmundo Rivero", "Roberto Goyeneche"],
+    ["¿De qué banda de Spinetta es 'Muchacha ojos de papel'?", "Almendra", "Pescado Rabioso", "Invisible", "Jade"],
+    ["¿Qué grupo sueco cantaba 'Dancing Queen'?", "ABBA", "Roxette", "Ace of Base", "Europe"],
+    ["¿Quién es el cantante de Los Redonditos de Ricota?", "El Indio Solari", "Skay Beilinson", "Pil Trafa", "Miguel Abuelo"],
+    ["¿Quién compuso 'Gracias a la vida'?", "Violeta Parra", "Mercedes Sosa", "Atahualpa Yupanqui", "Chico Buarque"],
+    ["¿De quién es la canción 'Sólo le pido a Dios'?", "León Gieco", "Víctor Heredia", "Piero", "Fito Páez"]
+  ]},
+  cin: { name: "Cine y TV", icon: "🎬", css: "--c-cin", qs: [
+    ["¿Qué película argentina ganó el Oscar en 2010?", "El secreto de sus ojos", "Nueve reinas", "Relatos salvajes", "El hijo de la novia"],
+    ["¿Quién interpretó a Mamá Cora en 'Esperando la carroza'?", "Antonio Gasalla", "Alberto Olmedo", "Juan Carlos Calabró", "Jorge Porcel"],
+    ["¿Qué cómico interpretaba al Capitán Piluso?", "Alberto Olmedo", "Jorge Porcel", "Carlitos Balá", "Alberto Anchart"],
+    ["¿Quién conducía 'Feliz Domingo'?", "Silvio Soldán", "Héctor Larrea", "Cacho Fontana", "Juan Carlos Mareco"],
+    ["¿Qué actor protagonizó 'Terminator'?", "Arnold Schwarzenegger", "Sylvester Stallone", "Bruce Willis", "Mel Gibson"],
+    ["¿Cómo se llamaba la nave de Han Solo en 'La guerra de las galaxias'?", "Halcón Milenario", "Enterprise", "Estrella Fugaz", "Nostromo"],
+    ["¿Quién creó 'Titanes en el Ring'?", "Martín Karadagián", "La Momia", "Pepino el payaso", "José Marrone"],
+    ["¿Qué actor interpretaba a 'Minguito'?", "Juan Carlos Altavista", "Fidel Pintos", "Javier Portales", "Vicente La Russa"],
+    ["¿Qué película argentina ganó el primer Oscar nacional en 1986?", "La historia oficial", "Camila", "La tregua", "Hombre mirando al sudeste"],
+    ["¿Qué dibujante creó a Clemente?", "Caloi", "Quino", "Fontanarrosa", "Landrú"],
+    ["¿En qué serie de los 80 aparecía el auto KITT?", "El auto fantástico", "Brigada A", "MacGyver", "Miami Vice"],
+    ["¿Quién interpretó a Marty McFly en 'Volver al futuro'?", "Michael J. Fox", "Tom Hanks", "Matthew Broderick", "Rob Lowe"],
+    ["¿Cómo se llamaba el extraterrestre que quería 'llamar a casa'?", "E.T.", "Alf", "Yoda", "Chewbacca"],
+    ["¿Con quién formaba dúo cómico Jorge Porcel en el cine de los 80?", "Alberto Olmedo", "Tristán", "Alberto Irízar", "Guillermo Francella"],
+    ["¿Qué humorista gráfico creó a Mafalda?", "Quino", "Caloi", "Fontanarrosa", "Sábat"],
+    ["¿Quién condujo durante décadas el programa 'Hola Susana'?", "Susana Giménez", "Mirtha Legrand", "Moria Casán", "Graciela Alfano"]
+  ]},
+  cie: { name: "Ciencia", icon: "🔬", css: "--c-cie", qs: [
+    ["¿Cuál es el planeta más grande del sistema solar?", "Júpiter", "Saturno", "Neptuno", "Urano"],
+    ["¿Qué argentino ganó el Nobel de Química en 1970?", "Luis Federico Leloir", "Bernardo Houssay", "César Milstein", "René Favaloro"],
+    ["¿Cuál es el símbolo químico del oro?", "Au", "Or", "Ag", "Go"],
+    ["¿Cuántos huesos tiene el cuerpo humano adulto?", "206", "180", "230", "300"],
+    ["¿Cuál es el gas más abundante en el aire que respiramos?", "Nitrógeno", "Oxígeno", "Dióxido de carbono", "Hidrógeno"],
+    ["¿Quién formuló la teoría de la relatividad?", "Albert Einstein", "Isaac Newton", "Galileo Galilei", "Stephen Hawking"],
+    ["¿Cuál es el órgano más grande del cuerpo humano?", "La piel", "El hígado", "El cerebro", "Los pulmones"],
+    ["¿A qué planeta se lo conoce como 'el planeta rojo'?", "Marte", "Venus", "Mercurio", "Saturno"],
+    ["¿Cuánto tarda aproximadamente la luz del Sol en llegar a la Tierra?", "8 minutos", "8 segundos", "8 horas", "1 día"],
+    ["¿Cuál es el animal terrestre más rápido?", "Guepardo", "León", "Avestruz", "Caballo"],
+    ["¿Qué vitamina fabrica el cuerpo al tomar sol?", "Vitamina D", "Vitamina C", "Vitamina A", "Vitamina B12"],
+    ["¿Qué inventor patentó la lamparita eléctrica en 1879?", "Thomas Edison", "Nikola Tesla", "Alexander Graham Bell", "Benjamin Franklin"],
+    ["¿Cómo se llama el proceso por el que las plantas fabrican su alimento?", "Fotosíntesis", "Respiración", "Fermentación", "Germinación"],
+    ["¿Qué metal es líquido a temperatura ambiente?", "Mercurio", "Plomo", "Estaño", "Aluminio"],
+    ["¿Qué físico escribió 'Breve historia del tiempo'?", "Stephen Hawking", "Albert Einstein", "Carl Sagan", "Richard Feynman"],
+    ["¿Cuál es el animal más grande del planeta?", "La ballena azul", "El elefante africano", "El calamar gigante", "El tiburón ballena"]
+  ]},
+  rut: { name: "La Ruta", icon: "🛣️", css: "--c-rut", qs: [
+    ["¿En qué provincia está Trelew?", "Chubut", "Río Negro", "Santa Cruz", "Neuquén"],
+    ["¿De qué origen eran los colonos que fundaron Trelew y Gaiman?", "Galés", "Italiano", "Alemán", "Vasco"],
+    ["¿Qué península de Chubut es famosa por el avistaje de ballenas?", "Península Valdés", "Península Mitre", "Punta Tombo", "Cabo Dos Bahías"],
+    ["¿Qué dos ríos se unen para formar el río Negro?", "Neuquén y Limay", "Limay y Collón Curá", "Neuquén y Colorado", "Chubut y Chico"],
+    ["¿Qué fruta es el emblema del Alto Valle de Río Negro?", "La manzana", "La uva", "La cereza", "La frutilla"],
+    ["¿Cómo se llama el megayacimiento petrolero de Neuquén?", "Vaca Muerta", "Cerro Dragón", "Loma Negra", "Piedra del Águila"],
+    ["¿Qué dinosaurio gigante hallado en Neuquén es de los más grandes del mundo?", "Argentinosaurus", "Tiranosaurio", "Velociraptor", "Diplodocus"],
+    ["¿Qué ruta nacional recorre toda la costa patagónica?", "Ruta 3", "Ruta 40", "Ruta 22", "Ruta 151"],
+    ["¿Cómo se llama el gran lago de Bariloche?", "Nahuel Huapi", "Lácar", "Traful", "Aluminé"],
+    ["¿Qué animal se ve por miles en Punta Tombo?", "Pingüino de Magallanes", "Lobo marino", "Elefante marino", "Cormorán"],
+    ["¿Sobre qué río está la represa El Chocón?", "Limay", "Neuquén", "Colorado", "Negro"],
+    ["¿Qué ciudad es la puerta de entrada a Península Valdés?", "Puerto Madryn", "Rawson", "Comodoro Rivadavia", "Esquel"],
+    ["¿En qué ciudad está el Museo Paleontológico Egidio Feruglio (MEF)?", "Trelew", "Puerto Madryn", "Neuquén", "Rawson"],
+    ["¿Qué ciudad patagónica es famosa por sus chocolates?", "Bariloche", "El Bolsón", "Villa La Angostura", "Esquel"],
+    ["¿Qué volcán es el más alto de la provincia de Neuquén?", "Lanín", "Domuyo", "Copahue", "Batea Mahuida"],
+    ["¿Cuál es la capital de la provincia de Chubut?", "Rawson", "Trelew", "Comodoro Rivadavia", "Puerto Madryn"]
+  ]},
+  gen: { name: "Cultura General", icon: "💡", css: "--c-gen", qs: [
+    ["¿Cuántos lados tiene un hexágono?", "6", "5", "7", "8"],
+    ["¿Cuál es el idioma con más hablantes nativos del mundo?", "Chino mandarín", "Inglés", "Español", "Hindi"],
+    ["¿Con qué hierba se prepara el mate?", "Yerba mate", "Té verde", "Boldo", "Manzanilla"],
+    ["¿Cuántas cuerdas tiene una guitarra criolla?", "6", "5", "7", "4"],
+    ["¿Quién escribió 'Cien años de soledad'?", "Gabriel García Márquez", "Mario Vargas Llosa", "Pablo Neruda", "Julio Cortázar"],
+    ["¿Qué escritor argentino escribió 'El Aleph'?", "Jorge Luis Borges", "Julio Cortázar", "Ernesto Sabato", "Adolfo Bioy Casares"],
+    ["¿Cuántos minutos tiene un día completo?", "1440", "1240", "1640", "2440"],
+    ["¿Qué moneda se usa en la mayor parte de Europa?", "Euro", "Libra", "Franco", "Corona"],
+    ["En el truco, ¿cuál es la carta más alta?", "El ancho de espadas", "El ancho de bastos", "El siete de oros", "El tres"],
+    ["¿Cuántos jugadores tiene un equipo de fútbol en cancha?", "11", "10", "12", "9"],
+    ["¿Qué escritor argentino escribió 'Rayuela'?", "Julio Cortázar", "Jorge Luis Borges", "Roberto Arlt", "Manuel Puig"],
+    ["¿Qué se suele comer el 29 de cada mes?", "Ñoquis", "Asado", "Locro", "Empanadas"],
+    ["¿Cuánto es 7 × 8?", "56", "54", "64", "48"],
+    ["¿Cuál es el ave nacional argentina?", "El hornero", "El cóndor", "El ñandú", "El tero"],
+    ["¿Qué famoso transatlántico se hundió en 1912?", "Titanic", "Lusitania", "Queen Mary", "Britannic"],
+    ["¿Cómo se llama la masa frita que se come con mate los días de lluvia?", "Torta frita", "Chipá", "Sopaipilla", "Buñuelo"]
+  ]}
+};
+
+/* ============ ESTADO ============ */
+const S = {
+  players: [], scores: [], streaks: [],
+  totalRounds: 8, timerSecs: 0,
+  round: 0, turn: 0,          // ronda actual (0-index), jugador actual
+  qIdx: null, catKey: null,   // pregunta en juego
+  used: {}, order: {},        // por categoría: índices barajados y puntero
+  catCount: {},               // cuántas veces salió cada categoría (para variar)
+  timerId: null, answered: false
+};
+
+const $ = id => document.getElementById(id);
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+function show(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  $(id).classList.add("active");
+  window.scrollTo(0, 0);
+}
+
+/* ---- setup ---- */
+function bindOptRow(rowId, apply) {
+  $(rowId).addEventListener("click", e => {
+    const b = e.target.closest(".opt"); if (!b) return;
+    $(rowId).querySelectorAll(".opt").forEach(o => o.classList.remove("sel"));
+    b.classList.add("sel");
+    apply(Number(b.dataset.v));
+  });
+}
+bindOptRow("opt-rounds", v => S.totalRounds = v);
+bindOptRow("opt-timer", v => S.timerSecs = v);
+
+$("btn-start").addEventListener("click", () => {
+  const players = [];
+  [...$("setup-players").querySelectorAll("input")].forEach(inp => {
+    const v = inp.value.trim();
+    if (v) players.push(v);
+  });
+  if (players.length < 2) {
+    // sin nombres cargados: usar los 4 por defecto
+    while (players.length < 4) players.push("Jugador " + (players.length + 1));
+  }
+  S.players = players;
+  startGame();
+});
+
+function startGame() {
+  S.scores = S.players.map(() => 0);
+  S.streaks = S.players.map(() => 0);
+  S.round = 0; S.turn = 0;
+  S.catCount = {};
+  for (const k of Object.keys(BANK)) {
+    S.catCount[k] = 0;
+    if (!S.order[k] || S.order[k].ptr >= S.order[k].idx.length) {
+      S.order[k] = { idx: shuffle([...BANK[k].qs.keys()]), ptr: 0 };
+    }
+  }
+  $("trip").hidden = false;
+  $("scores").hidden = false;
+  renderScores();
+  renderTrip();
+  nextTurn();
+}
+
+/* ---- marcador y viaje ---- */
+function renderScores() {
+  $("scores").innerHTML = S.players.map((p, i) =>
+    `<div class="score-chip${i === S.turn ? " turn" : ""}">
+       <span class="nm">${esc(p)}${S.streaks[i] >= 3 ? " 🔥" : ""}</span>
+       <span class="pts">${S.scores[i]}</span>
+     </div>`).join("");
+}
+function renderTrip() {
+  const total = S.totalRounds * S.players.length;
+  const done = S.round * S.players.length + S.turn;
+  const pct = 4 + (done / total) * 92;
+  $("trip-car").style.left = pct + "%";
+  $("trip-label").textContent = `Ronda ${Math.min(S.round + 1, S.totalRounds)} de ${S.totalRounds}`;
+}
+function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+
+/* ---- selección de categoría y pregunta ---- */
+function pickCategory() {
+  const keys = Object.keys(BANK);
+  const min = Math.min(...keys.map(k => S.catCount[k]));
+  const candidates = keys.filter(k => S.catCount[k] === min);
+  const k = candidates[Math.floor(Math.random() * candidates.length)];
+  S.catCount[k]++;
+  return k;
+}
+function drawQuestion(k) {
+  const o = S.order[k];
+  if (o.ptr >= o.idx.length) { o.idx = shuffle([...BANK[k].qs.keys()]); o.ptr = 0; }
+  return o.idx[o.ptr++];
+}
+
+/* ---- flujo de turnos ---- */
+function nextTurn() {
+  if (S.round >= S.totalRounds) { endGame(); return; }
+  S.catKey = pickCategory();
+  S.qIdx = drawQuestion(S.catKey);
+  const cat = BANK[S.catKey];
+  $("turn-round").textContent = `Ronda ${S.round + 1} de ${S.totalRounds}`;
+  $("turn-name").textContent = S.players[S.turn];
+  const banner = $("turn-cat");
+  banner.innerHTML = `<span class="ico">${cat.icon}</span>${cat.name}`;
+  banner.style.background = `var(${cat.css})`;
+  renderScores();
+  renderTrip();
+  show("scr-turn");
+}
+
+$("btn-show-q").addEventListener("click", showQuestion);
+
+function showQuestion() {
+  const cat = BANK[S.catKey];
+  const q = cat.qs[S.qIdx];
+  S.answered = false;
+  $("q-cat").innerHTML = `${cat.icon} ${cat.name}`;
+  $("q-cat").style.background = `var(${cat.css})`;
+  $("q-turn").textContent = S.players[S.turn];
+  $("q-text").textContent = q[0];
+  $("verdict").classList.remove("show");
+
+  const opts = shuffle([
+    { t: q[1], ok: true }, { t: q[2], ok: false }, { t: q[3], ok: false }, { t: q[4], ok: false }
+  ]);
+  const box = $("answers");
+  box.innerHTML = "";
+  opts.forEach(o => {
+    const b = document.createElement("button");
+    b.textContent = o.t;
+    b.addEventListener("click", () => answer(b, o.ok));
+    box.appendChild(b);
+  });
+
+  startTimer();
+  show("scr-q");
+}
+
+function startTimer() {
+  stopTimer();
+  if (!S.timerSecs) { $("timerbar").hidden = true; return; }
+  $("timerbar").hidden = false;
+  const fill = $("timerfill");
+  fill.style.transition = "none";
+  fill.style.width = "100%";
+  // reflow para reiniciar la transición
+  void fill.offsetWidth;
+  fill.style.transition = `width ${S.timerSecs}s linear`;
+  fill.style.width = "0%";
+  S.timerId = setTimeout(() => { if (!S.answered) answer(null, false, true); }, S.timerSecs * 1000);
+}
+function stopTimer() { if (S.timerId) { clearTimeout(S.timerId); S.timerId = null; } }
+
+function answer(btn, ok, timedOut = false) {
+  if (S.answered) return;
+  S.answered = true;
+  stopTimer();
+  const fill = $("timerfill");
+  fill.style.transition = "none";
+
+  const buttons = [...$("answers").querySelectorAll("button")];
+  const correct = BANK[S.catKey].qs[S.qIdx][1];
+  buttons.forEach(b => {
+    b.disabled = true;
+    if (b.textContent === correct) b.classList.add("ok");
+    else if (b === btn) b.classList.add("no");
+    else b.classList.add("dim");
+  });
+
+  const i = S.turn;
+  let gained = 0;
+  if (ok) {
+    S.streaks[i]++;
+    gained = 10 + (S.streaks[i] >= 3 ? 5 : 0);
+    S.scores[i] += gained;
+  } else {
+    S.streaks[i] = 0;
+  }
+
+  const big = $("verdict-big"), sub = $("verdict-sub");
+  if (ok) {
+    big.textContent = `¡Correcto! +${gained}`;
+    big.className = "big ok";
+    sub.textContent = S.streaks[i] >= 3 ? `🔥 Racha de ${S.streaks[i]} — bonus incluido` : "Bien ahí 👏";
+  } else {
+    big.textContent = timedOut ? "¡Se acabó el tiempo!" : "Incorrecto";
+    big.className = "big no";
+    sub.textContent = `La respuesta era: ${correct}`;
+  }
+
+  // ¿quién sigue?
+  const lastOfRound = S.turn === S.players.length - 1;
+  const gameOver = lastOfRound && S.round === S.totalRounds - 1;
+  $("btn-next").textContent = gameOver ? "Ver resultado final 🏁"
+    : `Pasale el teléfono a ${S.players[(S.turn + 1) % S.players.length]}`;
+
+  renderScores();
+  $("verdict").classList.add("show");
+}
+
+$("btn-next").addEventListener("click", () => {
+  S.turn++;
+  if (S.turn >= S.players.length) { S.turn = 0; S.round++; }
+  nextTurn();
+});
+
+/* ---- final ---- */
+function endGame() {
+  $("trip-car").style.left = "96%";
+  const ranked = S.players.map((p, i) => ({ p, s: S.scores[i] })).sort((a, b) => b.s - a.s);
+  const top = ranked[0].s;
+  const winners = ranked.filter(r => r.s === top).map(r => r.p);
+  $("end-title").textContent = winners.length > 1
+    ? `Empate entre ${winners.join(" y ")} 🤝`
+    : `¡Ganó ${winners[0]}! 🏆`;
+  const medals = ["🥇", "🥈", "🥉", "🚗", "🚗", "🚗"];
+  $("podium").innerHTML = ranked.map((r, i) =>
+    `<div class="row${r.s === top ? " win" : ""}">
+       <span class="medal">${medals[i] || "🚗"}</span>
+       <span class="nm">${esc(r.p)}</span>
+       <span class="pts">${r.s}</span>
+     </div>`).join("");
+  renderScores();
+  show("scr-end");
+}
+
+$("btn-rematch").addEventListener("click", startGame);
+$("btn-new").addEventListener("click", () => {
+  $("trip").hidden = true;
+  $("scores").hidden = true;
+  show("scr-setup");
+});
+</script>
