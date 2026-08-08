@@ -196,6 +196,18 @@
     border: 1px solid var(--line); background: var(--surface-2); color: var(--ink);
   }
   .setup-players input:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+  .p-row { display: flex; gap: 6px; align-items: stretch; }
+  .p-row input { flex: 1; min-width: 0; }
+  .lvls { display: flex; gap: 4px; }
+  .lvls .lvl {
+    width: 44px; border-radius: 10px; font-size: 1.15rem;
+    background: var(--surface-2); border: 1px solid var(--line);
+  }
+  .lvls .lvl.sel { background: var(--accent); border-color: var(--accent); }
+  .lvl-legend {
+    margin: 8px 0 0; text-align: center;
+    color: var(--muted); font-size: .8rem; font-weight: 600;
+  }
   .opt-row { display: flex; gap: 8px; margin-top: 10px; }
   .opt-row .opt {
     flex: 1; padding: 10px 6px; border-radius: 10px; font-weight: 800; font-size: .9rem;
@@ -303,12 +315,25 @@
     <div class="card">
       <p class="eyebrow">¿Quiénes juegan?</p>
       <div class="setup-players" id="setup-players">
-        <input maxlength="14" placeholder="Jugador 1" value="Fernando F">
-        <input maxlength="14" placeholder="Jugador 2" value="Joaquín N">
-        <input maxlength="14" placeholder="Jugador 3" value="Carlos C">
-        <input maxlength="14" placeholder="Jugador 4" value="Fernando B">
+        <div class="p-row">
+          <input maxlength="14" placeholder="Jugador 1" value="Fernando">
+          <div class="lvls"><button class="lvl" data-l="k">🐣</button><button class="lvl" data-l="j">🚀</button><button class="lvl sel" data-l="a">🧉</button></div>
+        </div>
+        <div class="p-row">
+          <input maxlength="14" placeholder="Jugador 2" value="Belén">
+          <div class="lvls"><button class="lvl" data-l="k">🐣</button><button class="lvl" data-l="j">🚀</button><button class="lvl sel" data-l="a">🧉</button></div>
+        </div>
+        <div class="p-row">
+          <input maxlength="14" placeholder="Jugador 3" value="Dante">
+          <div class="lvls"><button class="lvl" data-l="k">🐣</button><button class="lvl sel" data-l="j">🚀</button><button class="lvl" data-l="a">🧉</button></div>
+        </div>
+        <div class="p-row">
+          <input maxlength="14" placeholder="Jugador 4" value="Otto">
+          <div class="lvls"><button class="lvl sel" data-l="k">🐣</button><button class="lvl" data-l="j">🚀</button><button class="lvl" data-l="a">🧉</button></div>
+        </div>
       </div>
-      <button class="btn-ghost" id="btn-add-player" style="margin-top:6px">+ Agregar jugador</button>
+      <p class="lvl-legend">Nivel de preguntas: 🐣 6 a 8 años · 🚀 9 a 12 · 🧉 grandes</p>
+      <button class="btn-ghost" id="btn-add-player" style="margin-top:2px">+ Agregar jugador</button>
 
       <p class="eyebrow setup-label">Largo del viaje (rondas)</p>
       <div class="opt-row" id="opt-rounds">
@@ -459,7 +484,27 @@ const BANK = {
     ["¿Qué atleta jamaiquino es el hombre más rápido de la historia?", "Usain Bolt", "Carl Lewis", "Jesse Owens", "Maurice Greene"],
     ["¿Qué país organizó el Mundial 86?", "México", "Colombia", "Estados Unidos", "Italia"],
     ["¿Qué club argentino es 'la Academia'?", "Racing", "Independiente", "River", "Gimnasia"],
-    ["¿Cuántos puntos vale un try en el rugby?", "5", "3", "4", "7"]
+    ["¿Cuántos puntos vale un try en el rugby?", "5", "3", "4", "7"],
+    ["¿Cómo se llama el mejor jugador argentino, el número 10?", "Messi", "Ronaldo", "Neymar", "Mbappé", "k"],
+    ["¿De qué colores es la camiseta de la Selección Argentina?", "Celeste y blanca", "Roja y blanca", "Azul y amarilla", "Verde y blanca", "k"],
+    ["¿Qué se patea en el fútbol?", "La pelota", "El arco", "La red", "El silbato", "k"],
+    ["¿Quién ataja los penales en la Selección Argentina?", "El Dibu Martínez", "Messi", "Di María", "El árbitro", "k"],
+    ["¿Cuántas Copas del Mundo tiene Argentina?", "3", "1", "2", "5", "k"],
+    ["¿En qué deporte se usa una raqueta?", "El tenis", "El fútbol", "La natación", "El básquet", "k"],
+    ["¿En qué deporte la pelota entra en un aro alto?", "El básquet", "El tenis", "El hockey", "El rugby", "k"],
+    ["¿Dónde tiene que entrar la pelota para que sea gol?", "En el arco", "En la tribuna", "En el córner", "En el banco", "k"],
+    ["¿De qué color es la pelota de tenis?", "Amarilla", "Roja", "Azul", "Blanca", "k"],
+    ["¿Qué te ponés en la cabeza para andar en bici seguro?", "El casco", "La gorra", "El sombrero", "La vincha", "k"],
+    ["¿Cuántos jugadores tiene un equipo de fútbol en la cancha?", "11", "10", "12", "9", "j"],
+    ["¿Qué país salió campeón del Mundial 2022?", "Argentina", "Francia", "Brasil", "Croacia", "j"],
+    ["¿Cómo se llama el estadio de River?", "El Monumental", "La Bombonera", "El Cilindro", "El Fortín", "j"],
+    ["¿Cuántos puntos vale un triple en el básquet?", "3", "2", "4", "5", "j"],
+    ["¿En qué deporte corre Franco Colapinto?", "Automovilismo", "Ciclismo", "Motociclismo", "Atletismo", "j"],
+    ["¿Cada cuántos años son los Juegos Olímpicos?", "4", "2", "3", "5", "j"],
+    ["¿Qué selección juega de camiseta 'verdeamarela'?", "Brasil", "México", "Portugal", "Colombia", "j"],
+    ["¿En qué juego se dice 'jaque mate'?", "El ajedrez", "Las damas", "El ludo", "El TEG", "j"],
+    ["¿Cuántos minutos dura cada tiempo en el fútbol?", "45", "30", "60", "40", "j"],
+    ["¿Qué número usa Julián Álvarez en la Selección?", "9", "10", "7", "11", "j"]
   ]},
   his: { name: "Historia", icon: "📜", css: "--c-his", qs: [
     ["¿Quién fue el primer presidente de la Argentina, en 1826?", "Bernardino Rivadavia", "Justo José de Urquiza", "Bartolomé Mitre", "Cornelio Saavedra"],
@@ -519,7 +564,20 @@ const BANK = {
     ["¿Qué conquistador sometió al imperio azteca?", "Hernán Cortés", "Francisco Pizarro", "Núñez de Balboa", "Ponce de León"],
     ["¿Qué caudillo venció a Rosas en la batalla de Caseros?", "Justo José de Urquiza", "Bartolomé Mitre", "Juan Lavalle", "Estanislao López"],
     ["¿En qué año fue la batalla de Caseros?", "1852", "1845", "1840", "1861"],
-    ["¿Qué presidente de EE.UU. lanzó el 'New Deal' en los años 30?", "Franklin D. Roosevelt", "Herbert Hoover", "Harry Truman", "Woodrow Wilson"]
+    ["¿Qué presidente de EE.UU. lanzó el 'New Deal' en los años 30?", "Franklin D. Roosevelt", "Herbert Hoover", "Harry Truman", "Woodrow Wilson"],
+    ["¿Quién creó la bandera argentina?", "Manuel Belgrano", "José de San Martín", "Domingo Sarmiento", "Julio Roca", "k"],
+    ["¿De qué colores es la bandera argentina?", "Celeste y blanca", "Roja y blanca", "Verde y amarilla", "Azul y roja", "k"],
+    ["¿Qué prócer cruzó la cordillera de los Andes con su ejército?", "San Martín", "Belgrano", "Sarmiento", "Colón", "k"],
+    ["¿Quiénes vivían en los castillos con torres?", "Los reyes y caballeros", "Los astronautas", "Los piratas", "Los bomberos", "k"],
+    ["¿En qué barco viajaban los piratas?", "En un barco de vela", "En una lancha", "En un submarino", "En un crucero", "k"],
+    ["¿En qué año fue la Revolución de Mayo?", "1810", "1816", "1900", "1852", "j"],
+    ["¿En qué provincia se declaró la Independencia argentina?", "Tucumán", "Buenos Aires", "Córdoba", "Salta", "j"],
+    ["¿Qué fecha es el Día de la Bandera?", "20 de junio", "9 de julio", "25 de mayo", "17 de agosto", "j"],
+    ["¿Qué civilización construyó las pirámides de Egipto?", "Los egipcios", "Los romanos", "Los griegos", "Los mayas", "j"],
+    ["¿Cómo se llamaban los guerreros del antiguo Japón?", "Samuráis", "Vikingos", "Gladiadores", "Espartanos", "j"],
+    ["¿De qué región venían los vikingos?", "Escandinavia", "África", "Asia", "Sudamérica", "j"],
+    ["¿Quién fue Tutankamón?", "Un faraón egipcio", "Un emperador romano", "Un rey griego", "Un dios azteca", "j"],
+    ["¿Cómo se llamaban las tres carabelas de Colón?", "La Niña, la Pinta y la Santa María", "La Rosa, la Perla y la María", "La Fe, la Esperanza y la Caridad", "La Reina, la Corona y la Cruz", "j"]
   ]},
   geo: { name: "Geografía", icon: "🗺️", css: "--c-geo", qs: [
     ["¿Qué estrecho separa a Tierra del Fuego del continente?", "Estrecho de Magallanes", "Canal de Beagle", "Estrecho de Drake", "Canal de San Sebastián"],
@@ -579,7 +637,22 @@ const BANK = {
     ["¿Qué país europeo tiene forma de bota?", "Italia", "España", "Grecia", "Portugal"],
     ["¿Qué línea imaginaria divide la Tierra en hemisferio norte y sur?", "El ecuador", "El meridiano de Greenwich", "El trópico de Cáncer", "El paralelo 42"],
     ["¿En qué país nace el río Amazonas?", "Perú", "Brasil", "Colombia", "Ecuador"],
-    ["¿Qué ciudad italiana está construida sobre canales?", "Venecia", "Florencia", "Génova", "Pisa"]
+    ["¿Qué ciudad italiana está construida sobre canales?", "Venecia", "Florencia", "Génova", "Pisa"],
+    ["¿En qué país vivimos?", "Argentina", "Brasil", "Chile", "España", "k"],
+    ["¿Cómo se llama nuestro planeta?", "La Tierra", "Marte", "La Luna", "El Sol", "k"],
+    ["¿Qué es más grande?", "El mar", "Una pileta", "Un charco", "Una bañera", "k"],
+    ["¿Dónde hace más frío?", "En el Polo Sur", "En la playa", "En la selva", "En el desierto", "k"],
+    ["¿Qué cae del cielo cuando llueve?", "Agua", "Arena", "Hojas", "Piedritas", "k"],
+    ["¿Cómo se llama la montaña que tira fuego y lava?", "El volcán", "La colina", "La sierra", "La duna", "k"],
+    ["¿Qué estrella nos da luz y calor todos los días?", "El Sol", "La Luna", "Una nube", "Un cometa", "k"],
+    ["¿Qué río separa a Argentina de Uruguay?", "El río Uruguay", "El río Colorado", "El río Negro", "El Riachuelo", "j"],
+    ["¿Qué océano baña la costa argentina?", "El Atlántico", "El Pacífico", "El Índico", "El Ártico", "j"],
+    ["¿Cuál es la montaña más alta de América?", "El Aconcagua", "El Everest", "El Lanín", "El Fitz Roy", "j"],
+    ["¿Cuántos continentes hay?", "6", "4", "8", "10", "j"],
+    ["¿En qué continente está el desierto del Sahara?", "África", "Asia", "América", "Oceanía", "j"],
+    ["¿En qué país viven los canguros?", "Australia", "África", "India", "Brasil", "j"],
+    ["¿Dónde viven los pingüinos?", "En el hemisferio sur", "En el Polo Norte", "En la selva", "En el desierto", "j"],
+    ["¿Cómo se llaman las líneas de los mapas que van de polo a polo?", "Meridianos", "Paralelos", "Ecuadores", "Trópicos", "j"]
   ]},
   mus: { name: "Música", icon: "🎸", css: "--c-mus", qs: [
     ["¿Cuál era el verdadero nombre de Sandro?", "Roberto Sánchez", "Ramón Ortega", "Carlos Groisman", "Juan Moreno"],
@@ -639,7 +712,17 @@ const BANK = {
     ["¿Qué cantante británico compuso 'Your Song' y 'Rocket Man'?", "Elton John", "Rod Stewart", "Phil Collins", "George Michael"],
     ["¿Qué banda australiana grabó 'Highway to Hell'?", "AC/DC", "INXS", "Midnight Oil", "Men at Work"],
     ["¿Quién canta 'Vivir así es morir de amor'?", "Camilo Sesto", "Sandro", "Raphael", "José Luis Perales"],
-    ["¿Qué pianista argentina es leyenda mundial del piano clásico?", "Martha Argerich", "Pía Sebastiani", "María Tipo", "Ingrid Fliter"]
+    ["¿Qué pianista argentina es leyenda mundial del piano clásico?", "Martha Argerich", "Pía Sebastiani", "María Tipo", "Ingrid Fliter"],
+    ["¿Qué instrumento tiene 6 cuerdas y se toca rasgueando?", "La guitarra", "El piano", "La batería", "La flauta", "k"],
+    ["¿Qué canción se canta cuando alguien cumple años?", "El feliz cumpleaños", "El arroz con leche", "La vaca Lola", "El himno", "k"],
+    ["¿Qué instrumento se toca golpeando con palillos?", "La batería", "La guitarra", "La flauta", "El violín", "k"],
+    ["¿Qué animal canta 'kikirikí' a la mañana?", "El gallo", "El perro", "El gato", "La vaca", "k"],
+    ["¿Qué instrumento grande tiene teclas blancas y negras?", "El piano", "La guitarra", "El tambor", "La trompeta", "k"],
+    ["¿Cuántas cuerdas tiene una guitarra criolla?", "6", "4", "5", "8", "j"],
+    ["¿Cómo se llama el grupo grande de músicos con un director?", "La orquesta", "La banda de rock", "El coro", "El dúo", "j"],
+    ["¿Cómo se llamaban los cuatro de Liverpool: John, Paul, George y Ringo?", "Los Beatles", "Los Rolling Stones", "Queen", "ABBA", "j"],
+    ["¿Qué baile folklórico argentino se baila revoleando un pañuelo?", "La zamba", "El tango", "La cumbia", "El rock", "j"],
+    ["¿Qué app se usa para escuchar música?", "Spotify", "WhatsApp", "Maps", "Gmail", "j"]
   ]},
   cin: { name: "Cine y TV", icon: "🎬", css: "--c-cin", qs: [
     ["¿Quién dirigió 'La historia oficial', primer Oscar argentino?", "Luis Puenzo", "Adolfo Aristarain", "María Luisa Bemberg", "Eliseo Subiela"],
@@ -699,7 +782,29 @@ const BANK = {
     ["¿Qué actor de westerns dirigió y protagonizó 'Los imperdonables'?", "Clint Eastwood", "John Wayne", "Charles Bronson", "Lee Van Cleef"],
     ["¿Qué palabra hizo famosa Pepe Biondi?", "Patapúfete", "Sumbudrule", "Qué lo parió", "Chupetómetro"],
     ["¿Qué personaje persigue sin éxito al Correcaminos?", "El Coyote", "Elmer Gruñón", "Silvestre", "Taz"],
-    ["¿Qué marinero se vuelve fuerte comiendo espinaca?", "Popeye", "Pluto", "Bluto", "Olivia"]
+    ["¿Qué marinero se vuelve fuerte comiendo espinaca?", "Popeye", "Pluto", "Bluto", "Olivia"],
+    ["¿Quién es el mejor amigo de Bob Esponja?", "Patricio", "Calamardo", "Don Cangrejo", "Arenita", "k"],
+    ["¿De qué color es Bluey?", "Azul", "Roja", "Verde", "Amarilla", "k"],
+    ["¿Qué perro de la Patrulla Canina maneja el camión de bomberos?", "Marshall", "Chase", "Rubble", "Skye", "k"],
+    ["¿Cómo se llama el muñeco de nieve de Frozen?", "Olaf", "Sven", "Kristoff", "Hans", "k"],
+    ["¿Quién es la hermana de Elsa en Frozen?", "Anna", "Moana", "Rapunzel", "Bella", "k"],
+    ["¿Qué ogro verde vive en un pantano?", "Shrek", "Hulk", "Buzz", "Grinch", "k"],
+    ["¿Cómo se llama el ratón más famoso de Disney?", "Mickey", "Jerry", "Stuart", "Remy", "k"],
+    ["¿Quién vive en una piña debajo del mar?", "Bob Esponja", "Nemo", "Patricio", "Dory", "k"],
+    ["¿Cómo se llama el papá de Bluey?", "Bandit", "Chilli", "Lucky", "Rex", "k"],
+    ["¿Qué superhéroe tira telarañas?", "El Hombre Araña", "Batman", "Superman", "Hulk", "k"],
+    ["¿Cómo se llama el auto de carreras rojo de la película Cars?", "Rayo McQueen", "Mate", "Turbo", "Herbie", "k"],
+    ["¿Cómo se llama el dinosaurio verde de Toy Story?", "Rex", "Woody", "Slinky", "Buzz", "k"],
+    ["¿Cómo se llama el mago de anteojos que va a Hogwarts?", "Harry Potter", "Ron Weasley", "Draco Malfoy", "Gandalf", "j"],
+    ["¿A qué casa de Hogwarts va Harry Potter?", "Gryffindor", "Slytherin", "Hufflepuff", "Ravenclaw", "j"],
+    ["¿Cómo se llama el saiyajin de pelo negro de Dragon Ball?", "Gokú", "Vegeta", "Gohan", "Piccolo", "j"],
+    ["¿Qué pokemón amarillo tira rayos?", "Pikachu", "Charmander", "Squirtle", "Bulbasaur", "j"],
+    ["¿Quién es el villano que junta las gemas del infinito?", "Thanos", "Loki", "Ultron", "Joker", "j"],
+    ["¿Cómo se llama el hermano de Mario Bros?", "Luigi", "Wario", "Yoshi", "Toad", "j"],
+    ["¿Qué princesa rescata siempre Mario?", "Peach", "Daisy", "Zelda", "Rosalina", "j"],
+    ["¿Qué superhéroe es 'el hombre murciélago'?", "Batman", "Superman", "Flash", "Aquaman", "j"],
+    ["¿Cómo se llama el erizo azul supersónico de los videojuegos?", "Sonic", "Tails", "Knuckles", "Crash", "j"],
+    ["¿Cómo se llama el papá de Simba en El Rey León?", "Mufasa", "Scar", "Timón", "Rafiki", "j"]
   ]},
   cie: { name: "Ciencia", icon: "🔬", css: "--c-cie", qs: [
     ["¿Qué médico argentino desarrolló el bypass coronario?", "René Favaloro", "Luis Agote", "Bernardo Houssay", "Domingo Liotta"],
@@ -759,7 +864,29 @@ const BANK = {
     ["¿Cuál es el animal terrestre más grande?", "El elefante africano", "La jirafa", "El rinoceronte", "El hipopótamo"],
     ["¿Qué gas absorben las plantas para hacer la fotosíntesis?", "Dióxido de carbono", "Oxígeno", "Nitrógeno", "Metano"],
     ["¿Quién fue el primer ser humano en el espacio?", "Yuri Gagarin", "Neil Armstrong", "Alan Shepard", "John Glenn"],
-    ["¿Cómo se llamaba la perra que fue al espacio en 1957?", "Laika", "Belka", "Strelka", "Luna"]
+    ["¿Cómo se llamaba la perra que fue al espacio en 1957?", "Laika", "Belka", "Strelka", "Luna"],
+    ["¿Cuántas patas tiene un perro?", "4", "2", "6", "8", "k"],
+    ["¿Qué animal tiene el cuello más largo?", "La jirafa", "El elefante", "El caballo", "La vaca", "k"],
+    ["¿Qué animal es el rey de la selva?", "El león", "El tigre", "El mono", "El loro", "k"],
+    ["¿Qué animal hace 'muu'?", "La vaca", "El gato", "El perro", "La oveja", "k"],
+    ["¿De qué color es el cielo en un día de sol?", "Celeste", "Verde", "Rosa", "Negro", "k"],
+    ["¿Qué animal tiene caparazón y camina despacito?", "La tortuga", "El conejo", "El perro", "El pájaro", "k"],
+    ["¿Cuántos dedos tenés en una mano?", "5", "4", "6", "10", "k"],
+    ["¿Qué necesitan las plantas para crecer?", "Agua y sol", "Caramelos", "Juguetes", "Música", "k"],
+    ["¿Qué insecto vuela de flor en flor y hace miel?", "La abeja", "La mosca", "La hormiga", "El mosquito", "k"],
+    ["¿Dónde viven los peces?", "En el agua", "En los árboles", "En cuevas", "En el cielo", "k"],
+    ["¿Qué animal salta y lleva a su cría en una bolsa?", "El canguro", "El mono", "El conejo", "La rana", "k"],
+    ["¿Qué mascota mueve la cola cuando está contenta?", "El perro", "El pez", "La tortuga", "El canario", "k"],
+    ["¿Qué órgano usamos para pensar?", "El cerebro", "El corazón", "El estómago", "Los pulmones", "j"],
+    ["¿Qué órgano late y bombea la sangre?", "El corazón", "El cerebro", "El hígado", "Los riñones", "j"],
+    ["¿Con qué respiran los peces bajo el agua?", "Con branquias", "Con pulmones", "Con la nariz", "Con la boca", "j"],
+    ["¿En qué se convierte la oruga?", "En mariposa", "En abeja", "En mosca", "En libélula", "j"],
+    ["¿Qué planeta es conocido como 'el planeta rojo'?", "Marte", "Venus", "Júpiter", "Saturno", "j"],
+    ["¿Qué estado del agua es el hielo?", "Sólido", "Líquido", "Gaseoso", "Vapor", "j"],
+    ["¿Hacia dónde apunta siempre la brújula?", "Al norte", "Al sur", "Al este", "A tu casa", "j"],
+    ["¿Cuántos dientes de leche tienen los chicos?", "20", "32", "10", "28", "j"],
+    ["¿Cuál es el animal terrestre más veloz?", "El guepardo", "El león", "El caballo", "La liebre", "j"],
+    ["¿Qué aparece en el cielo cuando llueve y hay sol?", "El arcoíris", "Un rayo", "La aurora", "Un cometa", "j"]
   ]},
   rut: { name: "La Ruta", icon: "🛣️", css: "--c-rut", qs: [
     ["¿Qué significa 'Trelew' en galés?", "Pueblo de Luis", "Valle verde", "Río grande", "Tierra nueva"],
@@ -804,7 +931,17 @@ const BANK = {
     ["¿Cómo se llama el festival cultural galés que se celebra en Chubut?", "El Eisteddfod", "El Gorsedd", "La Semana Galesa", "El Festival del Té"],
     ["¿Qué ruta escénica une San Martín de los Andes con Villa La Angostura?", "El Camino de los Siete Lagos", "La Ruta del Vino", "El Corredor de los Andes", "La Huella Andina"],
     ["¿Qué ciudad neuquina está a orillas del lago Lácar?", "San Martín de los Andes", "Junín de los Andes", "Aluminé", "Villa Pehuenia"],
-    ["¿De qué pez es capital nacional Junín de los Andes?", "La trucha", "El pejerrey", "El salmón", "El dorado"]
+    ["¿De qué pez es capital nacional Junín de los Andes?", "La trucha", "El pejerrey", "El salmón", "El dorado"],
+    ["¿Qué animal blanco y negro camina parado cerca del mar patagónico?", "El pingüino", "El oso", "La cebra", "El pato", "k"],
+    ["¿Qué animal gigante del mar se ve en Puerto Madryn?", "La ballena", "El tiburón", "El delfín", "La foca", "k"],
+    ["¿Qué animales gigantes vivieron hace millones de años y hay en el museo de Trelew?", "Los dinosaurios", "Los dragones", "Los mamuts", "Los elefantes", "k"],
+    ["¿En invierno en la Patagonia hace...?", "Frío", "Calor", "Ni frío ni calor", "Siempre calorcito", "k"],
+    ["¿Qué animal parecido a la llama corre por el campo patagónico?", "El guanaco", "El camello", "La jirafa", "El ciervo", "k"],
+    ["¿Qué animal marino chiquito y juguetón salta cerca de Rawson?", "La tonina", "La ballena", "El pulpo", "El pingüino", "j"],
+    ["¿Qué deporte se practica en la nieve en Bariloche y Esquel?", "El esquí", "El surf", "El buceo", "El golf", "j"],
+    ["¿Qué animal con pinzas camina de costado por la playa?", "El cangrejo", "La estrella de mar", "El caracol", "La medusa", "j"],
+    ["¿Qué torta típica se come con el té en Gaiman?", "La torta galesa", "El brownie", "La chocotorta", "El lemon pie", "j"],
+    ["¿Qué animal andino escupe cuando se enoja?", "La llama", "El puma", "El cóndor", "El zorro", "j"]
   ]},
   gen: { name: "Cultura General", icon: "💡", css: "--c-gen", qs: [
     ["¿Quién pintó 'La noche estrellada'?", "Vincent van Gogh", "Claude Monet", "Pablo Picasso", "Salvador Dalí"],
@@ -864,7 +1001,34 @@ const BANK = {
     ["¿Cuántos lados tiene un pentágono?", "5", "6", "7", "4"],
     ["¿Qué se festeja el 25 de mayo con locro y pastelitos?", "La Revolución de Mayo", "La Independencia", "El día de la bandera", "El día del trabajador"],
     ["¿Qué metal vale más por gramo?", "El oro", "La plata", "El cobre", "El bronce"],
-    ["¿Cómo se llama una colección de mapas encuadernada?", "Atlas", "Almanaque", "Anuario", "Compendio"]
+    ["¿Cómo se llama una colección de mapas encuadernada?", "Atlas", "Almanaque", "Anuario", "Compendio"],
+    ["¿Cuánto es 2 + 2?", "4", "3", "5", "22", "k"],
+    ["¿Cuántos días tiene la semana?", "7", "5", "6", "10", "k"],
+    ["¿Qué comida redonda tiene queso y salsa de tomate?", "La pizza", "La torta", "El pan", "La tarta", "k"],
+    ["¿Qué se sopla en la torta de cumpleaños?", "Las velitas", "Los globos", "El papel", "Las serpentinas", "k"],
+    ["¿Quién trae los regalos en Navidad?", "Papá Noel", "El Ratón Pérez", "El conejo", "El duende", "k"],
+    ["¿Quiénes traen regalos la noche del 5 de enero?", "Los Reyes Magos", "Papá Noel", "Las hadas", "Los duendes", "k"],
+    ["¿Cuánto es 5 + 5?", "10", "9", "11", "55", "k"],
+    ["¿Qué color sale si mezclás amarillo y azul?", "Verde", "Rojo", "Naranja", "Violeta", "k"],
+    ["¿Cuántas ruedas tiene una bicicleta?", "2", "3", "4", "1", "k"],
+    ["¿Dónde guardamos la comida para que esté fresquita?", "En la heladera", "En el horno", "En el ropero", "Debajo de la cama", "k"],
+    ["¿Qué usás cuando llueve para no mojarte?", "El paraguas", "Los lentes", "La gorra", "El abanico", "k"],
+    ["¿Cuál es el primer mes del año?", "Enero", "Diciembre", "Marzo", "Julio", "k"],
+    ["¿Qué comida argentina es de carne envuelta en masa?", "La empanada", "La pizza", "El pancho", "La hamburguesa", "k"],
+    ["¿Cuántos meses tiene el año?", "12", "10", "11", "24", "k"],
+    ["¿Qué número viene después del 9?", "10", "8", "11", "19", "k"],
+    ["¿Cuánto es 8 × 7?", "56", "54", "64", "48", "j"],
+    ["¿Cuántos lados tiene un triángulo?", "3", "4", "5", "6", "j"],
+    ["¿Cuántos minutos tiene una hora?", "60", "100", "30", "90", "j"],
+    ["¿Cómo se dice 'casa' en inglés?", "House", "Home run", "Horse", "Mouse", "j"],
+    ["¿Cómo se dice 'perro' en inglés?", "Dog", "Cat", "Duck", "Frog", "j"],
+    ["¿Cuántos son media docena?", "6", "12", "3", "10", "j"],
+    ["¿Qué pieza del ajedrez se mueve en forma de L?", "El caballo", "La torre", "El alfil", "El peón", "j"],
+    ["¿Qué número es el romano X?", "10", "5", "100", "50", "j"],
+    ["¿Cuántos gramos tiene un kilo?", "1000", "100", "500", "10", "j"],
+    ["¿Qué inventó primero la humanidad?", "La rueda", "El auto", "El avión", "La bicicleta", "j"],
+    ["¿De qué colores son los taxis porteños?", "Negro y amarillo", "Blanco y azul", "Rojo y negro", "Verde y blanco", "j"],
+    ["¿Qué se come el 29 de cada mes con un billete abajo del plato?", "Ñoquis", "Ravioles", "Milanesas", "Tallarines", "j"]
   ]},
   act: { name: "Actualidad", icon: "📰", css: "--c-act", qs: [
     ["¿Qué papa asumió en 2025 tras la muerte de Francisco?", "León XIV", "Benedicto XVII", "Juan XXIV", "Pío XIII"],
@@ -914,7 +1078,17 @@ const BANK = {
     ["¿Qué selección ganó la Eurocopa 2024?", "España", "Inglaterra", "Francia", "Alemania"],
     ["¿Qué país organizó el Mundial 2022?", "Qatar", "Emiratos Árabes", "Arabia Saudita", "Rusia"],
     ["¿Qué técnico dirige a la selección argentina campeona del mundo?", "Lionel Scaloni", "Gerardo Martino", "Marcelo Gallardo", "Mauricio Pochettino"],
-    ["¿Cuál es la segunda criptomoneda más conocida tras Bitcoin?", "Ethereum", "Dogecoin", "Solana", "Ripple"]
+    ["¿Cuál es la segunda criptomoneda más conocida tras Bitcoin?", "Ethereum", "Dogecoin", "Solana", "Ripple"],
+    ["¿Cómo se llama el juego donde construís con bloques y hay creepers?", "Minecraft", "Roblox", "Fortnite", "Zelda", "k"],
+    ["¿Cómo se llama la app de videos cortos con bailecitos?", "TikTok", "WhatsApp", "Gmail", "Maps", "k"],
+    ["¿En qué equipo de rosa juega Messi ahora?", "Inter Miami", "Barcelona", "PSG", "River", "k"],
+    ["¿Cómo se llama el juego de batallas donde caés de un colectivo volador?", "Fortnite", "Minecraft", "Mario Kart", "FIFA", "k"],
+    ["¿Qué consola es la de Mario?", "Nintendo", "PlayStation", "Xbox", "Atari", "j"],
+    ["¿Qué consola fabrica Sony?", "PlayStation", "Nintendo", "Xbox", "Game Boy", "j"],
+    ["¿En qué juego online creás y jugás jueguitos con robux?", "Roblox", "Minecraft", "Fortnite", "Among Us", "j"],
+    ["¿En qué liga de fútbol 7 con streamers participa el Kun Agüero?", "La Kings League", "La Champions", "La Libertadores", "La Superliga", "j"],
+    ["¿Qué red social es de videos y canales que seguís?", "YouTube", "Gmail", "LinkedIn", "Pinterest", "j"],
+    ["¿Cómo se llama la inteligencia artificial con la que podés chatear?", "ChatGPT", "Google Maps", "Alexa Prime", "Wikipedia", "j"]
   ]},
   cap: { name: "Capitales del Mundo", icon: "🌍", css: "--c-cap", qs: [
     ["¿Cuál es la capital de Australia?", "Canberra", "Sídney", "Melbourne", "Perth"],
@@ -924,7 +1098,7 @@ const BANK = {
     ["¿Cuál es la capital de Brasil?", "Brasilia", "Río de Janeiro", "San Pablo", "Salvador"],
     ["¿Cuál es la capital de Marruecos?", "Rabat", "Casablanca", "Marrakech", "Fez"],
     ["¿Cuál es la capital de Egipto?", "El Cairo", "Alejandría", "Luxor", "Giza"],
-    ["¿Cuál es la capital de Japón?", "Tokio", "Kioto", "Osaka", "Yokohama"],
+    ["¿Cuál es la capital de Japón?", "Tokio", "Kioto", "Osaka", "Yokohama", "j"],
     ["¿Cuál es la capital administrativa de Sudáfrica?", "Pretoria", "Ciudad del Cabo", "Johannesburgo", "Durban"],
     ["¿Cuál es la capital de la India?", "Nueva Delhi", "Bombay", "Calcuta", "Bangalore"],
     ["¿Cuál es la capital de Polonia?", "Varsovia", "Cracovia", "Gdansk", "Poznan"],
@@ -932,8 +1106,8 @@ const BANK = {
     ["¿Cuál es la capital de Grecia?", "Atenas", "Salónica", "Esparta", "Creta"],
     ["¿Cuál es la capital oficial de los Países Bajos?", "Ámsterdam", "La Haya", "Róterdam", "Utrecht"],
     ["¿Cuál es la capital de Nueva Zelanda?", "Wellington", "Auckland", "Christchurch", "Hamilton"],
-    ["¿Cuál es la capital de Estados Unidos?", "Washington D.C.", "Nueva York", "Los Ángeles", "Chicago"],
-    ["¿Cuál es la capital de China?", "Pekín", "Shanghái", "Hong Kong", "Cantón"],
+    ["¿Cuál es la capital de Estados Unidos?", "Washington D.C.", "Nueva York", "Los Ángeles", "Chicago", "j"],
+    ["¿Cuál es la capital de China?", "Pekín", "Shanghái", "Hong Kong", "Cantón", "j"],
     ["¿Cuál es la capital de Vietnam?", "Hanói", "Ho Chi Minh", "Da Nang", "Hue"],
     ["¿Cuál es la capital de Cuba?", "La Habana", "Santiago de Cuba", "Varadero", "Camagüey"],
     ["¿Cuál es la capital de Jordania?", "Ammán", "Petra", "Aqaba", "Damasco"],
@@ -956,10 +1130,10 @@ const BANK = {
     ["¿Cuál es la sede de gobierno de Bolivia?", "La Paz", "Sucre", "Santa Cruz", "Cochabamba"],
     ["¿Cuál es la capital de México?", "Ciudad de México", "Guadalajara", "Monterrey", "Cancún"],
     ["¿Cuál es la capital de Alemania?", "Berlín", "Múnich", "Fráncfort", "Hamburgo"],
-    ["¿Cuál es la capital de Francia?", "París", "Marsella", "Lyon", "Burdeos"],
-    ["¿Cuál es la capital de Italia?", "Roma", "Milán", "Nápoles", "Turín"],
-    ["¿Cuál es la capital de España?", "Madrid", "Barcelona", "Sevilla", "Valencia"],
-    ["¿Cuál es la capital del Reino Unido?", "Londres", "Mánchester", "Liverpool", "Birmingham"],
+    ["¿Cuál es la capital de Francia?", "París", "Marsella", "Lyon", "Burdeos", "j"],
+    ["¿Cuál es la capital de Italia?", "Roma", "Milán", "Nápoles", "Turín", "j"],
+    ["¿Cuál es la capital de España?", "Madrid", "Barcelona", "Sevilla", "Valencia", "j"],
+    ["¿Cuál es la capital del Reino Unido?", "Londres", "Mánchester", "Liverpool", "Birmingham", "j"],
     ["¿Cuál es la capital de Bélgica?", "Bruselas", "Amberes", "Brujas", "Gante"],
     ["¿Cuál es la capital de Hungría?", "Budapest", "Praga", "Viena", "Bratislava"],
     ["¿Cuál es la capital de la República Checa?", "Praga", "Budapest", "Varsovia", "Brno"],
@@ -983,7 +1157,12 @@ const BANK = {
     ["¿Cuál es la capital de Nepal?", "Katmandú", "Timbu", "Daca", "Lhasa"],
     ["¿Cuál es la capital de Costa Rica?", "San José", "San Salvador", "Managua", "Tegucigalpa"],
     ["¿Cuál es la capital de República Dominicana?", "Santo Domingo", "Punta Cana", "Santiago", "San Juan"],
-    ["¿Cuál es la capital de Ecuador?", "Quito", "Guayaquil", "Cuenca", "Manta"]
+    ["¿Cuál es la capital de Ecuador?", "Quito", "Guayaquil", "Cuenca", "Manta"],
+    ["¿Cuál es la capital de Argentina?", "Buenos Aires", "Córdoba", "Rosario", "Mendoza", "k"],
+    ["¿En qué país está la Torre Eiffel?", "Francia", "Italia", "España", "Inglaterra", "k"],
+    ["¿En qué país está el Cristo Redentor y el carnaval de Río?", "Brasil", "México", "Perú", "Colombia", "k"],
+    ["¿Qué país está del otro lado de la cordillera?", "Chile", "Uruguay", "Brasil", "Bolivia", "k"],
+    ["¿En qué continente está Argentina?", "América", "Europa", "África", "Asia", "k"]
   ]},
   ref: { name: "Dichos y Refranes", icon: "🗣️", css: "--c-ref", qs: [
     ["Complete: 'Más vale pájaro en mano...'", "que cien volando", "que nido vacío", "que dos en la jaula", "que pichón en el techo"],
@@ -1043,7 +1222,12 @@ const BANK = {
     ["Complete: 'Cada oveja...'", "con su pareja", "en su corral", "con su lana", "sigue al rebaño"],
     ["Complete: 'Quien fue a Sevilla...'", "perdió su silla", "no volvió más", "encontró su villa", "gastó su plata"],
     ["Complete: 'No todo lo que brilla...'", "es oro", "es plata", "alumbra", "vale"],
-    ["Complete: 'A perro flaco...'", "todo son pulgas", "no le ladran", "hueso duro", "poca comida"]
+    ["Complete: 'A perro flaco...'", "todo son pulgas", "no le ladran", "hueso duro", "poca comida"],
+    ["Complete: 'Más vale tarde...'", "que nunca", "que temprano", "que jamás", "que mañana", "j"],
+    ["Complete: 'El que busca...'", "encuentra", "se pierde", "se cansa", "gana", "j"],
+    ["Complete: 'Querer es...'", "poder", "ganar", "soñar", "pedir", "j"],
+    ["Complete: 'La práctica hace...'", "al maestro", "al campeón", "la perfección", "el trabajo", "j"],
+    ["Complete: 'En boca cerrada...'", "no entran moscas", "no hay palabras", "no hay mentiras", "todo es silencio", "j"]
   ]},
   ace: { name: "Acertijos", icon: "🧩", css: "--c-ace", qs: [
     ["Oro parece, plata no es. ¿Qué es?", "El plátano", "El durazno", "El membrillo", "La naranja"],
@@ -1090,7 +1274,28 @@ const BANK = {
     ["Tengo cabeza y tengo dientes, pero no soy persona ni animal.", "El ajo", "El peine", "El rastrillo", "El tenedor"],
     ["¿Qué se compra para comer pero no se come?", "El plato", "El pan", "La sal", "La fruta"],
     ["Todos me pisan y yo no piso a nadie. ¿Qué soy?", "El piso", "La sombra", "La alfombra roja", "El pasto"],
-    ["¿Qué le dijo un semáforo a otro?", "No me mires que me estoy cambiando", "Qué verde estás", "Dame paso", "Estoy que ardo"]
+    ["¿Qué le dijo un semáforo a otro?", "No me mires que me estoy cambiando", "Qué verde estás", "Dame paso", "Estoy que ardo"],
+    ["Tiene orejas largas y salta. ¿Qué es?", "El conejo", "El perro", "El gato", "El pato", "k"],
+    ["Soy roja, redonda y estoy en la ensalada. ¿Qué soy?", "El tomate", "La banana", "La papa", "La uva", "k"],
+    ["¿Qué animal es blanco y negro y nos da leche?", "La vaca", "La cebra", "El pingüino", "El gato", "k"],
+    ["Tengo púas como alfileres y me hago bolita. ¿Qué soy?", "El erizo", "El conejo", "El gusano", "El pez", "k"],
+    ["De noche vuelo y digo 'uh-uh'. ¿Qué soy?", "La lechuza", "El gallo", "La paloma", "El loro", "k"],
+    ["Soy verde, salto en el charco y digo 'croac'. ¿Qué soy?", "La rana", "El grillo", "La tortuga", "El pez", "k"],
+    ["Empiezo como semilla chiquita y crezco alto con ramas. ¿Qué soy?", "El árbol", "La piedra", "El pasto", "La flor", "k"],
+    ["Tengo trompa larga y orejas gigantes. ¿Qué soy?", "El elefante", "El ratón", "El caballo", "El oso", "k"],
+    ["Ronroneo, tomo leche y digo 'miau'. ¿Qué soy?", "El gato", "El perro", "El pájaro", "El conejo", "k"],
+    ["Soy redonda como una pelota y de noche ilumino el cielo. ¿Qué soy?", "La Luna", "La nube", "La estrella fugaz", "La lámpara", "k"],
+    ["Caigo del cielo en invierno, blanca y fría. ¿Qué soy?", "La nieve", "La lluvia", "La hoja", "La pluma", "k"],
+    ["Está llena de agujeros y aun así retiene el agua. ¿Qué es?", "La esponja", "La red", "La bolsa", "El colador", "j"],
+    ["Va de la casa al pueblo sin moverse nunca. ¿Qué es?", "El camino", "El auto", "El río", "El cartero", "j"],
+    ["Cae de pie y corre acostada. ¿Qué es?", "La lluvia", "La pelota", "La hoja", "La sombra", "j"],
+    ["Está una vez en 'minuto', dos veces en 'momento' y ninguna en 'hora'. ¿Qué es?", "La letra M", "El tiempo", "La letra O", "El segundo", "j"],
+    ["Tiene ciudades sin casas, ríos sin agua y bosques sin árboles. ¿Qué es?", "El mapa", "El cuento", "El sueño", "El dibujo", "j"],
+    ["Hay 5 pájaros en un cable y un ruido espanta a uno. ¿Cuántos quedan?", "Ninguno, se vuelan todos", "4", "5", "1", "j"],
+    ["Puede llenar una habitación entera sin ocupar lugar. ¿Qué es?", "La luz", "El aire", "El ruido", "El olor", "j"],
+    ["¿Cuál es el doble de la mitad de 8?", "8", "4", "16", "2", "j"],
+    ["¿Qué mes del año tiene menos días?", "Febrero", "Enero", "Abril", "Junio", "j"],
+    ["Son dos ventanitas que se abren de día y se cierran de noche. ¿Qué son?", "Los ojos", "Las cortinas", "Las puertas", "Las manos", "j"]
   ]},
   ford: { name: "Ford, Mundial y Argentina", icon: "🚙", css: "--c-for", qs: [
     ["¿Quién fundó la Ford Motor Company?", "Henry Ford", "Harvey Firestone", "John Ford", "William Durant"],
@@ -1125,7 +1330,15 @@ const BANK = {
     ["¿Cuál es la piedra nacional argentina?", "La rodocrosita", "El ágata", "El cuarzo rosado", "La turquesa"],
     ["¿Qué baile argentino y uruguayo es Patrimonio de la Humanidad?", "El tango", "La chacarera", "El malambo", "La zamba"],
     ["¿Qué se celebra cada 9 de julio?", "La Independencia", "La Revolución de Mayo", "El día de la bandera", "El día de San Martín"],
-    ["¿Cómo se llama la casa de gobierno de la Argentina?", "La Casa Rosada", "La Casa Blanca", "El Cabildo", "La Casa de Tucumán"]
+    ["¿Cómo se llama la casa de gobierno de la Argentina?", "La Casa Rosada", "La Casa Blanca", "El Cabildo", "La Casa de Tucumán"],
+    ["¿Qué marca de autos tiene el logo de un óvalo azul?", "Ford", "Fiat", "Renault", "Toyota", "k"],
+    ["¿Con qué se maneja el auto?", "Con el volante", "Con los pedales solos", "Con la palanca", "Con el espejo", "k"],
+    ["¿Qué luz del semáforo dice que hay que parar?", "La roja", "La verde", "La amarilla", "La azul", "k"],
+    ["¿De qué país es la marca Ford?", "Estados Unidos", "Alemania", "Japón", "Francia", "j"],
+    ["¿Qué es más rápido?", "Un auto de Fórmula 1", "Un colectivo", "Una bicicleta", "Un tractor", "j"],
+    ["¿Qué animal tiene el escudo de Ferrari?", "Un caballo", "Un toro", "Un león", "Un águila", "j"],
+    ["¿En qué categoría de carreras corre Colapinto?", "La Fórmula 1", "El TC", "El rally", "El karting", "j"],
+    ["¿Qué pedal usás para frenar el auto?", "El freno", "El acelerador", "El embrague", "El arranque", "j"]
   ]}
 };
 
@@ -1165,23 +1378,32 @@ $("btn-add-player").addEventListener("click", () => {
   const box = $("setup-players");
   const n = box.querySelectorAll("input").length;
   if (n >= 8) { $("btn-add-player").disabled = true; return; }
-  const inp = document.createElement("input");
-  inp.maxLength = 14;
-  inp.placeholder = "Jugador " + (n + 1);
-  box.appendChild(inp);
-  inp.focus();
+  const row = document.createElement("div");
+  row.className = "p-row";
+  row.innerHTML = '<input maxlength="14" placeholder="Jugador ' + (n + 1) + '">' +
+    '<div class="lvls"><button class="lvl" data-l="k">\u{1F423}</button><button class="lvl" data-l="j">\u{1F680}</button><button class="lvl sel" data-l="a">\u{1F9C9}</button></div>';
+  box.appendChild(row);
+  row.querySelector("input").focus();
   if (n + 1 >= 8) $("btn-add-player").disabled = true;
+});
+
+// selector de nivel por jugador
+$("setup-players").addEventListener("click", e => {
+  const b = e.target.closest(".lvl"); if (!b) return;
+  b.closest(".lvls").querySelectorAll(".lvl").forEach(o => o.classList.remove("sel"));
+  b.classList.add("sel");
 });
 
 $("btn-start").addEventListener("click", () => {
   const players = [];
-  [...$("setup-players").querySelectorAll("input")].forEach(inp => {
-    const v = inp.value.trim();
-    if (v) players.push(v);
+  [...$("setup-players").querySelectorAll(".p-row")].forEach(row => {
+    const v = row.querySelector("input").value.trim();
+    if (!v) return;
+    const sel = row.querySelector(".lvl.sel");
+    players.push({ name: v, level: sel ? sel.dataset.l : "a" });
   });
   if (players.length < 2) {
-    // sin nombres cargados: usar los 4 por defecto
-    while (players.length < 4) players.push("Jugador " + (players.length + 1));
+    while (players.length < 4) players.push({ name: "Jugador " + (players.length + 1), level: "a" });
   }
   S.players = players;
   startGame();
@@ -1191,11 +1413,6 @@ function startGame() {
   S.scores = S.players.map(() => 0);
   S.streaks = S.players.map(() => 0);
   S.round = 0; S.turn = 0; S.lastCat = null;
-  for (const k of Object.keys(BANK)) {
-    if (!S.order[k] || S.order[k].ptr >= S.order[k].idx.length) {
-      S.order[k] = { idx: shuffle([...BANK[k].qs.keys()]), ptr: 0 };
-    }
-  }
   $("trip").hidden = false;
   $("scores").hidden = false;
   renderScores();
@@ -1207,7 +1424,7 @@ function startGame() {
 function renderScores() {
   $("scores").innerHTML = S.players.map((p, i) =>
     `<div class="score-chip${i === S.turn ? " turn" : ""}">
-       <span class="nm">${esc(p)}${S.streaks[i] >= 3 ? " 🔥" : ""}</span>
+       <span class="nm">${esc(p.name)}${S.streaks[i] >= 3 ? " 🔥" : ""}</span>
        <span class="pts">${S.scores[i]}</span>
      </div>`).join("");
 }
@@ -1221,26 +1438,39 @@ function renderTrip() {
 function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
 
 /* ---- selección de categoría y pregunta ---- */
-function pickCategory() {
-  // totalmente al azar; solo se evita repetir la misma del turno anterior
-  const keys = Object.keys(BANK).filter(k => k !== S.lastCat);
+function poolIdx(level, k) {
+  // adultos: preguntas sin etiqueta; chicos: solo las de su nivel
+  const out = [];
+  BANK[k].qs.forEach((q, i) => {
+    const t = q[5];
+    if (level === "a" ? t === undefined : t === level) out.push(i);
+  });
+  return out;
+}
+function pickCategory(level) {
+  let keys = Object.keys(BANK).filter(k => poolIdx(level, k).length > 0);
+  const sinRepetir = keys.filter(k => k !== S.lastCat);
+  if (sinRepetir.length) keys = sinRepetir;
   const k = keys[Math.floor(Math.random() * keys.length)];
   S.lastCat = k;
   return k;
 }
-function drawQuestion(k) {
-  const o = S.order[k];
-  if (o.ptr >= o.idx.length) { o.idx = shuffle([...BANK[k].qs.keys()]); o.ptr = 0; }
+function drawQuestion(level, k) {
+  const key = level + ":" + k;
+  let o = S.order[key];
+  if (!o || o.ptr >= o.idx.length) o = S.order[key] = { idx: shuffle(poolIdx(level, k)), ptr: 0 };
   return o.idx[o.ptr++];
 }
 
 /* ---- flujo de turnos ---- */
+const LVL_EMOJI = { k: " \u{1F423}", j: " \u{1F680}", a: "" };
 function nextTurn() {
   if (S.round >= S.totalRounds) { endGame(); return; }
-  S.catKey = pickCategory();
-  S.qIdx = drawQuestion(S.catKey);
+  const p = S.players[S.turn];
+  S.catKey = pickCategory(p.level);
+  S.qIdx = drawQuestion(p.level, S.catKey);
   $("turn-round").textContent = `Ronda ${S.round + 1} de ${S.totalRounds}`;
-  $("turn-name").textContent = S.players[S.turn];
+  $("turn-name").textContent = p.name + LVL_EMOJI[p.level];
   document.querySelector(".turn-sub").textContent = S.presenter
     ? "Leele la pregunta en voz alta."
     : "¡Te toca! Agarrá el teléfono.";
@@ -1262,7 +1492,7 @@ function spinRoulette() {
   if (S.spinId) { clearInterval(S.spinId); S.spinId = null; }
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   if (reduced) { setCat(S.catKey); return; }
-  const keys = Object.keys(BANK);
+  const keys = Object.keys(BANK).filter(k => poolIdx(S.players[S.turn].level, k).length > 0 || k === S.catKey);
   let i = Math.floor(Math.random() * keys.length), ticks = 0;
   const total = 12 + Math.floor(Math.random() * 5);
   S.spinId = setInterval(() => {
@@ -1287,7 +1517,7 @@ function showQuestion() {
   S.noOptions = false;
   $("q-cat").innerHTML = `${cat.icon} ${cat.name}`;
   $("q-cat").style.background = `var(${cat.css})`;
-  $("q-turn").textContent = S.players[S.turn];
+  $("q-turn").textContent = S.players[S.turn].name;
   $("q-text").textContent = q[0];
   $("verdict").classList.remove("show");
 
@@ -1400,7 +1630,7 @@ function answer(btn, ok, timedOut = false) {
   // ¿quién sigue?
   const lastOfRound = S.turn === S.players.length - 1;
   const gameOver = lastOfRound && S.round === S.totalRounds - 1;
-  const nextPlayer = S.players[(S.turn + 1) % S.players.length];
+  const nextPlayer = S.players[(S.turn + 1) % S.players.length].name;
   $("btn-next").textContent = gameOver ? "Ver resultado final 🏁"
     : S.presenter ? `Siguiente: le toca a ${nextPlayer}`
     : `Pasale el teléfono a ${nextPlayer}`;
@@ -1418,7 +1648,7 @@ $("btn-next").addEventListener("click", () => {
 /* ---- final ---- */
 function endGame() {
   $("trip-car").style.left = "96%";
-  const ranked = S.players.map((p, i) => ({ p, s: S.scores[i] })).sort((a, b) => b.s - a.s);
+  const ranked = S.players.map((p, i) => ({ p: p.name, s: S.scores[i] })).sort((a, b) => b.s - a.s);
   const top = ranked[0].s;
   const winners = ranked.filter(r => r.s === top).map(r => r.p);
   $("end-title").textContent = winners.length > 1
