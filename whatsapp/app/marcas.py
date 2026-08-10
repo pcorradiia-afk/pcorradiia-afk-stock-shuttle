@@ -148,6 +148,16 @@ class Contexto:
 #  Helpers para construir el prompt de IA por (marca × línea) sin repetir texto
 # =====================================================================
 def _prompt(linea: str, marca: str, saludo: str) -> str:
+    # Ventas de Pedro Corradi tiene su propio cerebro: el Súper Asesor "Tomás"
+    # (prompt v5.14 + bases de conocimiento en whatsapp/conocimiento/tomas/).
+    # Si los archivos no están, seguimos con el prompt corto de abajo.
+    if linea == LINEA_VENTAS and "Pedro Corradi" in saludo:
+        from .conocimiento import prompt_tomas
+
+        tomas = prompt_tomas()
+        if tomas:
+            return tomas
+
     base = (
         f"Sos el asistente virtual de {saludo}, concesionario oficial {marca}. "
         "Hablás en español rioplatense, cercano y profesional. "

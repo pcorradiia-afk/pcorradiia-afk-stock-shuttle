@@ -72,14 +72,30 @@ def _responder_con_claude(
     repo = obtener_repo()
     historial = repo.historial(numero_cuenta, telefono)
 
-    # Si ya hay charla previa, reforzamos (fuerte) que NO vuelva a saludar.
-    system = ctx.system_prompt
+    # El system va en dos bloques: el prompt de la línea (grande y estable —
+    # con el cerebro de Tomás son decenas de miles de caracteres) se marca para
+    # PROMPT CACHING, así Anthropic lo cobra ~10% después del primer mensaje.
+    # El refuerzo de "no saludes" es dinámico y va en un bloque aparte para no
+    # invalidar ese caché.
+    system: list[dict] = [
+        {
+            "type": "text",
+            "text": ctx.system_prompt,
+            "cache_control": {"type": "ephemeral"},
+        }
+    ]
     if historial:
-        system += (
-            "\n\n[CONTEXTO] Ya venís conversando con este cliente (hay mensajes "
-            "previos en este chat). NO saludes, NO te presentes y NO escribas "
-            "'¡Hola!' ni 'Bienvenido': continuá la charla directo, retomando lo "
-            "último que te dijo, sin repetir lo ya dicho."
+        system.append(
+            {
+                "type": "text",
+                "text": (
+                    "[CONTEXTO] Ya venís conversando con este cliente (hay "
+                    "mensajes previos en este chat). NO saludes, NO te presentes "
+                    "y NO escribas '¡Hola!' ni 'Bienvenido': continuá la charla "
+                    "directo, retomando lo último que te dijo, sin repetir lo ya "
+                    "dicho."
+                ),
+            }
         )
 
     cliente = Anthropic(api_key=api_key)
