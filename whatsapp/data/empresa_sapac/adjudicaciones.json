@@ -1,0 +1,18 @@
+[
+  {
+    "nombre": "Lucía Fernández",
+    "telefono": "0351-15-444-2200",
+    "grupo": "T-310",
+    "orden": "021",
+    "modelo": "Toyota Corolla Cross",
+    "fecha_acto": "21/06/2026"
+  },
+  {
+    "nombre": "Roberto Sosa",
+    "telefono": "+5493514443311",
+    "grupo": "T-310",
+    "orden": "077",
+    "modelo": "Toyota Yaris",
+    "fecha_acto": "21/06/2026"
+  }
+]

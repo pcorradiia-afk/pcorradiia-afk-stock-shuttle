@@ -1,0 +1,16 @@
+[
+  {
+    "nombre": "Juan Pérez",
+    "telefono": "0351 15 555-1234",
+    "periodo": "Junio 2026",
+    "importe": "185.400",
+    "url": "https://pagos.fiorasi.com/pedro_corradi/cupon-juan-202606.pdf"
+  },
+  {
+    "nombre": "María Gómez",
+    "telefono": "+54 9 351 555 6789",
+    "periodo": "Junio 2026",
+    "importe": "172.900",
+    "url": "https://pagos.fiorasi.com/pedro_corradi/cupon-maria-202606.pdf"
+  }
+]

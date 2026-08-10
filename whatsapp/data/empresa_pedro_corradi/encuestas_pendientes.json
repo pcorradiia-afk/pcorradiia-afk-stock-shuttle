@@ -1,0 +1,23 @@
+[
+  {
+    "nombre": "Juan Pérez",
+    "telefono": "0351 15 555-1234",
+    "tipo": "taller",
+    "referencia": "Service 40.000 km de tu Ranger",
+    "fecha_evento": "2026-06-12T10:00:00"
+  },
+  {
+    "nombre": "María Gómez",
+    "telefono": "+54 9 351 555 6789",
+    "tipo": "ventas",
+    "referencia": "Ford Territory Titanium",
+    "fecha_evento": "2026-06-11T16:00:00"
+  },
+  {
+    "nombre": "Carlos Díaz",
+    "telefono": "3515554321",
+    "tipo": "taller",
+    "referencia": "Service de tu Bronco Sport",
+    "fecha_evento": "2026-06-14T08:00:00"
+  }
+]

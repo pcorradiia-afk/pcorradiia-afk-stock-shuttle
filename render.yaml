@@ -1,0 +1,29 @@
+# Despliegue del puente de WhatsApp (backend Python) en Render.
+# El frontend del grupo se sigue desplegando en Vercel; esto es solo el backend.
+# Guía paso a paso: whatsapp/RENDER_SETUP.md
+services:
+  - type: web
+    name: fiorasi-whatsapp
+    runtime: python
+    rootDir: whatsapp
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      # Secretos: se cargan a mano en el panel de Render (sync: false).
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      # Sandbox de Twilio para la primera prueba.
+      - key: SANDBOX_NUMERO
+        sync: false
+      - key: SANDBOX_EMPRESA
+        value: empresa_pedro_corradi
+      - key: SANDBOX_LINEA
+        value: ventas
+      # En la prueba inicial dejamos el scheduler apagado (el plan free duerme).
+      - key: SCHEDULER_ACTIVO
+        value: "false"

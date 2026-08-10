@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Campañas WhatsApp · Grupo Fiorasi</title>
+<style>
+  :root {
+    --azul:#2563eb; --azul-hover:#1d4ed8; --navy:#0f172a; --bg:#f1f5f9;
+    --card:#fff; --borde:#e2e8f0; --gris:#64748b; --gris2:#94a3b8;
+    --verde:#16a34a; --rojo:#dc2626; --azul-soft:#eff6ff;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+         background:var(--bg); color:var(--navy); font-size:14px; }
+  .app { display:flex; min-height:100vh; }
+
+  /* Sidebar */
+  .sidebar { width:240px; background:#fff; border-right:1px solid var(--borde);
+             padding:20px 14px; flex-shrink:0; }
+  .logo { padding:0 8px 18px; border-bottom:1px solid var(--borde); margin-bottom:16px; }
+  .logo b { font-size:1.15rem; letter-spacing:.5px; }
+  .logo b .g { color:var(--gris); font-weight:600; }
+  .logo b .f { color:var(--navy); font-weight:800; }
+  .logo small { display:block; color:var(--gris2); font-size:.72rem; margin-top:2px; }
+  .navlbl { color:var(--gris2); font-size:.68rem; font-weight:700; letter-spacing:.8px;
+            text-transform:uppercase; margin:16px 8px 6px; }
+  .navitem { display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:9px;
+             color:#334155; font-weight:500; cursor:pointer; margin-bottom:2px; font-size:.9rem; }
+  .navitem:hover { background:#f8fafc; }
+  .navitem.activo { background:var(--azul); color:#fff; box-shadow:0 1px 3px rgba(37,99,235,.35); }
+  .navitem .ic { width:18px; text-align:center; }
+
+  /* Main */
+  .main { flex:1; min-width:0; }
+  .topbar { background:#fff; border-bottom:1px solid var(--borde); padding:16px 28px;
+            display:flex; align-items:center; justify-content:space-between; }
+  .topbar h1 { font-size:1.15rem; margin:0; }
+  .topbar .right { display:flex; align-items:center; gap:14px; }
+  .chip-emp { display:flex; align-items:center; gap:8px; background:#f8fafc; border:1px solid var(--borde);
+              border-radius:10px; padding:8px 14px; font-weight:600; font-size:.85rem; color:#334155; }
+  .user { display:flex; align-items:center; gap:9px; }
+  .avatar { width:34px; height:34px; border-radius:50%; background:var(--azul); color:#fff;
+            display:flex; align-items:center; justify-content:center; font-weight:700; font-size:.8rem; }
+  .user .nom { font-size:.85rem; font-weight:600; line-height:1.1; }
+  .user .rol { font-size:.72rem; color:var(--gris2); }
+
+  .content { padding:26px 28px 60px; max-width:980px; }
+  .saludo { font-size:1.5rem; font-weight:800; margin:0 0 2px; }
+  .saludo-sub { color:var(--gris); margin:0 0 22px; font-size:.92rem; }
+
+  .card { background:var(--card); border:1px solid var(--borde); border-radius:14px;
+          padding:20px 22px; margin-bottom:18px; box-shadow:0 1px 2px rgba(15,23,42,.04); }
+  .card h2 { font-size:1rem; margin:0 0 14px; display:flex; align-items:center; gap:10px; }
+  .paso { display:inline-flex; width:26px; height:26px; align-items:center; justify-content:center;
+          background:var(--azul-soft); color:var(--azul); border-radius:8px; font-size:.85rem; font-weight:700; }
+
+  /* KPI cards */
+  .kpis { display:flex; gap:16px; flex-wrap:wrap; margin-top:4px; }
+  .kpi { flex:1; min-width:150px; background:#fff; border:1px solid var(--borde); border-radius:12px; padding:14px 16px;
+         position:relative; }
+  .kpi .lbl { color:var(--gris); font-size:.8rem; }
+  .kpi .num { font-size:1.7rem; font-weight:800; margin-top:4px; }
+  .kpi .ic { position:absolute; top:14px; right:14px; width:34px; height:34px; border-radius:9px;
+             display:flex; align-items:center; justify-content:center; font-size:1rem; }
+
+  input[type=file], input[type=text], textarea { width:100%; padding:9px 11px; border:1px solid var(--borde);
+        border-radius:9px; font-size:.92rem; font-family:inherit; background:#fff; }
+  input:focus, textarea:focus { outline:none; border-color:var(--azul); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+  textarea { min-height:96px; resize:vertical; }
+  label { font-size:.82rem; color:var(--gris); display:block; margin:12px 0 5px; font-weight:500; }
+  button { background:var(--azul); color:#fff; border:none; border-radius:9px; padding:10px 20px;
+           font-size:.92rem; font-weight:600; cursor:pointer; }
+  button:hover { background:var(--azul-hover); }
+  button.sec { background:#fff; color:var(--azul); border:1px solid var(--azul); }
+  button.sec:hover { background:var(--azul-soft); }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:6px; }
+  .chip { display:flex; align-items:center; gap:7px; background:#f8fafc; border:1px solid var(--borde);
+          border-radius:999px; padding:7px 13px; font-size:.86rem; cursor:pointer; user-select:none; }
+  .chip:hover { border-color:var(--azul); }
+  .chip .n { color:var(--gris2); font-size:.78rem; }
+  .check { display:flex; align-items:center; gap:8px; font-size:.88rem; margin-top:14px; color:#334155; }
+  .nota { font-size:.8rem; color:var(--gris); margin-top:10px; }
+  .oculto { display:none; }
+  .prev { background:#f8fafc; border:1px solid var(--borde); border-radius:9px; padding:10px 12px;
+          font-size:.86rem; margin-top:8px; white-space:pre-wrap; }
+  .row { background:#f8fafc; border-radius:9px; padding:9px 11px; margin-top:6px; font-size:.85rem; }
+  .mut { color:var(--gris); font-size:.85rem; }
+  .badge { background:var(--azul); color:#fff; border-radius:999px; padding:5px 12px; font-size:.78rem; font-weight:600; }
+
+  @media (max-width:760px){ .sidebar{display:none;} .content{padding:18px 14px;} .topbar{padding:14px 16px;} }
+</style>
+</head>
+<body>
+<div id="toast" onclick="document.querySelector('.navitem[data-vista=\'conversaciones\']').click()" style="position:fixed;top:16px;right:16px;z-index:9999;display:none;background:#dc2626;color:#fff;padding:12px 16px;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.22);font-weight:600;cursor:pointer;max-width:320px;"></div>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <b><span class="g">GRUPO</span><span class="f">FIORASI</span></b>
+      <small>Control & Gestión</small>
+    </div>
+    <div class="navlbl">Campañas</div>
+    <div class="navitem activo" data-vista="ovalo"><span class="ic">📨</span> Plan Óvalo</div>
+    <div class="navitem"><span class="ic">🚙</span> Difusión de stock</div>
+    <div class="navitem"><span class="ic">🎉</span> Adjudicaciones</div>
+    <div class="navlbl">Herramientas</div>
+    <div class="navitem" data-vista="conversaciones"><span class="ic">💬</span> Conversaciones <span id="convBadge" class="badge" style="display:none;margin-left:auto;background:#dc2626;padding:1px 8px;">0</span></div>
+    <div class="navitem" data-vista="encuestas"><span class="ic">⭐</span> Encuestas</div>
+    <div class="navitem" data-vista="resultados"><span class="ic">📊</span> Resultados</div>
+    <div class="navitem" data-vista="simulador"><span class="ic">🧪</span> Simulador</div>
+    <div class="navlbl">Cuenta</div>
+    <div class="navitem"><span class="ic">⚙️</span> Configuración</div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <header class="topbar">
+      <h1>Campañas WhatsApp</h1>
+      <div class="right">
+        <div class="chip-emp">🏢 Pedro Corradi · Plan Óvalo</div>
+        <div class="user">
+          <div class="avatar">FB</div>
+          <div><div class="nom">Fernando Bogliacino</div><div class="rol">SuperAdmin</div></div>
+        </div>
+      </div>
+    </header>
+
+    <div class="content">
+      <h2 class="saludo">Hola, Fernando 👋</h2>
+      <p class="saludo-sub" id="subtitulo">Subí el CSV del mes, elegí a quién enviar y revisá la vista previa antes de mandar.</p>
+
+      <div id="vistaOvalo">
+      <div class="card">
+        <h2><span class="paso">1</span>Subí la base del mes (CSV del Óvalo)</h2>
+        <input type="file" id="archivo" accept=".csv" />
+        <div style="margin-top:14px;"><button id="btnAnalizar">Analizar base</button></div>
+        <div id="resumen" class="oculto" style="margin-top:18px;">
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">Con teléfono</div><div class="num" id="conTel">0</div>
+              <div class="ic" style="background:#dcfce7;color:#16a34a;">📱</div></div>
+            <div class="kpi"><div class="lbl">Clientes en el archivo</div><div class="num" id="total">0</div>
+              <div class="ic" style="background:var(--azul-soft);color:var(--azul);">👥</div></div>
+            <div class="kpi"><div class="lbl">Sin teléfono</div><div class="num" id="sinTel">0</div>
+              <div class="ic" style="background:#fef3c7;color:#b45309;">⚠️</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card oculto" id="cardFiltros">
+        <h2><span class="paso">2</span>Elegí a quién enviar</h2>
+        <label>Por modelo <span class="mut">(si no marcás ninguno = todos)</span></label>
+        <div class="chips" id="chipsModelos"></div>
+        <label style="margin-top:14px;">Por situación del plan</label>
+        <div class="chips" id="chipsSituaciones"></div>
+      </div>
+
+      <div class="card oculto" id="cardMensaje">
+        <h2><span class="paso">3</span>El mensaje</h2>
+        <label>Texto (podés usar {nombre}, {modelo}, {grupo}, {orden})</label>
+        <textarea id="cuerpo">¡Hola {nombre}! 👋 Desde *Pedro Corradi* (Plan Óvalo) te contamos que se viene la próxima licitación de tu grupo. Es tu oportunidad de adelantar la entrega de tu {modelo} 🚙. ¿Querés que te asesore un ejecutivo? Respondé este mensaje.</textarea>
+        <label>URL de la imagen (opcional)</label>
+        <input type="text" id="imagen" placeholder="https://..." />
+        <label>Botones de respuesta (separados por coma, máx. 3)</label>
+        <input type="text" id="botones" value="Quiero asesorarme, Más info, No me interesa" />
+        <label class="check"><input type="checkbox" id="dryrun" checked /> Modo simulación (no envía, solo muestra a quién llegaría)</label>
+        <div style="margin-top:16px;"><button id="btnEnviar">Ver / Enviar</button></div>
+        <p class="nota">En simulación ves a cuántos llega y ejemplos del mensaje. Para enviar de verdad, destildá la simulación (requiere la plantilla aprobada cargada).</p>
+      </div>
+
+      <div class="card oculto" id="cardPrueba">
+        <h2>📱 Probar en mi WhatsApp</h2>
+        <p class="nota">Te manda el mensaje (con imagen) a tu número, para ver cómo queda. Tu número tiene que estar unido al Sandbox. Usa el texto y la imagen de arriba.</p>
+        <label>Mi número (formato +549...)</label>
+        <input type="text" id="miNumero" placeholder="+5492804418307" />
+        <div style="margin-top:12px;"><button class="sec" id="btnPrueba">Enviar prueba a mi WhatsApp</button></div>
+        <div id="pruebaMsg" class="nota"></div>
+      </div>
+
+      <div class="card oculto" id="cardReporte">
+        <h2>Resultado</h2>
+        <div id="reporteResumen"></div>
+        <div id="reporteEjemplos"></div>
+      </div>
+      </div><!-- /vistaOvalo -->
+
+      <!-- ===== VISTA: ENCUESTAS DE CALIDAD ===== -->
+      <div id="vistaEncuestas" class="oculto">
+        <div class="card">
+          <h2><span class="paso">📤</span>Enviar encuestas a la base (Excel)</h2>
+          <p class="nota">Subí el Excel exportado de tu sistema (Calidad → Encuestas Internas → Exportar Excel). Se envían <b>SOLO</b> las que están <b>"pendiente"</b> o <b>"no_logra_contactar"</b>. NO se tocan las <b>"completada"</b> ni <b>"rechazada"</b>.</p>
+          <input type="file" id="encArchivo" accept=".xlsx" />
+          <div style="margin-top:12px;"><button id="encAnalizarBtn">Analizar base</button></div>
+          <div id="encResumen" class="oculto" style="margin-top:14px;"></div>
+          <div id="encEnvioBox" class="oculto" style="margin-top:14px;">
+            <label class="check"><input type="checkbox" id="encDryrun" checked /> Modo simulación (no envía; solo muestra a cuántos llegaría)</label>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;align-items:flex-end;">
+              <div><label>Tanda (mensajes)</label><input type="number" id="encTanda" value="10" min="1" style="width:110px;" /></div>
+              <div><label>Cada (minutos)</label><input type="number" id="encIntervalo" value="10" min="1" style="width:110px;" /></div>
+            </div>
+            <p class="nota">El envío real va <b>de a tandas</b> (dejá esta pestaña abierta). Respeta el horario: <b>L-V 9:00–17:30 · Sáb 9:30–12:45</b>.</p>
+            <div style="margin-top:10px;display:flex;gap:8px;">
+              <button id="encEnviarBtn">Enviar encuestas</button>
+              <button class="sec oculto" id="encDetenerBtn">⏹️ Detener</button>
+            </div>
+            <p class="nota">💡 Empezá con la <b>simulación</b> para ver el número. Para enviar de verdad, destildá la simulación.</p>
+            <div id="encReporte" style="margin-top:10px;"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2><span class="paso">⚡</span>Enviar a un cliente puntual</h2>
+          <p class="nota">Mandá la encuesta de Taller a un cliente específico, ahora mismo.</p>
+          <label>Nombre</label>
+          <input type="text" id="unoNombre" placeholder="Juan Pérez" />
+          <label>Teléfono (+549...)</label>
+          <input type="text" id="unoTel" placeholder="+5492804415555" />
+          <label>Vehículo</label>
+          <input type="text" id="unoVeh" placeholder="Ford Ranger AB123CD" />
+          <div style="margin-top:12px;"><button id="unoEnviarBtn">Enviar encuesta</button></div>
+          <div id="unoMsg" class="nota" style="margin-top:8px;"></div>
+        </div>
+        <div class="card">
+          <h2><span class="paso">⭐</span>Encuestas de calidad — editá las preguntas</h2>
+          <p class="nota">El sistema envía estas preguntas automáticamente a las 48 hs de la compra (Ventas) o del paso por el taller (Posventa). El cliente responde de a una, eligiendo un número del 1 al 5.</p>
+          <p class="nota">📌 La <b>1ª pregunta</b> viaja dentro de la plantilla aprobada de WhatsApp: si la cambiás, hay que volver a aprobar la plantilla en Meta. De la 2ª en adelante, cambialas libremente.</p>
+        </div>
+
+        <div class="card">
+          <h2>🔧 Posventa / Taller</h2>
+          <label>Encabezado / saludo inicial <span class="mut">(variables: {nombre}, {empresa}, {referencia})</span></label>
+          <textarea data-tipo="taller" data-campo="encabezado"></textarea>
+          <label style="margin-top:12px;">Preguntas <span class="mut">(el cliente responde 1 a 5)</span></label>
+          <div id="preg-taller"></div>
+          <div style="margin-top:10px;"><button class="sec" data-add="taller">+ Agregar pregunta</button></div>
+        </div>
+
+        <div class="card">
+          <h2>🚙 Ventas 0km</h2>
+          <label>Encabezado / saludo inicial <span class="mut">(variables: {nombre}, {empresa}, {referencia})</span></label>
+          <textarea data-tipo="ventas" data-campo="encabezado"></textarea>
+          <label style="margin-top:12px;">Preguntas <span class="mut">(el cliente responde 1 a 5)</span></label>
+          <div id="preg-ventas"></div>
+          <div style="margin-top:10px;"><button class="sec" data-add="ventas">+ Agregar pregunta</button></div>
+        </div>
+
+        <div class="card">
+          <button id="btnGuardarPreg">💾 Guardar preguntas</button>
+          <span id="pregMsg" class="nota" style="margin-left:12px;"></span>
+        </div>
+      </div>
+
+      <!-- ===== VISTA: SIMULADOR ===== -->
+      <div id="vistaSimulador" class="oculto">
+        <div class="card">
+          <h2><span class="paso">🧪</span>Simulador del bot</h2>
+          <p class="nota">Probá el bot como si fueras un cliente. <b>No envía WhatsApp real</b> ni gasta mensajes. Ideal para ver todas las respuestas posibles y ajustar las encuestas o el chat antes de salir en vivo.</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+            <button class="sec" id="simEncTaller">▶️ Probar encuesta de Taller</button>
+            <button class="sec" id="simEncVentas">▶️ Probar encuesta de Ventas</button>
+            <button class="sec" id="simReset">🔄 Reiniciar chat</button>
+          </div>
+        </div>
+        <div class="card">
+          <div id="simChat" style="min-height:280px; max-height:460px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding:6px; background:#fafcff; border:1px solid var(--borde); border-radius:10px;"></div>
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <input type="text" id="simInput" placeholder="Escribí como cliente (ej: hola, 1, quiero una ranger, 5)..." style="flex:1;" />
+            <button id="simSend">Enviar</button>
+          </div>
+          <p class="nota">Tip: <b>hola</b> muestra el menú · un <b>número</b> elige una opción · <b>texto libre</b> habla con la IA. Para encuestas usá los botones de arriba y respondé con números <b>del 1 al 5</b>.</p>
+        </div>
+        <div class="card">
+          <h2>📲 Probar en mi WhatsApp (real)</h2>
+          <p class="nota">Te manda la encuesta <b>tappable de verdad</b> (lista 1-5 y botones Sí/No) a tu WhatsApp. <b>Taller</b> usa la plantilla aprobada → llega directo (no hace falta escribir antes). <b>Ventas</b> todavía no tiene plantilla: para esa, escribile <b>"hola"</b> al bot primero.</p>
+          <label>Nombre del cliente (para la prueba)</label>
+          <input type="text" id="encNombre" placeholder="Juan Pérez" />
+          <label>Mi número (+549...)</label>
+          <input type="text" id="encNumero" placeholder="+5492804418307" />
+          <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+            <button id="encPruebaTaller">Enviar encuesta de Taller</button>
+            <button class="sec" id="encPruebaVentas">Enviar encuesta de Ventas</button>
+          </div>
+          <div id="encPruebaMsg" class="nota"></div>
+        </div>
+      </div>
+
+      <!-- ===== VISTA: RESULTADOS DE ENCUESTAS ===== -->
+      <div id="vistaResultados" class="oculto">
+        <div class="card">
+          <h2><span class="paso">📊</span>Resultados de encuestas
+            <button class="sec" id="btnRefrescarRes" style="margin-left:auto; padding:6px 12px;">🔄 Actualizar</button>
+          </h2>
+          <div class="kpis">
+            <div class="kpi"><div class="lbl">Respuestas</div><div class="num" id="resTotal">0</div>
+              <div class="ic" style="background:var(--azul-soft);color:var(--azul);">📝</div></div>
+            <div class="kpi"><div class="lbl">Promedio (1-5)</div><div class="num" id="resProm">–</div>
+              <div class="ic" style="background:#dcfce7;color:#16a34a;">⭐</div></div>
+            <div class="kpi"><div class="lbl">Recomienda</div><div class="num" id="resRec">–</div>
+              <div class="ic" style="background:#dcfce7;color:#16a34a;">👍</div></div>
+            <div class="kpi"><div class="lbl">Necesitan seguimiento</div><div class="num" id="resSeg" style="color:var(--rojo);">0</div>
+              <div class="ic" style="background:#fee2e2;color:#dc2626;">⚠️</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>⚠️ Necesitan seguimiento <span class="mut" style="font-weight:400;">(nota baja o "No recomienda" → un asesor debería contactar)</span></h2>
+          <div id="resSeguimiento"></div>
+        </div>
+
+        <div class="card">
+          <h2>📋 Todas las respuestas</h2>
+          <div id="resTodas"></div>
+        </div>
+      </div>
+
+      <!-- ===== VISTA: CONVERSACIONES (buzón del equipo) ===== -->
+      <div id="vistaConversaciones" class="oculto">
+        <div class="card">
+          <h2><span class="paso">💬</span>Conversaciones
+            <button class="sec" id="btnProbarSonido" style="margin-left:auto;padding:6px 12px;">🔔 Probar sonido</button>
+            <button class="sec" id="btnRefrescarConv" style="padding:6px 12px;">🔄 Actualizar</button>
+          </h2>
+          <p class="nota">Chats de clientes con el bot. Los marcados 🔴 <b>pidieron un asesor</b> (el bot está en pausa, esperando que respondas). Derivá cada uno al área que corresponda (Ventas, Taller, Repuestos, Planes…).</p>
+          <div style="margin-top:8px;">
+            <label style="display:inline-block;margin:0 6px 0 0;">Filtrar por área:</label>
+            <select id="convFiltroArea" style="padding:7px 10px;border:1px solid var(--borde);border-radius:8px;"><option value="">Todas</option></select>
+          </div>
+        </div>
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div style="display:flex; min-height:460px;">
+            <div id="convLista" style="width:36%; border-right:1px solid var(--borde); max-height:520px; overflow-y:auto;"></div>
+            <div style="flex:1; display:flex; flex-direction:column; max-height:520px;">
+              <div id="convVacio" class="nota" style="padding:20px;">Elegí una conversación de la izquierda. 👈</div>
+              <div id="convHead" class="oculto" style="border-bottom:1px solid var(--borde); padding:10px 12px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <b id="convTitulo"></b>
+                <span id="convAreaBadge" class="badge"></span>
+                <button class="sec" id="convCopiarCRM" style="padding:6px 10px;">📋 Copiar a CRM</button>
+                <button class="sec" id="convResumenBtn" style="padding:6px 10px;">🧠 Resumen p/ asesor</button>
+                <span style="margin-left:auto;display:flex;gap:6px;align-items:center;font-size:.85rem;">
+                  Derivar a:
+                  <select id="convDerivar" style="padding:6px 8px;border:1px solid var(--borde);border-radius:8px;">
+                    <option>Ventas</option><option>Plan Óvalo</option><option>Taller</option><option>Repuestos</option><option>Recepción</option><option>Gerencia</option>
+                  </select>
+                </span>
+              </div>
+              <div id="convResumenBox" class="oculto" style="border-bottom:1px solid var(--borde);padding:10px 12px;background:#fffbeb;">
+                <div id="convResumenTxt" style="white-space:pre-wrap;font-size:.88rem;">Generando resumen…</div>
+                <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+                  <button class="sec" id="convCopiarResumen" style="padding:6px 10px;">📋 Copiar resumen</button>
+                  <button class="sec" id="convCopiarTodo" style="padding:6px 10px;">📋 Copiar resumen + chat</button>
+                  <button class="sec" id="convCerrarResumen" style="padding:6px 10px;">✕</button>
+                </div>
+              </div>
+              <div id="convMensajes" style="flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; background:#fafcff;"></div>
+              <div id="convResponder" class="oculto" style="border-top:1px solid var(--borde); padding:10px;">
+                <div id="convEstado" class="nota" style="margin-bottom:6px;"></div>
+                <div style="display:flex; gap:8px;">
+                  <input type="text" id="convInput" placeholder="Escribí tu respuesta al cliente..." style="flex:1;" />
+                  <button id="convEnviarBtn">Enviar</button>
+                </div>
+                <button class="sec" id="convDevolverBtn" style="margin-top:8px;padding:6px 12px;">↩️ Devolver al bot</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const ID_EMPRESA = "empresa_pedro_corradi";
+  let analisis = null;
+
+  // ===== Navegación entre vistas (Plan Óvalo / Encuestas) =====
+  let preguntasCargadas = false;
+  document.querySelectorAll('.navitem[data-vista]').forEach(it => {
+    it.addEventListener('click', () => {
+      document.querySelectorAll('.navitem').forEach(n => n.classList.remove('activo'));
+      it.classList.add('activo');
+      const v = it.dataset.vista;
+      $("vistaOvalo").classList.toggle('oculto', v !== 'ovalo');
+      $("vistaEncuestas").classList.toggle('oculto', v !== 'encuestas');
+      $("vistaSimulador").classList.toggle('oculto', v !== 'simulador');
+      $("vistaResultados").classList.toggle('oculto', v !== 'resultados');
+      $("vistaConversaciones").classList.toggle('oculto', v !== 'conversaciones');
+      const subt = {
+        ovalo: "Subí el CSV del mes, elegí a quién enviar y revisá la vista previa antes de mandar.",
+        encuestas: "Editá las preguntas de las encuestas de calidad (Posventa y Ventas).",
+        simulador: "Probá el bot como si fueras un cliente, sin enviar WhatsApp real.",
+        resultados: "Mirá qué respondieron y quién necesita un seguimiento del equipo de calidad.",
+        conversaciones: "Buzón del equipo: ve los chats, derivá por área y respondé a los clientes.",
+      };
+      $("subtitulo").textContent = subt[v] || subt.ovalo;
+      if (v === 'encuestas' && !preguntasCargadas) cargarPreguntas();
+      if (v === 'resultados') cargarResultados();
+      if (v === 'conversaciones') cargarConversaciones();
+    });
+  });
+
+  // ===== Editor de preguntas de encuestas =====
+  function filaPregunta(tipo, clave, texto) {
+    const d = document.createElement('div');
+    d.className = 'row';
+    d.style.cssText = 'display:flex;gap:8px;align-items:center;';
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.value = texto || '';
+    inp.dataset.campo = 'pregunta'; inp.dataset.clave = clave || '';
+    inp.style.flex = '1';
+    const b = document.createElement('button');
+    b.className = 'sec'; b.textContent = '✕'; b.title = 'Quitar';
+    b.style.padding = '8px 12px';
+    b.onclick = () => d.remove();
+    d.appendChild(inp); d.appendChild(b);
+    return d;
+  }
+
+  // ===== Envío masivo de encuestas por Excel =====
+  if ($("encAnalizarBtn")) {
+    $("encAnalizarBtn").addEventListener('click', async () => {
+      const f = $("encArchivo").files[0];
+      if (!f) { alert('Elegí el Excel primero.'); return; }
+      $("encAnalizarBtn").disabled = true; $("encAnalizarBtn").textContent = 'Analizando...';
+      try {
+        const fd = new FormData(); fd.append('archivo', f);
+        const r = await fetch('/encuestas/analizar-excel', { method: 'POST', body: fd });
+        const d = await r.json();
+        const ps = Object.entries(d.por_status || {}).map(([k, v]) => `${k}: <b>${v}</b>`).join(' · ');
+        $("encResumen").innerHTML = `<div class="row">Total en el Excel: <b>${d.total}</b><br>${ps}<br><br>` +
+          `✅ Se van a enviar (pendiente + no_logra_contactar): <b style="color:var(--verde);font-size:1.15rem;">${d.enviables}</b>` +
+          (d.sin_telefono ? ` · ⚠️ sin teléfono: ${d.sin_telefono}` : '') + `</div>`;
+        $("encResumen").classList.remove('oculto');
+        $("encEnvioBox").classList.remove('oculto');
+      } catch (e) { alert('No pude analizar: ' + e); }
+      $("encAnalizarBtn").disabled = false; $("encAnalizarBtn").textContent = 'Analizar base';
+    });
+    let encTimer = null, encDetenido = false, encForzar = false, encAcum = 0;
+    async function encHorario() {
+      try { const r = await fetch('/encuestas/horario'); return await r.json(); }
+      catch (e) { return { ok: true, descripcion: '' }; }
+    }
+    function encFin() {
+      encDetenido = true; clearTimeout(encTimer);
+      $("encDetenerBtn").classList.add('oculto');
+      $("encEnviarBtn").disabled = false; $("encEnviarBtn").textContent = 'Enviar encuestas';
+    }
+    async function encTanda() {
+      if (encDetenido) return;
+      const h = await encHorario();
+      if (!h.ok && !encForzar) {
+        $("encReporte").innerHTML = `<div class="row">⏸️ Fuera de horario (${h.descripcion}). Reanudá en el horario de envío. Enviadas hasta ahora: <b>${encAcum}</b>.</div>`;
+        encFin(); return;
+      }
+      const tanda = parseInt($("encTanda").value) || 10;
+      const interMs = (parseInt($("encIntervalo").value) || 10) * 60000;
+      const f = $("encArchivo").files[0];
+      try {
+        const fd = new FormData(); fd.append('archivo', f); fd.append('dry_run', 'false'); fd.append('limite', String(tanda));
+        const rep = await (await fetch('/encuestas/enviar-excel', { method: 'POST', body: fd })).json();
+        encAcum += rep.enviadas;
+        $("encReporte").innerHTML = `<div class="row">✅ Enviadas: <b>${encAcum}</b> · faltan: <b>${rep.restantes}</b> · errores: ${rep.errores}` +
+          (rep.duplicadas ? ` · ya tenían (24h): ${rep.duplicadas}` : '') + `</div>`;
+        if (rep.restantes > 0 && !encDetenido) {
+          $("encReporte").innerHTML += `<div class="nota">⏳ Próxima tanda en ${$("encIntervalo").value} min… (no cierres esta pestaña)</div>`;
+          encTimer = setTimeout(encTanda, interMs);
+        } else {
+          $("encReporte").innerHTML += `<div class="nota">🎉 Listo, no quedan pendientes.</div>`; encFin();
+        }
+      } catch (e) { $("encReporte").textContent = 'Error: ' + e; encFin(); }
+    }
+    $("encEnviarBtn").addEventListener('click', async () => {
+      const f = $("encArchivo").files[0];
+      if (!f) { alert('Falta el Excel.'); return; }
+      if ($("encDryrun").checked) {  // simulación: todo de una
+        $("encEnviarBtn").disabled = true; $("encEnviarBtn").textContent = 'Simulando...';
+        try {
+          const fd = new FormData(); fd.append('archivo', f); fd.append('dry_run', 'true'); fd.append('limite', '0');
+          const rep = await (await fetch('/encuestas/enviar-excel', { method: 'POST', body: fd })).json();
+          $("encReporte").innerHTML = `<div class="row">🧪 SIMULACIÓN · a enviar: <b>${rep.enviables}</b> · simuladas: ${rep.simuladas} · ya tenían (24h): ${rep.duplicadas} · omitidas (no corresponden): ${rep.omitidas}</div>`;
+        } catch (e) { $("encReporte").textContent = 'Error: ' + e; }
+        $("encEnviarBtn").disabled = false; $("encEnviarBtn").textContent = 'Enviar encuestas';
+        return;
+      }
+      // real: drip por tandas
+      const h = await encHorario();
+      let msg = 'Vas a ENVIAR encuestas REALES por WhatsApp, de a tandas. Dejá esta pestaña abierta hasta que termine.';
+      encForzar = false;
+      if (!h.ok) { msg += '\n\n⚠️ Estás FUERA del horario (' + h.descripcion + '). ¿Enviar igual?'; }
+      if (!confirm(msg)) return;
+      if (!h.ok) encForzar = true;
+      encDetenido = false; encAcum = 0;
+      $("encEnviarBtn").disabled = true; $("encEnviarBtn").textContent = 'Enviando…';
+      $("encDetenerBtn").classList.remove('oculto');
+      encTanda();
+    });
+    $("encDetenerBtn").addEventListener('click', () => {
+      $("encReporte").innerHTML += `<div class="nota">⏹️ Detenido. Enviadas: <b>${encAcum}</b>.</div>`; encFin();
+    });
+  }
+
+  // Envío a un cliente puntual (usa la plantilla aprobada)
+  if ($("unoEnviarBtn")) {
+    $("unoEnviarBtn").addEventListener('click', async () => {
+      const tel = $("unoTel").value.trim();
+      if (!tel) { alert('Falta el teléfono (+549...).'); return; }
+      $("unoEnviarBtn").disabled = true; $("unoMsg").textContent = 'Enviando...';
+      try {
+        const r = await fetch('/encuestas/prueba', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ telefono: tel, tipo: 'taller', nombre: $("unoNombre").value, referencia: $("unoVeh").value })
+        });
+        const res = await r.json();
+        $("unoMsg").textContent = res.estado === 'enviada'
+          ? '✅ Enviada a ' + (res.destino || tel)
+          : '⚠️ ' + (res.detalle || res.detail || res.estado);
+      } catch (e) { $("unoMsg").textContent = 'Error: ' + e; }
+      $("unoEnviarBtn").disabled = false;
+    });
+  }
+
+  async function cargarPreguntas() {
+    try {
+      const r = await fetch(`/encuestas/${ID_EMPRESA}/preguntas`);
+      const data = await r.json();
+      ['taller', 'ventas'].forEach(tipo => {
+        const bloque = data[tipo] || {};
+        const enc = document.querySelector(`textarea[data-tipo="${tipo}"][data-campo="encabezado"]`);
+        if (enc) enc.value = bloque.encabezado || '';
+        const cont = $(`preg-${tipo}`); cont.innerHTML = '';
+        (bloque.preguntas || []).forEach(p => cont.appendChild(filaPregunta(tipo, p.clave, p.texto)));
+      });
+      preguntasCargadas = true;
+    } catch (e) { alert("No pude cargar las preguntas: " + e); }
+  }
+
+  document.querySelectorAll('button[data-add]').forEach(b => {
+    b.addEventListener('click', () => {
+      const tipo = b.dataset.add;
+      $(`preg-${tipo}`).appendChild(filaPregunta(tipo, '', ''));
+    });
+  });
+
+  document.getElementById('btnGuardarPreg').addEventListener('click', async () => {
+    const payload = {};
+    ['taller', 'ventas'].forEach(tipo => {
+      const enc = document.querySelector(`textarea[data-tipo="${tipo}"][data-campo="encabezado"]`).value;
+      const preguntas = [...document.querySelectorAll(`#preg-${tipo} input[data-campo="pregunta"]`)]
+        .map(i => ({ clave: i.dataset.clave || '', texto: i.value.trim() }))
+        .filter(p => p.texto);
+      payload[tipo] = { encabezado: enc, preguntas };
+    });
+    $("btnGuardarPreg").disabled = true; $("pregMsg").textContent = "Guardando...";
+    try {
+      const r = await fetch(`/encuestas/${ID_EMPRESA}/preguntas`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const res = await r.json();
+      $("pregMsg").textContent = res.detail ? ("⚠️ " + res.detail) : "✅ Preguntas guardadas.";
+    } catch (e) { $("pregMsg").textContent = "Error: " + e; }
+    $("btnGuardarPreg").disabled = false;
+  });
+
+  function chip(grupo, valor, cantidad) {
+    const l = document.createElement("label");
+    l.className = "chip";
+    l.innerHTML = `<input type="checkbox" data-grupo="${grupo}" value="${valor.replaceAll('"','&quot;')}"> ${valor} <span class="n">(${cantidad})</span>`;
+    return l;
+  }
+
+  // ===== Aviso de "pidió asesor" (sonido + visual), revisa cada 20 s =====
+  let _audioCtx = null;
+  function _desbloquearAudio() {
+    try { _audioCtx = _audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      if (_audioCtx.state === 'suspended') _audioCtx.resume(); } catch (e) {}
+  }
+  document.addEventListener('click', _desbloquearAudio);
+  function _beep() {
+    try {
+      _desbloquearAudio();
+      const now = _audioCtx.currentTime;
+      [0, 0.22, 0.44].forEach((t, i) => {
+        const o = _audioCtx.createOscillator(), g = _audioCtx.createGain();
+        o.connect(g); g.connect(_audioCtx.destination);
+        o.type = 'sine'; o.frequency.value = (i === 2) ? 988 : 784;
+        g.gain.setValueAtTime(0.0001, now + t);
+        g.gain.exponentialRampToValueAtTime(0.3, now + t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + t + 0.18);
+        o.start(now + t); o.stop(now + t + 0.2);
+      });
+    } catch (e) {}
+  }
+  function mostrarToast(msg) {
+    const t = $("toast"); if (!t) return;
+    t.textContent = msg; t.style.display = 'block';
+    clearTimeout(t._timer); t._timer = setTimeout(() => t.style.display = 'none', 8000);
+  }
+  function actualizarBadgeConv(n) {
+    const b = $("convBadge"); if (b) {
+      if (n > 0) { b.textContent = n; b.style.display = 'inline-block'; } else { b.style.display = 'none'; }
+    }
+    document.title = n > 0 ? `(${n}) 🔔 Conversaciones · Fiorasi` : 'Campañas WhatsApp · Grupo Fiorasi';
+  }
+  let _pausadosPrev = null;
+  async function chequearAvisos() {
+    try {
+      const r = await fetch('/conversaciones');
+      const d = await r.json();
+      const pausados = (d.conversaciones || []).filter(c => c.pausado).map(c => c.telefono);
+      actualizarBadgeConv(pausados.length);
+      const setP = new Set(pausados);
+      if (_pausadosPrev !== null) {
+        const nuevos = pausados.filter(t => !_pausadosPrev.has(t));
+        if (nuevos.length) {
+          _beep();
+          mostrarToast('🔔 Un cliente pidió un ASESOR (' + nuevos.length + '). Tocá para ver Conversaciones.');
+        }
+      }
+      _pausadosPrev = setP;
+    } catch (e) {}
+  }
+  setInterval(chequearAvisos, 20000);
+  chequearAvisos();
+
+  // ===== Conversaciones (buzón del equipo) =====
+  let convActual = null;
+  let convDatos = null;
+  function convItem(c) {
+    const d = document.createElement('div');
+    d.style.cssText = 'padding:10px 12px;border-bottom:1px solid var(--borde);cursor:pointer;';
+    d.onmouseover = () => d.style.background = '#f1f5f9';
+    d.onmouseout = () => d.style.background = '';
+    const punto = c.pausado ? '🔴 ' : '';
+    const yo = c.rol === 'assistant' ? 'Vos: ' : '';
+    d.innerHTML =
+      `<div style="display:flex;justify-content:space-between;gap:6px;align-items:center;">` +
+      `<b>${punto}${c.telefono}</b><span class="badge" style="background:#e2e8f0;color:#334155;">${c.area}</span></div>` +
+      `<div class="mut" style="margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${yo}${(c.ultimo || '').slice(0, 60)}</div>`;
+    d.onclick = () => abrirConv(c.telefono);
+    return d;
+  }
+  async function cargarConversaciones() {
+    const area = $("convFiltroArea").value;
+    try {
+      const r = await fetch('/conversaciones' + (area ? ('?area=' + encodeURIComponent(area)) : ''));
+      const d = await r.json();
+      const sel = $("convFiltroArea"); const actual = sel.value;
+      sel.innerHTML = '<option value="">Todas</option>' +
+        (d.areas || []).map(a => `<option ${a === actual ? 'selected' : ''}>${a}</option>`).join('');
+      const cont = $("convLista"); cont.innerHTML = '';
+      if (d.error) { cont.innerHTML = '<p class="nota" style="padding:14px;color:#dc2626;">No se pudieron cargar las conversaciones: ' + d.error + '</p>'; return; }
+      if (!(d.conversaciones || []).length) cont.innerHTML = '<p class="nota" style="padding:14px;">No hay conversaciones todavía.</p>';
+      else d.conversaciones.forEach(c => cont.appendChild(convItem(c)));
+    } catch (e) { alert('No pude cargar las conversaciones: ' + e); }
+  }
+  function convBurbuja(m) {
+    const d = document.createElement('div');
+    const cli = m.role === 'user';
+    d.style.cssText = 'align-self:' + (cli ? 'flex-start' : 'flex-end') +
+      ';max-width:80%;padding:9px 12px;border-radius:14px;white-space:pre-wrap;font-size:.9rem;' +
+      (cli ? 'background:#fff;border:1px solid var(--borde);' : 'background:#dcf8c6;');
+    d.textContent = m.content;
+    return d;
+  }
+  async function abrirConv(tel) {
+    convActual = tel;
+    try {
+      const r = await fetch('/conversaciones/' + encodeURIComponent(tel));
+      const d = await r.json();
+      convDatos = d;
+      convResumen = '';
+      $("convResumenBox").classList.add('oculto');
+      $("convVacio").classList.add('oculto');
+      $("convHead").classList.remove('oculto');
+      $("convResponder").classList.remove('oculto');
+      $("convTitulo").textContent = tel;
+      $("convAreaBadge").textContent = d.area;
+      $("convDerivar").value = d.area;
+      const cont = $("convMensajes"); cont.innerHTML = '';
+      (d.mensajes || []).forEach(m => cont.appendChild(convBurbuja(m)));
+      cont.scrollTop = cont.scrollHeight;
+      $("convEstado").textContent = d.pausado
+        ? '⏸️ El bot está en pausa — estás respondiendo vos.'
+        : '🤖 El bot está activo. Si respondés, lo ponés en pausa y tomás la conversación.';
+    } catch (e) { alert('No pude abrir la conversación: ' + e); }
+  }
+  async function convEnviar() {
+    if (!convActual) return;
+    const t = $("convInput").value.trim(); if (!t) return;
+    $("convInput").value = '';
+    try {
+      const r = await fetch('/conversaciones/' + encodeURIComponent(convActual) + '/responder', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texto: t })
+      });
+      const res = await r.json();
+      if (res.estado !== 'enviado') { $("convEstado").textContent = '⚠️ ' + (res.detalle || res.detail || 'No se pudo enviar'); return; }
+      abrirConv(convActual); cargarConversaciones();
+    } catch (e) { $("convEstado").textContent = 'Error: ' + e; }
+  }
+  function copiarCRM() {
+    if (!convDatos) return;
+    const l = [];
+    l.push('Conversación WhatsApp — Pedro Corradi Ford');
+    l.push('Cliente: ' + (convDatos.telefono || ''));
+    l.push('Área: ' + (convDatos.area || ''));
+    l.push('Fecha: ' + new Date().toLocaleString('es-AR'));
+    l.push('----------------------------------------');
+    (convDatos.mensajes || []).forEach(m => {
+      const quien = m.role === 'user' ? 'Cliente' : 'Pedro Corradi';
+      l.push(quien + ': ' + m.content);
+    });
+    const texto = l.join('\n');
+    const ok = () => {
+      const b = $("convCopiarCRM"); const o = b.textContent;
+      b.textContent = '✅ Copiado'; setTimeout(() => b.textContent = o, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(ok).catch(() => prompt('Copiá la conversación (Ctrl+C):', texto));
+    } else {
+      prompt('Copiá la conversación (Ctrl+C):', texto);
+    }
+  }
+
+  // Copiar texto al portapapeles (con feedback en el botón).
+  function copiarTexto(texto, btn) {
+    const ok = () => { if (btn) { const o = btn.textContent; btn.textContent = '✅ Copiado'; setTimeout(() => btn.textContent = o, 1600); } };
+    if (navigator.clipboard && navigator.clipboard.writeText)
+      navigator.clipboard.writeText(texto).then(ok).catch(() => prompt('Copiá (Ctrl+C):', texto));
+    else prompt('Copiá (Ctrl+C):', texto);
+  }
+  // Texto completo de la conversación (para "resumen + chat" y CRM).
+  function convTextoCompleto() {
+    if (!convDatos) return '';
+    return (convDatos.mensajes || []).map(m =>
+      (m.role === 'user' ? 'Cliente' : 'Pedro Corradi') + ': ' + m.content).join('\n');
+  }
+  let convResumen = '';
+  async function pedirResumen() {
+    if (!convActual) return;
+    $("convResumenBox").classList.remove('oculto');
+    $("convResumenTxt").textContent = 'Generando resumen… ⏳';
+    try {
+      const r = await fetch('/conversaciones/' + encodeURIComponent(convActual) + '/resumen', { method: 'POST' });
+      const d = await r.json();
+      convResumen = d.resumen || '(sin resumen)';
+      $("convResumenTxt").textContent = convResumen;
+    } catch (e) { $("convResumenTxt").textContent = 'No se pudo generar el resumen: ' + e; }
+  }
+  function cabeceraCaso() {
+    const area = (convDatos && convDatos.area) ? convDatos.area : '';
+    return '📌 Caso para asesor — ' + area + '\nCliente (WhatsApp): ' + (convActual || '') + '\n\n';
+  }
+
+  if ($("btnProbarSonido")) $("btnProbarSonido").addEventListener('click', _beep);
+  if ($("convEnviarBtn")) {
+    $("convCopiarCRM").addEventListener('click', copiarCRM);
+    $("convResumenBtn").addEventListener('click', pedirResumen);
+    $("convCerrarResumen").addEventListener('click', () => $("convResumenBox").classList.add('oculto'));
+    $("convCopiarResumen").addEventListener('click', () =>
+      copiarTexto(cabeceraCaso() + convResumen, $("convCopiarResumen")));
+    $("convCopiarTodo").addEventListener('click', () =>
+      copiarTexto(cabeceraCaso() + 'RESUMEN:\n' + convResumen + '\n\n--- CONVERSACIÓN COMPLETA ---\n' + convTextoCompleto(), $("convCopiarTodo")));
+    $("convEnviarBtn").addEventListener('click', convEnviar);
+    $("convInput").addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); convEnviar(); } });
+    $("convDevolverBtn").addEventListener('click', async () => {
+      if (!convActual) return;
+      await fetch('/conversaciones/' + encodeURIComponent(convActual) + '/reactivar', { method: 'POST' });
+      abrirConv(convActual); cargarConversaciones();
+    });
+    $("convDerivar").addEventListener('change', async () => {
+      if (!convActual) return;
+      const area = $("convDerivar").value;
+      await fetch('/conversaciones/' + encodeURIComponent(convActual) + '/derivar', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ area })
+      });
+      $("convAreaBadge").textContent = area; cargarConversaciones();
+    });
+    $("btnRefrescarConv").addEventListener('click', cargarConversaciones);
+    $("convFiltroArea").addEventListener('change', cargarConversaciones);
+  }
+
+  // ===== Resultados de encuestas =====
+  function resComentario(texto) {
+    if (!texto) return '';
+    if (texto.indexOf('[audio]') === 0) {
+      const url = texto.replace('[audio]', '').trim();
+      return `<div style="margin-top:6px;">🎤 <audio controls preload="none" src="/media?url=${encodeURIComponent(url)}" style="height:34px;vertical-align:middle;max-width:240px;"></audio></div>`;
+    }
+    return ` · 💬 "${texto}"`;
+  }
+  function resTarjeta(e) {
+    const colores = { RQR: 'var(--rojo)', Registrar: '#b45309', Felicitacion: 'var(--verde)' };
+    const txtClas = { RQR: 'RQR', Registrar: 'Registrar', Felicitacion: '👍 Felicitación' };
+    const badge = `<span style="background:${colores[e.clasificacion]};color:#fff;border-radius:999px;padding:3px 10px;font-size:.74rem;font-weight:600;">${txtClas[e.clasificacion]}</span>`;
+    const puntajes = Object.entries(e.puntajes || {})
+      .map(([k, v]) => `${k}: <b>${v}</b>`).join(' · ');
+    const rec = e.recomienda === null ? '' :
+      ` · Recomienda: <b>${e.recomienda ? 'Sí 👍' : 'No 👎'}</b>`;
+    const fecha = (e.fecha || '').replace('T', ' ').slice(0, 16);
+    const titulo = e.nombre ? `${e.nombre} <span class="mut" style="font-weight:400;">· ${e.telefono}</span>` : `${e.telefono}`;
+    const d = document.createElement('div');
+    d.className = 'row';
+    d.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">` +
+      `<b>${titulo}</b> ${badge}</div>` +
+      `<div class="mut" style="margin-top:4px;">${puntajes}${rec}${resComentario(e.comentario)}</div>` +
+      `<div class="mut" style="font-size:.78rem;margin-top:2px;">${e.tipo || ''} · ${e.referencia || ''} · ${fecha}</div>`;
+    return d;
+  }
+  async function cargarResultados() {
+    try {
+      const r = await fetch(`/encuestas/${ID_EMPRESA}/resultados`);
+      const d = await r.json();
+      $("resTotal").textContent = d.respuestas || 0;
+      $("resProm").textContent = d.promedio != null ? d.promedio : '–';
+      $("resRec").textContent = d.recomienda_pct != null ? d.recomienda_pct + '%' : '–';
+      $("resSeg").textContent = d.seguimiento || 0;
+      const seg = (d.encuestas || []).filter(e => e.seguimiento);
+      const cs = $("resSeguimiento"); cs.innerHTML = '';
+      if (!seg.length) cs.innerHTML = '<p class="nota">✅ Nadie requiere seguimiento por ahora.</p>';
+      else seg.forEach(e => cs.appendChild(resTarjeta(e)));
+      const ct = $("resTodas"); ct.innerHTML = '';
+      if (!(d.encuestas || []).length) ct.innerHTML = '<p class="nota">Todavía no hay respuestas.</p>';
+      else d.encuestas.forEach(e => ct.appendChild(resTarjeta(e)));
+    } catch (e) { alert('No pude cargar los resultados: ' + e); }
+  }
+  if ($("btnRefrescarRes")) $("btnRefrescarRes").addEventListener('click', cargarResultados);
+
+  // ===== Probar encuesta en mi WhatsApp (real) =====
+  async function enviarEncuestaPrueba(tipo) {
+    const num = $("encNumero").value.trim();
+    if (!num) { alert("Poné tu número (+549...)."); return; }
+    $("encPruebaMsg").textContent = "Enviando...";
+    try {
+      const r = await fetch('/encuestas/prueba', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telefono: num, tipo, nombre: ($("encNombre") ? $("encNombre").value.trim() : "") })
+      });
+      const res = await r.json();
+      $("encPruebaMsg").textContent = res.estado === 'enviada'
+        ? '✅ Enviada a ' + res.destino + ' — revisá tu WhatsApp y tocá las opciones.'
+        : '⚠️ ' + (res.detalle || res.detail || res.estado);
+    } catch (e) { $("encPruebaMsg").textContent = 'Error: ' + e; }
+  }
+  if ($("encPruebaTaller")) {
+    $("encPruebaTaller").addEventListener('click', () => enviarEncuestaPrueba('taller'));
+    $("encPruebaVentas").addEventListener('click', () => enviarEncuestaPrueba('ventas'));
+  }
+
+  // ===== Simulador del bot =====
+  function simBurbuja(texto, lado) {
+    const d = document.createElement('div');
+    const cli = lado === 'cliente';
+    d.style.cssText = 'align-self:' + (cli ? 'flex-end' : 'flex-start') +
+      '; max-width:82%; padding:9px 13px; border-radius:14px; white-space:pre-wrap; font-size:.9rem; ' +
+      (cli ? 'background:#dcf8c6;' : 'background:#fff;border:1px solid var(--borde);');
+    d.textContent = texto;
+    $("simChat").appendChild(d);
+    $("simChat").scrollTop = $("simChat").scrollHeight;
+  }
+
+  async function simEnviar(texto) {
+    if (!texto.trim()) return;
+    simBurbuja(texto, 'cliente');
+    try {
+      const r = await fetch('/simular', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texto })
+      });
+      const res = await r.json();
+      (res.respuestas || []).forEach(m => simBurbuja(m, 'bot'));
+    } catch (e) { simBurbuja('Error: ' + e, 'bot'); }
+  }
+
+  async function simIniciarEncuesta(tipo) {
+    await fetch('/simular/reiniciar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    $("simChat").innerHTML = '';
+    try {
+      const r = await fetch('/simular/encuesta', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tipo })
+      });
+      const res = await r.json();
+      (res.respuestas || []).forEach(m => simBurbuja(m, 'bot'));
+    } catch (e) { simBurbuja('Error: ' + e, 'bot'); }
+  }
+
+  if ($("simSend")) {
+    $("simSend").addEventListener('click', () => { const v = $("simInput").value; $("simInput").value = ''; simEnviar(v); });
+    $("simInput").addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); $("simSend").click(); } });
+    $("simReset").addEventListener('click', async () => {
+      await fetch('/simular/reiniciar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      $("simChat").innerHTML = ''; simBurbuja('— chat reiniciado —', 'bot');
+    });
+    $("simEncTaller").addEventListener('click', () => simIniciarEncuesta('servicio'));
+    $("simEncVentas").addEventListener('click', () => simIniciarEncuesta('ventas'));
+  }
+
+  $("btnAnalizar").addEventListener("click", async () => {
+    const f = $("archivo").files[0];
+    if (!f) { alert("Elegí primero el archivo CSV."); return; }
+    $("btnAnalizar").disabled = true; $("btnAnalizar").textContent = "Analizando...";
+    try {
+      const fd = new FormData(); fd.append("archivo", f);
+      const r = await fetch("/ovalo/analizar", { method: "POST", body: fd });
+      analisis = await r.json();
+      $("total").textContent = analisis.total;
+      $("conTel").textContent = analisis.con_telefono;
+      $("sinTel").textContent = analisis.sin_telefono;
+      $("resumen").classList.remove("oculto");
+      const cm = $("chipsModelos"); cm.innerHTML = "";
+      analisis.modelos.forEach(m => cm.appendChild(chip("modelo", m.valor, m.cantidad)));
+      const cs = $("chipsSituaciones"); cs.innerHTML = "";
+      analisis.situaciones.forEach(s => cs.appendChild(chip("situacion", s.valor, s.cantidad)));
+      $("cardFiltros").classList.remove("oculto");
+      $("cardMensaje").classList.remove("oculto");
+      $("cardPrueba").classList.remove("oculto");
+    } catch (e) { alert("No pude analizar el archivo: " + e); }
+    $("btnAnalizar").disabled = false; $("btnAnalizar").textContent = "Analizar base";
+  });
+
+  function seleccion(grupo) {
+    return [...document.querySelectorAll(`input[data-grupo="${grupo}"]:checked`)].map(c => c.value);
+  }
+
+  $("btnEnviar").addEventListener("click", async () => {
+    const f = $("archivo").files[0];
+    if (!f) { alert("Falta el archivo."); return; }
+    $("btnEnviar").disabled = true; $("btnEnviar").textContent = "Procesando...";
+    try {
+      const fd = new FormData();
+      fd.append("archivo", f);
+      fd.append("cuerpo", $("cuerpo").value);
+      fd.append("imagen_url", $("imagen").value);
+      fd.append("dry_run", $("dryrun").checked ? "true" : "false");
+      fd.append("modelos", seleccion("modelo").join("||"));
+      fd.append("situaciones", seleccion("situacion").join("||"));
+      const r = await fetch("/ovalo/enviar", { method: "POST", body: fd });
+      const rep = await r.json();
+      if (rep.detail) { alert(rep.detail); }
+      else {
+        const modo = rep.modo === "real" ? "ENVIADO" : "SIMULACIÓN";
+        $("reporteResumen").innerHTML =
+          `<div style="font-size:1.7rem;font-weight:800;color:var(--azul);">${rep.seleccionados}</div>` +
+          `<div class="mut">clientes seleccionados · modo ${modo}</div>` +
+          `<div class="mut" style="margin-top:6px;">enviados: ${rep.enviados} · simulados: ${rep.simulados} · duplicados: ${rep.duplicados} · errores: ${rep.errores}</div>`;
+        const ej = $("reporteEjemplos"); ej.innerHTML = "<label>Ejemplos de lo que recibe cada cliente:</label>";
+        rep.resultados.slice(0, 8).forEach(x => {
+          const d = document.createElement("div"); d.className = "row";
+          d.innerHTML = `<b>${x.nombre}</b> · ${x.telefono} · <span class="mut">${x.estado}</span>` +
+                        (x.vista_previa ? `<div class="prev">${x.vista_previa}</div>` : "");
+          ej.appendChild(d);
+        });
+        $("cardReporte").classList.remove("oculto");
+        $("cardReporte").scrollIntoView({ behavior: "smooth" });
+      }
+    } catch (e) { alert("Error: " + e); }
+    $("btnEnviar").disabled = false; $("btnEnviar").textContent = "Ver / Enviar";
+  });
+
+  $("btnPrueba").addEventListener("click", async () => {
+    const num = $("miNumero").value.trim();
+    if (!num) { alert("Poné tu número (ej. +5492804418307)."); return; }
+    $("btnPrueba").disabled = true; $("btnPrueba").textContent = "Enviando...";
+    $("pruebaMsg").textContent = "";
+    try {
+      const fd = new FormData();
+      fd.append("telefono", num);
+      fd.append("cuerpo", $("cuerpo").value);
+      fd.append("imagen_url", $("imagen").value);
+      fd.append("botones", $("botones").value);
+      const r = await fetch("/ovalo/prueba", { method: "POST", body: fd });
+      const res = await r.json();
+      $("pruebaMsg").textContent = res.estado === "enviado"
+        ? "✅ Enviado a " + res.destino + " — revisá tu WhatsApp."
+        : "⚠️ " + (res.detalle || res.estado);
+    } catch (e) { $("pruebaMsg").textContent = "Error: " + e; }
+    $("btnPrueba").disabled = false; $("btnPrueba").textContent = "Enviar prueba a mi WhatsApp";
+  });
+</script>
+</body>
+</html>

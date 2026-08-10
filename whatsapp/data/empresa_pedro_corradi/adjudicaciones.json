@@ -1,0 +1,26 @@
+[
+  {
+    "nombre": "Juan Pérez",
+    "telefono": "0351 15 555-1234",
+    "grupo": "A-128",
+    "orden": "045",
+    "modelo": "Ford Ranger",
+    "fecha_acto": "20/06/2026"
+  },
+  {
+    "nombre": "María Gómez",
+    "telefono": "+54 9 351 555 6789",
+    "grupo": "A-128",
+    "orden": "112",
+    "modelo": "Ford Territory",
+    "fecha_acto": "20/06/2026"
+  },
+  {
+    "nombre": "Carlos Díaz",
+    "telefono": "3515554321",
+    "grupo": "B-204",
+    "orden": "008",
+    "modelo": "Ford Bronco Sport",
+    "fecha_acto": "27/06/2026"
+  }
+]

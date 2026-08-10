@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Calculadora de costos WhatsApp · Grupo Fiorasi</title>
+<style>
+  :root { --azul:#1f3a5f; --gris:#6b7280; --borde:#e5e7eb; --bg:#f4f1ea; --verde:#15803d; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    margin: 0; background: var(--bg); color: #1f2937; line-height: 1.5;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-size: 1.4rem; margin: 0 0 4px; color: var(--azul); }
+  .sub { color: var(--gris); margin: 0 0 24px; font-size: 0.95rem; }
+  .card { background: #fff; border: 1px solid var(--borde); border-radius: 12px; padding: 18px 20px; margin-bottom: 18px; }
+  .card h2 { font-size: 1rem; margin: 0 0 14px; color: var(--azul); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 8px 6px; font-size: 0.92rem; border-bottom: 1px solid var(--borde); }
+  th { color: var(--gris); font-weight: 600; }
+  td.num, th.num { text-align: right; }
+  input[type=number] {
+    width: 110px; padding: 6px 8px; border: 1px solid var(--borde); border-radius: 8px;
+    font-size: 0.95rem; text-align: right;
+  }
+  .cat { display: inline-block; font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+  .cat.util { background: #e0f2fe; color: #075985; }
+  .cat.mkt { background: #fef3c7; color: #92400e; }
+  .cat.serv { background: #dcfce7; color: var(--verde); }
+  .total { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+  .total .big { font-size: 2rem; font-weight: 700; color: var(--azul); }
+  .ars { color: var(--gris); font-size: 1rem; }
+  .grid2 { display: flex; gap: 24px; flex-wrap: wrap; }
+  .grid2 > div { flex: 1; min-width: 220px; }
+  label { display: block; font-size: 0.85rem; color: var(--gris); margin-bottom: 4px; }
+  .nota { font-size: 0.82rem; color: var(--gris); margin-top: 10px; }
+  .nota b { color: #374151; }
+  footer { font-size: 0.78rem; color: var(--gris); margin-top: 18px; }
+  .res { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Calculadora de costos de WhatsApp</h1>
+  <p class="sub">Grupo Fiorasi · estimá el costo mensual según cuántos mensajes de cada tipo enviás. Todo editable.</p>
+
+  <div class="card">
+    <h2>1 · ¿Cuántos mensajes por mes?</h2>
+    <table>
+      <thead>
+        <tr><th>Flujo</th><th>Categoría</th><th class="num">Mensajes/mes</th><th class="num">Costo/mensaje</th><th class="num">Subtotal</th></tr>
+      </thead>
+      <tbody id="filas"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>2 · Resultado</h2>
+    <div class="total">
+      <div>Costo estimado por mes</div>
+      <div><span class="big res" id="totalUsd">US$ 0</span> <span class="ars res" id="totalArs"></span></div>
+    </div>
+    <p class="nota" id="resumenMsgs"></p>
+  </div>
+
+  <div class="card">
+    <h2>3 · Tarifas (editá si cambian)</h2>
+    <div class="grid2">
+      <div>
+        <label>Meta · Utility (US$/msg)</label>
+        <input type="number" id="metaUtil" value="0.0072" step="0.0001" min="0" />
+      </div>
+      <div>
+        <label>Meta · Marketing (US$/msg)</label>
+        <input type="number" id="metaMkt" value="0.0265" step="0.0001" min="0" />
+      </div>
+      <div>
+        <label>Comisión Twilio (US$/msg)</label>
+        <input type="number" id="twilio" value="0.005" step="0.0001" min="0" />
+      </div>
+      <div>
+        <label>Dólar (ARS por US$) — opcional</label>
+        <input type="number" id="fx" value="" step="1" min="0" placeholder="ej: 1200" />
+      </div>
+    </div>
+    <p class="nota">
+      <b>Servicio = gratis:</b> las respuestas del bot/IA cuando el cliente escribió primero
+      (ventana de 24 hs) no se cobran. Por eso ese flujo siempre da $0.
+    </p>
+  </div>
+
+  <footer>
+    Valores de referencia para Argentina a 2026 (Meta actualiza cada trimestre). Confirmá el
+    precio exacto en tu panel de Twilio antes de contratar. Meta cobra por mensaje <i>entregado</i>.
+  </footer>
+</div>
+
+<script>
+  // Flujos del sistema y su categoría de cobro.
+  const FLUJOS = [
+    { id: "adj",   nombre: "Adjudicaciones / alertas de cuota", cat: "util", cantidad: 2000 },
+    { id: "cup",   nombre: "Cupones de pago (PDF)",             cat: "util", cantidad: 1500 },
+    { id: "enc",   nombre: "Encuestas de calidad",             cat: "util", cantidad: 800  },
+    { id: "dif",   nombre: "Difusión de stock / promos",       cat: "mkt",  cantidad: 1000 },
+    { id: "serv",  nombre: "Conversaciones entrantes (bot/IA)", cat: "serv", cantidad: 3000 },
+  ];
+
+  const ETIQUETA = { util: "Utility", mkt: "Marketing", serv: "Servicio" };
+
+  const $ = (id) => document.getElementById(id);
+  const fmtUsd = (n) => "US$ " + n.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  function costoPorMsg(cat) {
+    const util = parseFloat($("metaUtil").value) || 0;
+    const mkt  = parseFloat($("metaMkt").value)  || 0;
+    const tw   = parseFloat($("twilio").value)   || 0;
+    if (cat === "util") return util + tw;
+    if (cat === "mkt")  return mkt + tw;
+    return 0; // servicio
+  }
+
+  function render() {
+    const tbody = $("filas");
+    tbody.innerHTML = "";
+    let total = 0, totalMsgs = 0;
+
+    FLUJOS.forEach((f) => {
+      const cant = parseInt($("cant_" + f.id)?.value ?? f.cantidad) || 0;
+      const cpm = costoPorMsg(f.cat);
+      const sub = cant * cpm;
+      total += sub;
+      totalMsgs += cant;
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${f.nombre}</td>
+        <td><span class="cat ${f.cat}">${ETIQUETA[f.cat]}</span></td>
+        <td class="num"><input type="number" id="cant_${f.id}" value="${cant}" min="0" step="100" /></td>
+        <td class="num res">${cpm === 0 ? "gratis" : fmtUsd(cpm)}</td>
+        <td class="num res">${fmtUsd(sub)}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    FLUJOS.forEach((f) => { $("cant_" + f.id).addEventListener("input", render); });
+
+    $("totalUsd").textContent = fmtUsd(total);
+    const fx = parseFloat($("fx").value) || 0;
+    $("totalArs").textContent = fx > 0 ? "≈ $" + (total * fx).toLocaleString("es-AR", { maximumFractionDigits: 0 }) + " ARS" : "";
+    $("resumenMsgs").textContent = totalMsgs.toLocaleString("es-AR") + " mensajes/mes en total · promedio US$ " +
+      (totalMsgs ? (total / totalMsgs).toFixed(4) : "0") + " por mensaje.";
+  }
+
+  ["metaUtil", "metaMkt", "twilio", "fx"].forEach((id) => $(id).addEventListener("input", render));
+  render();
+</script>
+</body>
+</html>
