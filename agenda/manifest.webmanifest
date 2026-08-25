@@ -1,0 +1,16 @@
+{
+  "name": "Mi agenda · recordatorios",
+  "short_name": "Mi agenda",
+  "description": "Recordatorios de reuniones y tareas, simples y sin vueltas.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f6fb",
+  "theme_color": "#4f46e5",
+  "lang": "es-AR",
+  "icons": [
+    { "src": "icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icono.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

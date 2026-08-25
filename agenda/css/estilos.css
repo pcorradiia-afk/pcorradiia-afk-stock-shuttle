@@ -1,0 +1,345 @@
+/* Agenda — estilos. Mobile primero, tipografía grande y botones cómodos. */
+
+:root {
+  --fondo: #f5f6fb;
+  --panel: #ffffff;
+  --texto: #1a1d29;
+  --suave: #6b7280;
+  --borde: #e5e7f0;
+  --acento: #4f46e5;
+  --acento-texto: #ffffff;
+  --acento-suave: #eef0ff;
+  --peligro: #d92d20;
+  --peligro-suave: #fee4e2;
+  --ok: #067647;
+  --ok-suave: #e5f6ed;
+  --sombra: 0 1px 2px rgba(16, 24, 40, .06), 0 6px 16px -8px rgba(16, 24, 40, .12);
+  --radio: 14px;
+}
+
+html[data-tema="oscuro"] {
+  --fondo: #0f1117;
+  --panel: #181b24;
+  --texto: #e9ebf3;
+  --suave: #98a0b4;
+  --borde: #272b38;
+  --acento: #7c83f7;
+  --acento-texto: #0f1117;
+  --acento-suave: #20243a;
+  --peligro: #f87171;
+  --peligro-suave: #2a1a1d;
+  --ok: #4ade80;
+  --ok-suave: #142218;
+  --sombra: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 20px -12px rgba(0, 0, 0, .6);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-tema="claro"]) {
+    --fondo: #0f1117;
+    --panel: #181b24;
+    --texto: #e9ebf3;
+    --suave: #98a0b4;
+    --borde: #272b38;
+    --acento: #7c83f7;
+    --acento-texto: #0f1117;
+    --acento-suave: #20243a;
+    --peligro: #f87171;
+    --peligro-suave: #2a1a1d;
+    --ok: #4ade80;
+    --ok-suave: #142218;
+    --sombra: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 20px -12px rgba(0, 0, 0, .6);
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 16px calc(40px + env(safe-area-inset-bottom));
+  background: var(--fondo);
+  color: var(--texto);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+main, .cabecera, .pie { max-width: 680px; margin: 0 auto; }
+
+/* ------------------------------ cabecera ------------------------------ */
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: max(18px, env(safe-area-inset-top)) 0 14px;
+}
+
+.marca { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.marca .logo { font-size: 30px; line-height: 1; }
+.marca h1 { margin: 0; font-size: 21px; letter-spacing: -.02em; }
+.marca .hoy { margin: 2px 0 0; color: var(--suave); font-size: 13.5px; }
+
+.acciones-cabecera { display: flex; align-items: center; gap: 6px; }
+
+.icono {
+  display: grid;
+  place-items: center;
+  width: 40px; height: 40px;
+  padding: 0;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: var(--panel);
+  color: inherit;
+  font-size: 17px;
+  cursor: pointer;
+  list-style: none;
+}
+.icono::-webkit-details-marker { display: none; }
+.icono:hover { border-color: var(--acento); }
+.icono.encendido { background: var(--acento-suave); border-color: var(--acento); }
+
+.menu { position: relative; }
+.menu-lista {
+  position: absolute; right: 0; top: 46px; z-index: 20;
+  min-width: 232px;
+  display: flex; flex-direction: column;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+.menu-lista button {
+  padding: 11px 12px;
+  border: 0; border-radius: 10px;
+  background: none; color: inherit;
+  font: inherit; text-align: left; cursor: pointer;
+}
+.menu-lista button:hover { background: var(--acento-suave); }
+
+/* --------------------------- carga rápida ---------------------------- */
+
+.captura { display: flex; gap: 8px; }
+
+.captura input {
+  flex: 1; min-width: 0;
+  padding: 15px 16px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--panel);
+  color: inherit;
+  font: inherit;
+  box-shadow: var(--sombra);
+}
+.captura input:focus { outline: 2px solid var(--acento); outline-offset: 1px; border-color: transparent; }
+
+button.principal {
+  padding: 15px 20px;
+  border: 0; border-radius: var(--radio);
+  background: var(--acento); color: var(--acento-texto);
+  font: inherit; font-weight: 600;
+  cursor: pointer;
+}
+button.principal:hover { filter: brightness(1.08); }
+button.suave {
+  padding: 15px 18px;
+  border: 1px solid var(--borde); border-radius: var(--radio);
+  background: var(--panel); color: inherit;
+  font: inherit; cursor: pointer;
+}
+
+.lectura {
+  margin: 8px 2px 0;
+  color: var(--suave);
+  font-size: 13.5px;
+}
+.lectura strong { color: var(--acento); font-weight: 600; }
+
+.atajos { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+.atajos button {
+  padding: 7px 13px;
+  border: 1px solid var(--borde); border-radius: 999px;
+  background: var(--panel); color: var(--suave);
+  font: inherit; font-size: 13.5px; cursor: pointer;
+}
+.atajos button:hover { color: var(--texto); border-color: var(--acento); }
+.atajos .mas { color: var(--acento); }
+
+/* ------------------------------- ficha ------------------------------- */
+
+.ficha {
+  margin-top: 14px;
+  padding: 18px;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+.ficha h2 { margin: 0 0 14px; font-size: 16px; }
+.campo { display: block; margin-bottom: 12px; }
+.campo > span { display: block; margin-bottom: 5px; font-size: 13.5px; color: var(--suave); }
+.campo em { font-style: normal; opacity: .75; }
+.campo input, .campo select, .campo textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--borde); border-radius: 10px;
+  background: var(--fondo); color: inherit;
+  font: inherit;
+}
+.campo textarea { resize: vertical; }
+.fila { display: flex; flex-wrap: wrap; gap: 12px; }
+.fila .campo { flex: 1 1 150px; margin-bottom: 12px; }
+.ficha-botones { display: flex; gap: 8px; margin-top: 4px; }
+
+/* ------------------------------ solapas ------------------------------ */
+
+.solapas {
+  display: flex; gap: 4px;
+  margin: 20px 0 14px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+}
+.solapas button {
+  flex: 1;
+  padding: 9px 6px;
+  border: 0; border-radius: 999px;
+  background: none; color: var(--suave);
+  font: inherit; font-size: 14.5px; cursor: pointer;
+  white-space: nowrap;
+}
+.solapas button.activa { background: var(--acento); color: var(--acento-texto); font-weight: 600; }
+.cuenta { font-size: 12.5px; opacity: .85; }
+
+/* ------------------------------- lista ------------------------------- */
+
+.grupo-titulo {
+  margin: 20px 4px 8px;
+  font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--suave);
+}
+.grupo-titulo.atrasado { color: var(--peligro); }
+
+.tarjeta {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 13px 14px;
+  margin-bottom: 8px;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+.tarjeta.vencida { border-color: var(--peligro); }
+.tarjeta.lista { opacity: .6; }
+
+.tilde {
+  flex: none;
+  width: 24px; height: 24px; margin-top: 1px;
+  border: 2px solid var(--borde); border-radius: 50%;
+  background: none; color: transparent;
+  font-size: 13px; line-height: 1; cursor: pointer;
+}
+.tilde:hover { border-color: var(--ok); color: var(--ok); }
+.tarjeta.lista .tilde { background: var(--ok); border-color: var(--ok); color: #fff; }
+
+.cuerpo { flex: 1; min-width: 0; cursor: pointer; }
+.cuerpo .titulo { font-weight: 600; overflow-wrap: anywhere; }
+.tarjeta.lista .titulo { text-decoration: line-through; }
+.cuerpo .nota { margin-top: 3px; font-size: 13.5px; color: var(--suave); overflow-wrap: anywhere; white-space: pre-wrap; }
+
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.pastilla {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--fondo);
+  font-size: 12.5px; color: var(--suave);
+  border: 1px solid var(--borde);
+}
+.pastilla.tipo { background: var(--acento-suave); color: var(--acento); border-color: transparent; font-weight: 600; }
+.pastilla.pronto { background: var(--ok-suave); color: var(--ok); border-color: transparent; }
+.pastilla.tarde { background: var(--peligro-suave); color: var(--peligro); border-color: transparent; font-weight: 600; }
+
+.acciones { position: relative; flex: none; }
+.acciones > summary {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border-radius: 9px;
+  color: var(--suave);
+  cursor: pointer; list-style: none;
+}
+.acciones > summary::-webkit-details-marker { display: none; }
+.acciones > summary:hover { background: var(--fondo); color: var(--texto); }
+.acciones .menu-lista { top: 36px; min-width: 210px; }
+.acciones .menu-lista button.peligro { color: var(--peligro); }
+
+.vacio {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--suave);
+  background: var(--panel);
+  border: 1px dashed var(--borde);
+  border-radius: var(--radio);
+}
+.vacio .emoji { display: block; font-size: 34px; margin-bottom: 8px; }
+
+/* -------------------------- avisos y pie ---------------------------- */
+
+.brindis {
+  position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex; align-items: center; gap: 12px;
+  max-width: min(92vw, 460px);
+  padding: 12px 16px;
+  background: var(--texto); color: var(--fondo);
+  border-radius: 12px;
+  box-shadow: var(--sombra);
+  font-size: 14.5px;
+}
+.brindis button {
+  border: 0; border-radius: 8px;
+  padding: 6px 10px;
+  background: rgba(127, 127, 127, .28); color: inherit;
+  font: inherit; font-weight: 600; cursor: pointer;
+}
+
+.pie { margin-top: 28px; color: var(--suave); font-size: 12.5px; text-align: center; }
+.pie p { margin: 0; }
+
+@media (max-width: 430px) {
+  .captura button.principal { padding: 15px 16px; }
+  .solapas button { font-size: 13.5px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tarjeta { transition: border-color .15s ease, opacity .15s ease; }
+}
+
+/* ------------------------------- ayuda ------------------------------- */
+
+dialog.ayuda {
+  width: min(560px, 92vw);
+  padding: 24px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--panel);
+  color: var(--texto);
+  box-shadow: var(--sombra);
+}
+dialog.ayuda::backdrop { background: rgba(10, 12, 20, .5); }
+dialog.ayuda h2 { margin: 0 0 12px; font-size: 19px; }
+dialog.ayuda h3 { margin: 20px 0 6px; font-size: 15px; }
+dialog.ayuda p { margin: 8px 0; color: var(--suave); }
+dialog.ayuda ul { margin: 8px 0; padding-left: 20px; color: var(--suave); }
+dialog.ayuda li { margin: 4px 0; }
+dialog.ayuda code {
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: var(--acento-suave);
+  color: var(--acento);
+  font-size: 13.5px;
+}
+dialog.ayuda strong { color: var(--texto); }
+dialog.ayuda form { margin-top: 20px; }

@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Mi agenda · recordatorios</title>
+  <meta name="description" content="Agenda simple de reuniones y tareas. Anda en el celular y en la compu, sin cuenta ni internet." />
+  <meta name="theme-color" content="#4f46e5" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Mi agenda" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icono.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icono.svg" />
+  <link rel="stylesheet" href="css/estilos.css" />
+</head>
+<body>
+  <header class="cabecera">
+    <div class="marca">
+      <span class="logo" aria-hidden="true">🗓️</span>
+      <div>
+        <h1>Mi agenda</h1>
+        <p class="hoy" id="fecha-hoy"></p>
+      </div>
+    </div>
+    <div class="acciones-cabecera">
+      <button type="button" id="btn-avisos" class="icono" title="Activar los avisos">🔔</button>
+      <button type="button" id="btn-tema" class="icono" title="Cambiar entre claro y oscuro">🌙</button>
+      <details class="menu" id="menu">
+        <summary class="icono" title="Más opciones" aria-label="Más opciones">⋯</summary>
+        <div class="menu-lista">
+          <button type="button" data-menu="calendario">📅 Pasar todo al calendario</button>
+          <button type="button" data-menu="exportar">💾 Guardar una copia</button>
+          <button type="button" data-menu="importar">📂 Restaurar una copia</button>
+          <button type="button" data-menu="instalar" hidden>📲 Instalar en el celular</button>
+          <button type="button" data-menu="limpiar">🧹 Borrar los hechos</button>
+          <button type="button" data-menu="ayuda">❔ Cómo se usa</button>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  <main>
+    <!-- Barra de carga rápida: se escribe en castellano y la agenda entiende la fecha -->
+    <form id="form-rapido" class="captura" autocomplete="off">
+      <input
+        id="entrada"
+        type="text"
+        placeholder="Ej: mañana 15:30 reunión con Juan"
+        aria-label="Qué querés recordar"
+      />
+      <button type="submit" class="principal">Agregar</button>
+    </form>
+    <p class="lectura" id="lectura" hidden></p>
+
+    <div class="atajos" id="atajos">
+      <button type="button" data-atajo="hoy">Hoy</button>
+      <button type="button" data-atajo="manana">Mañana 9:00</button>
+      <button type="button" data-atajo="hora">En 1 hora</button>
+      <button type="button" data-atajo="opciones" class="mas">Con más detalle…</button>
+    </div>
+
+    <!-- Ficha completa: sirve para crear con detalle y para editar -->
+    <section class="ficha" id="ficha" hidden>
+      <h2 id="ficha-titulo">Nuevo recordatorio</h2>
+      <label class="campo">
+        <span>¿Qué es?</span>
+        <input type="text" id="f-titulo" placeholder="Reunión con el contador" />
+      </label>
+      <div class="fila">
+        <label class="campo">
+          <span>Tipo</span>
+          <select id="f-tipo">
+            <option value="reunion">📅 Reunión</option>
+            <option value="tarea">✅ Tarea</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>Día</span>
+          <input type="date" id="f-fecha" />
+        </label>
+        <label class="campo">
+          <span>Hora <em>(opcional)</em></span>
+          <input type="time" id="f-hora" />
+        </label>
+      </div>
+      <div class="fila">
+        <label class="campo">
+          <span>Avisarme</span>
+          <select id="f-aviso">
+            <option value="0">A la hora justa</option>
+            <option value="10">10 minutos antes</option>
+            <option value="30">30 minutos antes</option>
+            <option value="60">1 hora antes</option>
+            <option value="1440">1 día antes</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>Se repite</span>
+          <select id="f-repite">
+            <option value="no">No se repite</option>
+            <option value="diario">Todos los días</option>
+            <option value="semanal">Cada semana</option>
+            <option value="mensual">Cada mes</option>
+          </select>
+        </label>
+      </div>
+      <label class="campo">
+        <span>Nota <em>(opcional)</em></span>
+        <textarea id="f-nota" rows="2" placeholder="Dirección, link de la reunión, qué llevar…"></textarea>
+      </label>
+      <div class="ficha-botones">
+        <button type="button" class="principal" id="f-guardar">Guardar</button>
+        <button type="button" class="suave" id="f-cancelar">Cancelar</button>
+      </div>
+    </section>
+
+    <nav class="solapas" id="solapas" role="tablist">
+      <button type="button" role="tab" data-solapa="hoy" class="activa">Hoy <span class="cuenta" id="c-hoy"></span></button>
+      <button type="button" role="tab" data-solapa="proximos">Próximos <span class="cuenta" id="c-proximos"></span></button>
+      <button type="button" role="tab" data-solapa="todo">Todo</button>
+      <button type="button" role="tab" data-solapa="hechos">Hechos</button>
+    </nav>
+
+    <section id="lista" class="lista" aria-live="polite"></section>
+  </main>
+
+  <footer class="pie">
+    <p>Todo se guarda en este dispositivo. Hacé una copia de vez en cuando desde el menú <strong>⋯</strong>.</p>
+  </footer>
+
+  <div class="brindis" id="brindis" role="status" hidden></div>
+  <input type="file" id="archivo" accept="application/json,.json" hidden />
+
+  <dialog id="ayuda" class="ayuda">
+    <h2>Cómo se usa</h2>
+    <p>Escribí en la barra de arriba como si se lo contaras a alguien. La agenda entiende la fecha y la hora solas:</p>
+    <ul>
+      <li><code>mañana 15:30 reunión con Juan</code></li>
+      <li><code>lunes 9 am llamar al contador</code></li>
+      <li><code>en 2 horas sacar el turno</code></li>
+      <li><code>5/9 pagar el seguro</code></li>
+    </ul>
+    <p>Debajo del recuadro te muestra cómo lo entendió, antes de guardarlo. Si querés elegir todo a mano, tocá <strong>“Con más detalle…”</strong>.</p>
+    <h3>Los avisos</h3>
+    <p>Con el botón 🔔 activás las notificaciones. Suenan mientras la agenda esté abierta (podés dejarla en una pestaña o instalarla en el celular).</p>
+    <p>Para que suene <strong>siempre</strong>, aunque la agenda esté cerrada, usá <strong>“📅 Pasar al calendario”</strong> en el menú <strong>⋯</strong> de cada recordatorio: queda en el calendario del teléfono y él se encarga de la alarma.</p>
+    <h3>Tus datos</h3>
+    <p>Todo se guarda en este dispositivo, sin cuenta ni internet. Desde el menú <strong>⋯</strong> podés <strong>guardar una copia</strong> y <strong>restaurarla</strong> en otro dispositivo.</p>
+    <form method="dialog"><button class="principal">Entendido</button></form>
+  </dialog>
+
+  <script src="js/fechas.js"></script>
+  <script src="js/almacen.js"></script>
+  <script src="js/avisos.js"></script>
+  <script src="js/ics.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
