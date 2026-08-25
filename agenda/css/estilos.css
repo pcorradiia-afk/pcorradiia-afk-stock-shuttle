@@ -17,7 +17,9 @@
   --radio: 14px;
 }
 
-html[data-tema="oscuro"] {
+/* Oscuro: por el botón de la app, o por el visor que la embebe (data-theme). */
+html[data-tema="oscuro"],
+html[data-theme="dark"]:not([data-tema]) {
   --fondo: #0f1117;
   --panel: #181b24;
   --texto: #e9ebf3;
@@ -34,7 +36,7 @@ html[data-tema="oscuro"] {
 }
 
 @media (prefers-color-scheme: dark) {
-  html:not([data-tema="claro"]) {
+  html:not([data-tema]):not([data-theme="light"]) {
     --fondo: #0f1117;
     --panel: #181b24;
     --texto: #e9ebf3;
@@ -49,6 +51,23 @@ html[data-tema="oscuro"] {
     --ok-suave: #142218;
     --sombra: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 20px -12px rgba(0, 0, 0, .6);
   }
+}
+
+html[data-tema="claro"] {
+  --fondo: #f5f6fb;
+  --panel: #ffffff;
+  --texto: #1a1d29;
+  --suave: #6b7280;
+  --borde: #e5e7f0;
+  --acento: #4f46e5;
+  --acento-texto: #ffffff;
+  --acento-suave: #eef0ff;
+  --peligro: #d92d20;
+  --peligro-suave: #fee4e2;
+  --ok: #067647;
+  --ok-suave: #e5f6ed;
+  --sombra: 0 1px 2px rgba(16, 24, 40, .06), 0 6px 16px -8px rgba(16, 24, 40, .12);
+  --radio: 14px;
 }
 
 * { box-sizing: border-box; }

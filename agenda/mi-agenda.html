@@ -1,0 +1,1615 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Mi agenda · recordatorios</title>
+  <meta name="description" content="Agenda simple de reuniones y tareas. Anda en el celular y en la compu, sin cuenta ni internet." />
+  <meta name="theme-color" content="#4f46e5" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Mi agenda" />
+  <link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiByb2xlPSJpbWciIGFyaWEtbGFiZWw9Ik1pIGFnZW5kYSI+CiAgPHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSIxMTIiIGZpbGw9IiM0ZjQ2ZTUiLz4KICA8cmVjdCB4PSI5NiIgeT0iMTI4IiB3aWR0aD0iMzIwIiBoZWlnaHQ9IjI4OCIgcng9IjQwIiBmaWxsPSIjZmZmZmZmIi8+CiAgPHJlY3QgeD0iOTYiIHk9IjEyOCIgd2lkdGg9IjMyMCIgaGVpZ2h0PSI3MiIgcng9IjQwIiBmaWxsPSIjYzdkMmZlIi8+CiAgPHJlY3QgeD0iOTYiIHk9IjE3NiIgd2lkdGg9IjMyMCIgaGVpZ2h0PSIyNCIgZmlsbD0iI2M3ZDJmZSIvPgogIDxyZWN0IHg9IjE1MiIgeT0iODgiIHdpZHRoPSIzNCIgaGVpZ2h0PSI5MCIgcng9IjE3IiBmaWxsPSIjMzEyZTgxIi8+CiAgPHJlY3QgeD0iMzI2IiB5PSI4OCIgd2lkdGg9IjM0IiBoZWlnaHQ9IjkwIiByeD0iMTciIGZpbGw9IiMzMTJlODEiLz4KICA8cGF0aCBkPSJNMTc2IDMwMGw1MiA1MiAxMDgtMTE2IiBmaWxsPSJub25lIiBzdHJva2U9IiM0ZjQ2ZTUiIHN0cm9rZS13aWR0aD0iNDAiCiAgICAgICAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiByb2xlPSJpbWciIGFyaWEtbGFiZWw9Ik1pIGFnZW5kYSI+CiAgPHJlY3Qgd2lkdGg9IjUxMiIgaGVpZ2h0PSI1MTIiIHJ4PSIxMTIiIGZpbGw9IiM0ZjQ2ZTUiLz4KICA8cmVjdCB4PSI5NiIgeT0iMTI4IiB3aWR0aD0iMzIwIiBoZWlnaHQ9IjI4OCIgcng9IjQwIiBmaWxsPSIjZmZmZmZmIi8+CiAgPHJlY3QgeD0iOTYiIHk9IjEyOCIgd2lkdGg9IjMyMCIgaGVpZ2h0PSI3MiIgcng9IjQwIiBmaWxsPSIjYzdkMmZlIi8+CiAgPHJlY3QgeD0iOTYiIHk9IjE3NiIgd2lkdGg9IjMyMCIgaGVpZ2h0PSIyNCIgZmlsbD0iI2M3ZDJmZSIvPgogIDxyZWN0IHg9IjE1MiIgeT0iODgiIHdpZHRoPSIzNCIgaGVpZ2h0PSI5MCIgcng9IjE3IiBmaWxsPSIjMzEyZTgxIi8+CiAgPHJlY3QgeD0iMzI2IiB5PSI4OCIgd2lkdGg9IjM0IiBoZWlnaHQ9IjkwIiByeD0iMTciIGZpbGw9IiMzMTJlODEiLz4KICA8cGF0aCBkPSJNMTc2IDMwMGw1MiA1MiAxMDgtMTE2IiBmaWxsPSJub25lIiBzdHJva2U9IiM0ZjQ2ZTUiIHN0cm9rZS13aWR0aD0iNDAiCiAgICAgICAgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=" />
+  <style>
+/* Agenda — estilos. Mobile primero, tipografía grande y botones cómodos. */
+
+:root {
+  --fondo: #f5f6fb;
+  --panel: #ffffff;
+  --texto: #1a1d29;
+  --suave: #6b7280;
+  --borde: #e5e7f0;
+  --acento: #4f46e5;
+  --acento-texto: #ffffff;
+  --acento-suave: #eef0ff;
+  --peligro: #d92d20;
+  --peligro-suave: #fee4e2;
+  --ok: #067647;
+  --ok-suave: #e5f6ed;
+  --sombra: 0 1px 2px rgba(16, 24, 40, .06), 0 6px 16px -8px rgba(16, 24, 40, .12);
+  --radio: 14px;
+}
+
+/* Oscuro: por el botón de la app, o por el visor que la embebe (data-theme). */
+html[data-tema="oscuro"],
+html[data-theme="dark"]:not([data-tema]) {
+  --fondo: #0f1117;
+  --panel: #181b24;
+  --texto: #e9ebf3;
+  --suave: #98a0b4;
+  --borde: #272b38;
+  --acento: #7c83f7;
+  --acento-texto: #0f1117;
+  --acento-suave: #20243a;
+  --peligro: #f87171;
+  --peligro-suave: #2a1a1d;
+  --ok: #4ade80;
+  --ok-suave: #142218;
+  --sombra: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 20px -12px rgba(0, 0, 0, .6);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-tema]):not([data-theme="light"]) {
+    --fondo: #0f1117;
+    --panel: #181b24;
+    --texto: #e9ebf3;
+    --suave: #98a0b4;
+    --borde: #272b38;
+    --acento: #7c83f7;
+    --acento-texto: #0f1117;
+    --acento-suave: #20243a;
+    --peligro: #f87171;
+    --peligro-suave: #2a1a1d;
+    --ok: #4ade80;
+    --ok-suave: #142218;
+    --sombra: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 20px -12px rgba(0, 0, 0, .6);
+  }
+}
+
+html[data-tema="claro"] {
+  --fondo: #f5f6fb;
+  --panel: #ffffff;
+  --texto: #1a1d29;
+  --suave: #6b7280;
+  --borde: #e5e7f0;
+  --acento: #4f46e5;
+  --acento-texto: #ffffff;
+  --acento-suave: #eef0ff;
+  --peligro: #d92d20;
+  --peligro-suave: #fee4e2;
+  --ok: #067647;
+  --ok-suave: #e5f6ed;
+  --sombra: 0 1px 2px rgba(16, 24, 40, .06), 0 6px 16px -8px rgba(16, 24, 40, .12);
+  --radio: 14px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 0 16px calc(40px + env(safe-area-inset-bottom));
+  background: var(--fondo);
+  color: var(--texto);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+main, .cabecera, .pie { max-width: 680px; margin: 0 auto; }
+
+/* ------------------------------ cabecera ------------------------------ */
+
+.cabecera {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: max(18px, env(safe-area-inset-top)) 0 14px;
+}
+
+.marca { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.marca .logo { font-size: 30px; line-height: 1; }
+.marca h1 { margin: 0; font-size: 21px; letter-spacing: -.02em; }
+.marca .hoy { margin: 2px 0 0; color: var(--suave); font-size: 13.5px; }
+
+.acciones-cabecera { display: flex; align-items: center; gap: 6px; }
+
+.icono {
+  display: grid;
+  place-items: center;
+  width: 40px; height: 40px;
+  padding: 0;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  background: var(--panel);
+  color: inherit;
+  font-size: 17px;
+  cursor: pointer;
+  list-style: none;
+}
+.icono::-webkit-details-marker { display: none; }
+.icono:hover { border-color: var(--acento); }
+.icono.encendido { background: var(--acento-suave); border-color: var(--acento); }
+
+.menu { position: relative; }
+.menu-lista {
+  position: absolute; right: 0; top: 46px; z-index: 20;
+  min-width: 232px;
+  display: flex; flex-direction: column;
+  padding: 6px;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+.menu-lista button {
+  padding: 11px 12px;
+  border: 0; border-radius: 10px;
+  background: none; color: inherit;
+  font: inherit; text-align: left; cursor: pointer;
+}
+.menu-lista button:hover { background: var(--acento-suave); }
+
+/* --------------------------- carga rápida ---------------------------- */
+
+.captura { display: flex; gap: 8px; }
+
+.captura input {
+  flex: 1; min-width: 0;
+  padding: 15px 16px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--panel);
+  color: inherit;
+  font: inherit;
+  box-shadow: var(--sombra);
+}
+.captura input:focus { outline: 2px solid var(--acento); outline-offset: 1px; border-color: transparent; }
+
+button.principal {
+  padding: 15px 20px;
+  border: 0; border-radius: var(--radio);
+  background: var(--acento); color: var(--acento-texto);
+  font: inherit; font-weight: 600;
+  cursor: pointer;
+}
+button.principal:hover { filter: brightness(1.08); }
+button.suave {
+  padding: 15px 18px;
+  border: 1px solid var(--borde); border-radius: var(--radio);
+  background: var(--panel); color: inherit;
+  font: inherit; cursor: pointer;
+}
+
+.lectura {
+  margin: 8px 2px 0;
+  color: var(--suave);
+  font-size: 13.5px;
+}
+.lectura strong { color: var(--acento); font-weight: 600; }
+
+.atajos { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 4px; }
+.atajos button {
+  padding: 7px 13px;
+  border: 1px solid var(--borde); border-radius: 999px;
+  background: var(--panel); color: var(--suave);
+  font: inherit; font-size: 13.5px; cursor: pointer;
+}
+.atajos button:hover { color: var(--texto); border-color: var(--acento); }
+.atajos .mas { color: var(--acento); }
+
+/* ------------------------------- ficha ------------------------------- */
+
+.ficha {
+  margin-top: 14px;
+  padding: 18px;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+.ficha h2 { margin: 0 0 14px; font-size: 16px; }
+.campo { display: block; margin-bottom: 12px; }
+.campo > span { display: block; margin-bottom: 5px; font-size: 13.5px; color: var(--suave); }
+.campo em { font-style: normal; opacity: .75; }
+.campo input, .campo select, .campo textarea {
+  width: 100%;
+  padding: 11px 12px;
+  border: 1px solid var(--borde); border-radius: 10px;
+  background: var(--fondo); color: inherit;
+  font: inherit;
+}
+.campo textarea { resize: vertical; }
+.fila { display: flex; flex-wrap: wrap; gap: 12px; }
+.fila .campo { flex: 1 1 150px; margin-bottom: 12px; }
+.ficha-botones { display: flex; gap: 8px; margin-top: 4px; }
+
+/* ------------------------------ solapas ------------------------------ */
+
+.solapas {
+  display: flex; gap: 4px;
+  margin: 20px 0 14px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 999px;
+}
+.solapas button {
+  flex: 1;
+  padding: 9px 6px;
+  border: 0; border-radius: 999px;
+  background: none; color: var(--suave);
+  font: inherit; font-size: 14.5px; cursor: pointer;
+  white-space: nowrap;
+}
+.solapas button.activa { background: var(--acento); color: var(--acento-texto); font-weight: 600; }
+.cuenta { font-size: 12.5px; opacity: .85; }
+
+/* ------------------------------- lista ------------------------------- */
+
+.grupo-titulo {
+  margin: 20px 4px 8px;
+  font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  color: var(--suave);
+}
+.grupo-titulo.atrasado { color: var(--peligro); }
+
+.tarjeta {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 13px 14px;
+  margin-bottom: 8px;
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+}
+.tarjeta.vencida { border-color: var(--peligro); }
+.tarjeta.lista { opacity: .6; }
+
+.tilde {
+  flex: none;
+  width: 24px; height: 24px; margin-top: 1px;
+  border: 2px solid var(--borde); border-radius: 50%;
+  background: none; color: transparent;
+  font-size: 13px; line-height: 1; cursor: pointer;
+}
+.tilde:hover { border-color: var(--ok); color: var(--ok); }
+.tarjeta.lista .tilde { background: var(--ok); border-color: var(--ok); color: #fff; }
+
+.cuerpo { flex: 1; min-width: 0; cursor: pointer; }
+.cuerpo .titulo { font-weight: 600; overflow-wrap: anywhere; }
+.tarjeta.lista .titulo { text-decoration: line-through; }
+.cuerpo .nota { margin-top: 3px; font-size: 13.5px; color: var(--suave); overflow-wrap: anywhere; white-space: pre-wrap; }
+
+.meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.pastilla {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--fondo);
+  font-size: 12.5px; color: var(--suave);
+  border: 1px solid var(--borde);
+}
+.pastilla.tipo { background: var(--acento-suave); color: var(--acento); border-color: transparent; font-weight: 600; }
+.pastilla.pronto { background: var(--ok-suave); color: var(--ok); border-color: transparent; }
+.pastilla.tarde { background: var(--peligro-suave); color: var(--peligro); border-color: transparent; font-weight: 600; }
+
+.acciones { position: relative; flex: none; }
+.acciones > summary {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  border-radius: 9px;
+  color: var(--suave);
+  cursor: pointer; list-style: none;
+}
+.acciones > summary::-webkit-details-marker { display: none; }
+.acciones > summary:hover { background: var(--fondo); color: var(--texto); }
+.acciones .menu-lista { top: 36px; min-width: 210px; }
+.acciones .menu-lista button.peligro { color: var(--peligro); }
+
+.vacio {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--suave);
+  background: var(--panel);
+  border: 1px dashed var(--borde);
+  border-radius: var(--radio);
+}
+.vacio .emoji { display: block; font-size: 34px; margin-bottom: 8px; }
+
+/* -------------------------- avisos y pie ---------------------------- */
+
+.brindis {
+  position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 50;
+  display: flex; align-items: center; gap: 12px;
+  max-width: min(92vw, 460px);
+  padding: 12px 16px;
+  background: var(--texto); color: var(--fondo);
+  border-radius: 12px;
+  box-shadow: var(--sombra);
+  font-size: 14.5px;
+}
+.brindis button {
+  border: 0; border-radius: 8px;
+  padding: 6px 10px;
+  background: rgba(127, 127, 127, .28); color: inherit;
+  font: inherit; font-weight: 600; cursor: pointer;
+}
+
+.pie { margin-top: 28px; color: var(--suave); font-size: 12.5px; text-align: center; }
+.pie p { margin: 0; }
+
+@media (max-width: 430px) {
+  .captura button.principal { padding: 15px 16px; }
+  .solapas button { font-size: 13.5px; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .tarjeta { transition: border-color .15s ease, opacity .15s ease; }
+}
+
+/* ------------------------------- ayuda ------------------------------- */
+
+dialog.ayuda {
+  width: min(560px, 92vw);
+  padding: 24px;
+  border: 1px solid var(--borde);
+  border-radius: var(--radio);
+  background: var(--panel);
+  color: var(--texto);
+  box-shadow: var(--sombra);
+}
+dialog.ayuda::backdrop { background: rgba(10, 12, 20, .5); }
+dialog.ayuda h2 { margin: 0 0 12px; font-size: 19px; }
+dialog.ayuda h3 { margin: 20px 0 6px; font-size: 15px; }
+dialog.ayuda p { margin: 8px 0; color: var(--suave); }
+dialog.ayuda ul { margin: 8px 0; padding-left: 20px; color: var(--suave); }
+dialog.ayuda li { margin: 4px 0; }
+dialog.ayuda code {
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: var(--acento-suave);
+  color: var(--acento);
+  font-size: 13.5px;
+}
+dialog.ayuda strong { color: var(--texto); }
+dialog.ayuda form { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <header class="cabecera">
+    <div class="marca">
+      <span class="logo" aria-hidden="true">🗓️</span>
+      <div>
+        <h1>Mi agenda</h1>
+        <p class="hoy" id="fecha-hoy"></p>
+      </div>
+    </div>
+    <div class="acciones-cabecera">
+      <button type="button" id="btn-avisos" class="icono" title="Activar los avisos">🔔</button>
+      <button type="button" id="btn-tema" class="icono" title="Cambiar entre claro y oscuro">🌙</button>
+      <details class="menu" id="menu">
+        <summary class="icono" title="Más opciones" aria-label="Más opciones">⋯</summary>
+        <div class="menu-lista">
+          <button type="button" data-menu="calendario">📅 Pasar todo al calendario</button>
+          <button type="button" data-menu="exportar">💾 Guardar una copia</button>
+          <button type="button" data-menu="importar">📂 Restaurar una copia</button>
+          <button type="button" data-menu="instalar" hidden>📲 Instalar en el celular</button>
+          <button type="button" data-menu="limpiar">🧹 Borrar los hechos</button>
+          <button type="button" data-menu="ayuda">❔ Cómo se usa</button>
+        </div>
+      </details>
+    </div>
+  </header>
+
+  <main>
+    <!-- Barra de carga rápida: se escribe en castellano y la agenda entiende la fecha -->
+    <form id="form-rapido" class="captura" autocomplete="off">
+      <input
+        id="entrada"
+        type="text"
+        placeholder="Ej: mañana 15:30 reunión con Juan"
+        aria-label="Qué querés recordar"
+      />
+      <button type="submit" class="principal">Agregar</button>
+    </form>
+    <p class="lectura" id="lectura" hidden></p>
+
+    <div class="atajos" id="atajos">
+      <button type="button" data-atajo="hoy">Hoy</button>
+      <button type="button" data-atajo="manana">Mañana 9:00</button>
+      <button type="button" data-atajo="hora">En 1 hora</button>
+      <button type="button" data-atajo="opciones" class="mas">Con más detalle…</button>
+    </div>
+
+    <!-- Ficha completa: sirve para crear con detalle y para editar -->
+    <section class="ficha" id="ficha" hidden>
+      <h2 id="ficha-titulo">Nuevo recordatorio</h2>
+      <label class="campo">
+        <span>¿Qué es?</span>
+        <input type="text" id="f-titulo" placeholder="Reunión con el contador" />
+      </label>
+      <div class="fila">
+        <label class="campo">
+          <span>Tipo</span>
+          <select id="f-tipo">
+            <option value="reunion">📅 Reunión</option>
+            <option value="tarea">✅ Tarea</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>Día</span>
+          <input type="date" id="f-fecha" />
+        </label>
+        <label class="campo">
+          <span>Hora <em>(opcional)</em></span>
+          <input type="time" id="f-hora" />
+        </label>
+      </div>
+      <div class="fila">
+        <label class="campo">
+          <span>Avisarme</span>
+          <select id="f-aviso">
+            <option value="0">A la hora justa</option>
+            <option value="10">10 minutos antes</option>
+            <option value="30">30 minutos antes</option>
+            <option value="60">1 hora antes</option>
+            <option value="1440">1 día antes</option>
+          </select>
+        </label>
+        <label class="campo">
+          <span>Se repite</span>
+          <select id="f-repite">
+            <option value="no">No se repite</option>
+            <option value="diario">Todos los días</option>
+            <option value="semanal">Cada semana</option>
+            <option value="mensual">Cada mes</option>
+          </select>
+        </label>
+      </div>
+      <label class="campo">
+        <span>Nota <em>(opcional)</em></span>
+        <textarea id="f-nota" rows="2" placeholder="Dirección, link de la reunión, qué llevar…"></textarea>
+      </label>
+      <div class="ficha-botones">
+        <button type="button" class="principal" id="f-guardar">Guardar</button>
+        <button type="button" class="suave" id="f-cancelar">Cancelar</button>
+      </div>
+    </section>
+
+    <nav class="solapas" id="solapas" role="tablist">
+      <button type="button" role="tab" data-solapa="hoy" class="activa">Hoy <span class="cuenta" id="c-hoy"></span></button>
+      <button type="button" role="tab" data-solapa="proximos">Próximos <span class="cuenta" id="c-proximos"></span></button>
+      <button type="button" role="tab" data-solapa="todo">Todo</button>
+      <button type="button" role="tab" data-solapa="hechos">Hechos</button>
+    </nav>
+
+    <section id="lista" class="lista" aria-live="polite"></section>
+  </main>
+
+  <footer class="pie">
+    <p>Todo se guarda en este dispositivo. Hacé una copia de vez en cuando desde el menú <strong>⋯</strong>.</p>
+  </footer>
+
+  <div class="brindis" id="brindis" role="status" hidden></div>
+  <input type="file" id="archivo" accept="application/json,.json" hidden />
+
+  <dialog id="ayuda" class="ayuda">
+    <h2>Cómo se usa</h2>
+    <p>Escribí en la barra de arriba como si se lo contaras a alguien. La agenda entiende la fecha y la hora solas:</p>
+    <ul>
+      <li><code>mañana 15:30 reunión con Juan</code></li>
+      <li><code>lunes 9 am llamar al contador</code></li>
+      <li><code>en 2 horas sacar el turno</code></li>
+      <li><code>5/9 pagar el seguro</code></li>
+    </ul>
+    <p>Debajo del recuadro te muestra cómo lo entendió, antes de guardarlo. Si querés elegir todo a mano, tocá <strong>“Con más detalle…”</strong>.</p>
+    <h3>Los avisos</h3>
+    <p>Con el botón 🔔 activás las notificaciones. Suenan mientras la agenda esté abierta (podés dejarla en una pestaña o instalarla en el celular).</p>
+    <p>Para que suene <strong>siempre</strong>, aunque la agenda esté cerrada, usá <strong>“📅 Pasar al calendario”</strong> en el menú <strong>⋯</strong> de cada recordatorio: queda en el calendario del teléfono y él se encarga de la alarma.</p>
+    <h3>Tus datos</h3>
+    <p>Todo se guarda en este dispositivo, sin cuenta ni internet. Desde el menú <strong>⋯</strong> podés <strong>guardar una copia</strong> y <strong>restaurarla</strong> en otro dispositivo.</p>
+    <form method="dialog"><button class="principal">Entendido</button></form>
+  </dialog>
+
+  <script>
+/**
+ * Agenda — utilidades de fecha y "lenguaje natural" en español.
+ * Todo se maneja en hora LOCAL: las fechas son strings "aaaa-mm-dd" y las horas "hh:mm".
+ */
+window.Agenda = window.Agenda || {};
+
+(function () {
+  const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  const MESES = ["enero", "febrero", "marzo", "abril", "mayo", "junio",
+    "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+  /** Date -> "aaaa-mm-dd" (local, sin corrimiento por UTC). */
+  function aISO(d) {
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${d.getFullYear()}-${mm}-${dd}`;
+  }
+
+  /** "aaaa-mm-dd" -> Date local a las 00:00 (new Date("2026-01-05") daría UTC). */
+  function desdeISO(iso) {
+    const [a, m, d] = String(iso).split("-").map(Number);
+    return new Date(a, (m || 1) - 1, d || 1);
+  }
+
+  const hoyISO = () => aISO(new Date());
+
+  function sumarDias(iso, n) {
+    const d = desdeISO(iso);
+    d.setDate(d.getDate() + n);
+    return aISO(d);
+  }
+
+  /** Fecha + hora -> Date. Si no hay hora, arranca a las 00:00. */
+  function combinar(iso, hora) {
+    const d = desdeISO(iso);
+    if (hora) {
+      const [h, m] = hora.split(":").map(Number);
+      d.setHours(h || 0, m || 0, 0, 0);
+    }
+    return d;
+  }
+
+  /** "martes 25 de agosto" (agrega el año si no es el actual). */
+  function fechaLarga(iso) {
+    const d = desdeISO(iso);
+    const base = `${DIAS[d.getDay()]} ${d.getDate()} de ${MESES[d.getMonth()]}`;
+    return d.getFullYear() === new Date().getFullYear() ? base : `${base} de ${d.getFullYear()}`;
+  }
+
+  /** Título amigable del grupo de un día: "Hoy", "Mañana", "Ayer" o la fecha larga. */
+  function etiquetaDia(iso) {
+    const hoy = hoyISO();
+    if (iso === hoy) return "Hoy";
+    if (iso === sumarDias(hoy, 1)) return "Mañana";
+    if (iso === sumarDias(hoy, -1)) return "Ayer";
+    return fechaLarga(iso).replace(/^./, (c) => c.toUpperCase());
+  }
+
+  /** "en 20 min", "en 3 h", "hace 2 días"… siempre en castellano y redondeado. */
+  function relativo(fecha) {
+    const min = Math.round((fecha.getTime() - Date.now()) / 60000);
+    const abs = Math.abs(min);
+    let texto;
+    if (abs < 1) texto = "ahora";
+    else if (abs < 60) texto = `${abs} min`;
+    else if (abs < 60 * 24) {
+      const h = Math.floor(abs / 60), m = abs % 60;
+      texto = m && h < 6 ? `${h} h ${m} min` : `${h} h`;
+    } else {
+      const d = Math.round(abs / (60 * 24));
+      texto = d === 1 ? "1 día" : `${d} días`;
+    }
+    if (texto === "ahora") return "ahora";
+    return min >= 0 ? `en ${texto}` : `hace ${texto}`;
+  }
+
+  /** Como `relativo`, pero contando días enteros (para los de "todo el día"). */
+  function relativoDia(iso) {
+    const dias = Math.round((desdeISO(iso) - desdeISO(hoyISO())) / 86400000);
+    if (dias === 0) return "hoy";
+    if (dias === 1) return "mañana";
+    if (dias === -1) return "ayer";
+    return dias > 0 ? `en ${dias} días` : `hace ${-dias} días`;
+  }
+
+  /** Próxima fecha de un recordatorio que se repite. */
+  function proximaOcurrencia(iso, repite) {
+    const d = desdeISO(iso);
+    if (repite === "diario") d.setDate(d.getDate() + 1);
+    else if (repite === "semanal") d.setDate(d.getDate() + 7);
+    else if (repite === "mensual") {
+      const dia = d.getDate();
+      d.setDate(1);
+      d.setMonth(d.getMonth() + 1);
+      // Si el mes que viene no tiene ese día (31), cae en el último día del mes.
+      const ultimo = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+      d.setDate(Math.min(dia, ultimo));
+    } else return null;
+    return aISO(d);
+  }
+
+  /** Si la fecha ya pasó, la adelanta hasta la próxima ocurrencia futura. */
+  function ponerAlDia(iso, repite) {
+    let f = iso;
+    const hoy = hoyISO();
+    let vueltas = 0;
+    while (f < hoy && vueltas < 500) {
+      const sig = proximaOcurrencia(f, repite);
+      if (!sig) break;
+      f = sig;
+      vueltas++;
+    }
+    return f;
+  }
+
+  // ------------------------------------------------------------------
+  // Lectura de lo que se escribe en la barra rápida.
+  // Ejemplos: "mañana 15:30 reunión con Juan", "lunes 9 am llamar al contador",
+  //           "en 2 horas sacar el turno", "5/9 pagar el seguro".
+  // ------------------------------------------------------------------
+  const PALABRAS_REUNION = /\b(reuni[oó]n|reunirme|reunion|junta|meeting|meet|zoom|videollamada|llamad[ao]|entrevista|cita|almuerzo|caf[eé]|visita)\b/i;
+
+  function parseEntrada(texto) {
+    let t = ` ${texto} `;
+    let fecha = null, hora = null;
+
+    const sacar = (re) => {
+      const m = t.match(re);
+      if (m) t = t.replace(m[0], " ");
+      return m;
+    };
+
+    // "en 30 min" / "en 2 horas" -> fecha y hora exactas desde ahora
+    const enRato = sacar(/\ben\s+(\d{1,3})\s*(min(?:utos?)?|h(?:s|oras?)?)\b/i);
+    if (enRato) {
+      const n = Number(enRato[1]);
+      const d = new Date(Date.now() + n * (/^m/i.test(enRato[2]) ? 60000 : 3600000));
+      fecha = aISO(d);
+      hora = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    }
+
+    if (!fecha && sacar(/\bpasado\s+ma[ñn]ana\b/i)) fecha = sumarDias(hoyISO(), 2);
+    if (!fecha && sacar(/\bma[ñn]ana\b/i)) fecha = sumarDias(hoyISO(), 1);
+    if (!fecha && sacar(/\bhoy\b/i)) fecha = hoyISO();
+
+    // Día de la semana: el próximo que venga (si es hoy, la semana que viene).
+    if (!fecha) {
+      const m = sacar(/\b(?:el\s+|este\s+|pr[oó]ximo\s+)?(domingo|lunes|martes|mi[eé]rcoles|jueves|viernes|s[aá]bado)\b/i);
+      if (m) {
+        const idx = DIAS.findIndex((d) => quitarTildes(d) === quitarTildes(m[1].toLowerCase()));
+        let delta = (idx - new Date().getDay() + 7) % 7;
+        if (delta === 0) delta = 7; // "el lunes" dicho un lunes = el que viene
+        fecha = sumarDias(hoyISO(), delta);
+      }
+    }
+
+    // "5 de septiembre" / "5 de sep"
+    if (!fecha) {
+      const m = sacar(/(?:\bel\s+)?\b(\d{1,2})\s+de\s+([a-záéíóú]{3,10})\b/i);
+      if (m) {
+        const mes = MESES.findIndex((x) => quitarTildes(x).startsWith(quitarTildes(m[2].toLowerCase()).slice(0, 3)));
+        if (mes >= 0) fecha = fechaFutura(Number(m[1]), mes);
+      }
+    }
+
+    // "5/9" o "5-9-2026"
+    if (!fecha) {
+      const m = sacar(/(?:\bel\s+)?\b(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?\b/);
+      if (m) {
+        const dia = Number(m[1]), mes = Number(m[2]) - 1;
+        if (m[3]) {
+          const a = Number(m[3].length === 2 ? `20${m[3]}` : m[3]);
+          fecha = aISO(new Date(a, mes, dia));
+        } else fecha = fechaFutura(dia, mes);
+      }
+    }
+
+    // Horas: "15:30", "15hs", "a las 9", "9 am", "9:30pm"
+    if (!hora) {
+      const m = sacar(/\b(?:a\s+las?\s+)?([01]?\d|2[0-3])[:.](\d{2})\s*(a\.?m\.?|p\.?m\.?)?/i)
+        || sacar(/\b(?:a\s+las?\s+)?([01]?\d|2[0-3])\s*(?:hs?|h)\b/i)
+        || sacar(/\b(?:a\s+las?\s+)?(\d{1,2})\s*(a\.?m\.?|p\.?m\.?)/i)
+        || sacar(/\ba\s+las?\s+(\d{1,2})\b/i);
+      if (m) {
+        let h = Number(m[1]);
+        const min = /^\d{2}$/.test(m[2] || "") ? Number(m[2]) : 0;
+        const sufijo = (m[3] || m[2] || "").toString().toLowerCase().replace(/\./g, "");
+        if (sufijo.startsWith("p") && h < 12) h += 12;
+        if (sufijo.startsWith("a") && h === 12) h = 0;
+        if (h <= 23) hora = `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+      }
+    }
+
+    const titulo = t.replace(/\s+/g, " ").trim().replace(/^[,;:\-–]\s*/, "");
+    return {
+      titulo: titulo.replace(/^./, (c) => c.toUpperCase()),
+      fecha: fecha || hoyISO(),
+      hora,
+      tipo: PALABRAS_REUNION.test(texto) ? "reunion" : "tarea",
+    };
+  }
+
+  /** Día/mes sin año: usa el año actual, o el que viene si ya pasó. */
+  function fechaFutura(dia, mes) {
+    const hoy = new Date();
+    let candidata = new Date(hoy.getFullYear(), mes, dia);
+    if (aISO(candidata) < aISO(hoy)) candidata = new Date(hoy.getFullYear() + 1, mes, dia);
+    return aISO(candidata);
+  }
+
+  const quitarTildes = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  Agenda.fechas = {
+    DIAS, MESES, aISO, desdeISO, hoyISO, sumarDias, combinar, fechaLarga,
+    etiquetaDia, relativo, relativoDia, proximaOcurrencia, ponerAlDia, parseEntrada,
+  };
+})();
+
+/**
+ * Agenda — dónde se guardan los recordatorios.
+ * Todo vive en el navegador (localStorage): no hay servidor, ni cuenta, ni login.
+ * Para no perderlos: menú ⋯ → "Guardar copia" (exporta un .json que se puede volver a cargar).
+ */
+window.Agenda = window.Agenda || {};
+
+(function () {
+  const { hoyISO, sumarDias, combinar, aISO, proximaOcurrencia, ponerAlDia } = Agenda.fechas;
+
+  const CLAVE = "agenda.recordatorios.v1";
+  const CLAVE_PREFS = "agenda.preferencias.v1";
+  const oyentes = new Set();
+
+  /** localStorage puede fallar (modo privado, permisos): la app sigue andando en memoria. */
+  let memoria = null;
+
+  function leer() {
+    if (memoria) return memoria;
+    try {
+      memoria = JSON.parse(localStorage.getItem(CLAVE) || "[]");
+      if (!Array.isArray(memoria)) memoria = [];
+    } catch {
+      memoria = [];
+    }
+    return memoria;
+  }
+
+  function escribir(lista) {
+    memoria = lista;
+    try {
+      localStorage.setItem(CLAVE, JSON.stringify(lista));
+    } catch (e) {
+      console.warn("No se pudo guardar en este navegador:", e);
+    }
+    oyentes.forEach((fn) => fn(lista));
+  }
+
+  const uid = () => `r_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
+
+  /** Se avisa a la UI cada vez que cambia algo. Devuelve la función para desuscribirse. */
+  function suscribir(fn) {
+    oyentes.add(fn);
+    return () => oyentes.delete(fn);
+  }
+
+  const VACIO = {
+    titulo: "", tipo: "tarea", fecha: null, hora: null, nota: "",
+    aviso: 10, repite: "no",
+  };
+
+  function crear(datos) {
+    const r = {
+      ...VACIO, ...datos,
+      id: uid(),
+      fecha: datos.fecha || hoyISO(),
+      hecho: false,
+      hechoEn: null,
+      avisado: false,
+      creadoEn: new Date().toISOString(),
+    };
+    escribir([...leer(), r]);
+    return r;
+  }
+
+  function actualizar(id, cambios) {
+    const lista = leer().map((r) => {
+      if (r.id !== id) return r;
+      const actualizado = { ...r, ...cambios };
+      // Si se movió el momento del recordatorio, vuelve a quedar pendiente de avisar
+      // (salvo que quien llama esté justamente marcando el aviso ya dado).
+      const semovio = cambios.fecha !== undefined || cambios.hora !== undefined || cambios.aviso !== undefined;
+      if (semovio && cambios.avisado === undefined) actualizado.avisado = false;
+      return actualizado;
+    });
+    escribir(lista);
+    return lista.find((r) => r.id === id);
+  }
+
+  function borrar(id) {
+    const r = leer().find((x) => x.id === id);
+    escribir(leer().filter((x) => x.id !== id));
+    return r; // se devuelve para poder deshacer
+  }
+
+  /** Vuelve a poner un recordatorio borrado (deshacer). */
+  function restaurar(r) {
+    if (!r) return;
+    escribir([...leer().filter((x) => x.id !== r.id), r]);
+  }
+
+  /**
+   * Marcar como hecho. Si se repite, no se archiva: pasa a la próxima fecha
+   * (así "reunión de equipo todos los lunes" se agenda sola).
+   */
+  function marcarHecho(id, hecho = true) {
+    const r = leer().find((x) => x.id === id);
+    if (!r) return;
+    if (hecho && r.repite !== "no") {
+      const siguiente = proximaOcurrencia(r.fecha, r.repite);
+      return actualizar(id, { fecha: ponerAlDia(siguiente, r.repite), hecho: false, hechoEn: null, avisado: false });
+    }
+    return actualizar(id, { hecho, hechoEn: hecho ? new Date().toISOString() : null, avisado: hecho ? true : false });
+  }
+
+  /** Posponer: "30" / "60" minutos, "manana" o "semana". */
+  function posponer(id, cuanto) {
+    const r = leer().find((x) => x.id === id);
+    if (!r) return;
+    if (cuanto === "manana" || cuanto === "semana") {
+      const dias = cuanto === "manana" ? 1 : 7;
+      return actualizar(id, { fecha: sumarDias(r.fecha < hoyISO() ? hoyISO() : r.fecha, dias) });
+    }
+    const minutos = Number(cuanto) || 30;
+    // Se cuenta desde el momento del recordatorio (los de todo el día, desde las 9),
+    // pero nunca hacia atrás: si ya pasó, se pospone desde ahora.
+    const base = combinar(r.fecha, r.hora || "09:00");
+    const destino = new Date(Math.max(base.getTime(), Date.now()) + minutos * 60000);
+    return actualizar(id, {
+      fecha: aISO(destino),
+      hora: `${String(destino.getHours()).padStart(2, "0")}:${String(destino.getMinutes()).padStart(2, "0")}`,
+    });
+  }
+
+  /** Momento exacto en que hay que avisar (fecha/hora menos los minutos de aviso). */
+  function momentoAviso(r) {
+    const cuando = combinar(r.fecha, r.hora || "09:00");
+    return new Date(cuando.getTime() - (Number(r.aviso) || 0) * 60000);
+  }
+
+  /** Momento del recordatorio en sí (para ordenar y mostrar "en 2 h"). */
+  const momento = (r) => combinar(r.fecha, r.hora);
+
+  const ordenar = (lista) => [...lista].sort((a, b) => {
+    if (a.fecha !== b.fecha) return a.fecha < b.fecha ? -1 : 1;
+    if (!a.hora && b.hora) return -1;      // los de "todo el día" van primero
+    if (a.hora && !b.hora) return 1;
+    if (a.hora !== b.hora) return (a.hora || "") < (b.hora || "") ? -1 : 1;
+    return (a.creadoEn || "") < (b.creadoEn || "") ? -1 : 1;
+  });
+
+  /** Listas ya filtradas para cada solapa de la app. */
+  function vistas() {
+    const todos = ordenar(leer());
+    const hoy = hoyISO();
+    const pendientes = todos.filter((r) => !r.hecho);
+    return {
+      todos,
+      pendientes,
+      vencidos: pendientes.filter((r) => r.fecha < hoy || (r.fecha === hoy && r.hora && momento(r) < new Date())),
+      hoy: pendientes.filter((r) => r.fecha <= hoy),
+      proximos: pendientes.filter((r) => r.fecha > hoy),
+      hechos: todos.filter((r) => r.hecho).reverse(),
+    };
+  }
+
+  // ---------------- copia de seguridad ----------------
+
+  const exportar = () => JSON.stringify({ app: "agenda", version: 1, recordatorios: leer() }, null, 2);
+
+  /** Importa un .json exportado antes. Suma los que faltan y pisa los repetidos por id. */
+  function importar(texto) {
+    const datos = JSON.parse(texto);
+    const entrantes = Array.isArray(datos) ? datos : datos.recordatorios;
+    if (!Array.isArray(entrantes)) throw new Error("El archivo no tiene recordatorios");
+    const porId = new Map(leer().map((r) => [r.id, r]));
+    let nuevos = 0;
+    for (const r of entrantes) {
+      if (!r || !r.titulo) continue;
+      if (!porId.has(r.id)) nuevos++;
+      porId.set(r.id || uid(), { ...VACIO, hecho: false, ...r });
+    }
+    escribir([...porId.values()]);
+    return { total: entrantes.length, nuevos };
+  }
+
+  function borrarTodo() {
+    escribir([]);
+  }
+
+  // ---------------- preferencias (tema) ----------------
+
+  function prefs(cambios) {
+    let actual = {};
+    try {
+      actual = JSON.parse(localStorage.getItem(CLAVE_PREFS) || "{}");
+    } catch { /* preferencias por defecto */ }
+    if (!cambios) return actual;
+    const nuevas = { ...actual, ...cambios };
+    try {
+      localStorage.setItem(CLAVE_PREFS, JSON.stringify(nuevas));
+    } catch { /* no se pudo guardar la preferencia: no es grave */ }
+    return nuevas;
+  }
+
+  Agenda.almacen = {
+    leer, suscribir, crear, actualizar, borrar, restaurar, marcarHecho, posponer,
+    momento, momentoAviso, ordenar, vistas, exportar, importar, borrarTodo, prefs,
+  };
+})();
+
+/**
+ * Agenda — avisos.
+ * Mientras la agenda está abierta (pestaña o app instalada) revisa cada 20 segundos
+ * qué recordatorio toca y muestra la notificación del sistema + un sonido corto.
+ * Para que suene con la agenda cerrada está el botón "Al calendario" de cada
+ * recordatorio: lo pasa al calendario del celular, que avisa siempre.
+ */
+window.Agenda = window.Agenda || {};
+
+(function () {
+  const almacen = () => Agenda.almacen;
+  let timer = null;
+  let alSonar = null;
+
+  const soportado = () => typeof Notification !== "undefined";
+  const permiso = () => (soportado() ? Notification.permission : "unsupported");
+
+  async function pedirPermiso() {
+    if (!soportado()) return "unsupported";
+    if (Notification.permission !== "default") return Notification.permission;
+    try {
+      return await Notification.requestPermission();
+    } catch {
+      return Notification.permission;
+    }
+  }
+
+  /** Beep suave generado en el momento (no hace falta ningún archivo de sonido). */
+  function sonar() {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      const notas = [880, 1174.7];
+      notas.forEach((hz, i) => {
+        const osc = ctx.createOscillator();
+        const vol = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.value = hz;
+        const t0 = ctx.currentTime + i * 0.18;
+        vol.gain.setValueAtTime(0.0001, t0);
+        vol.gain.exponentialRampToValueAtTime(0.18, t0 + 0.02);
+        vol.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.16);
+        osc.connect(vol).connect(ctx.destination);
+        osc.start(t0);
+        osc.stop(t0 + 0.2);
+      });
+      setTimeout(() => ctx.close && ctx.close(), 1200);
+    } catch { /* sin sonido: el aviso visual igual aparece */ }
+  }
+
+  function notificar(r) {
+    const cuando = r.hora ? `a las ${r.hora}` : "hoy";
+    const cuerpo = [cuando, r.nota].filter(Boolean).join(" · ");
+    if (permiso() === "granted") {
+      try {
+        const n = new Notification(`${r.tipo === "reunion" ? "📅" : "✅"} ${r.titulo}`, {
+          body: cuerpo,
+          tag: r.id,          // no se apilan avisos repetidos del mismo recordatorio
+          renotify: false,
+          icon: "icono.svg",
+          badge: "icono.svg",
+        });
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch { /* algunos navegadores exigen service worker: queda el aviso en pantalla */ }
+    }
+    sonar();
+    if (alSonar) alSonar(r);
+  }
+
+  /** Recorre los pendientes y avisa los que llegaron a su momento. */
+  function revisar() {
+    const a = almacen();
+    const ahora = Date.now();
+    for (const r of a.leer()) {
+      if (r.hecho || r.avisado) continue;
+      const momento = a.momentoAviso(r).getTime();
+      // Se avisa cuando llegó la hora; si estuvo cerrada más de un día, no molesta con lo viejo.
+      if (momento <= ahora && ahora - momento < 24 * 60 * 60 * 1000) {
+        a.actualizar(r.id, { avisado: true });
+        notificar(r);
+      }
+    }
+  }
+
+  /** Arranca el reloj de avisos. `cuando` se llama con cada recordatorio que suena. */
+  function iniciar(cuando) {
+    alSonar = cuando || null;
+    if (timer) clearInterval(timer);
+    revisar();
+    timer = setInterval(revisar, 20000);
+    // Al volver a la pestaña, revisa enseguida (el navegador frena los timers en segundo plano).
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) revisar(); });
+  }
+
+  Agenda.avisos = { soportado, permiso, pedirPermiso, iniciar, revisar, notificar, sonar };
+})();
+
+/**
+ * Agenda — pasar un recordatorio al calendario del celular o de la compu (.ics).
+ * Sirve para que el aviso suene aunque la agenda esté cerrada: el calendario
+ * del teléfono se encarga de la alarma.
+ */
+window.Agenda = window.Agenda || {};
+
+(function () {
+  const { combinar } = Agenda.fechas;
+
+  const dosD = (n) => String(n).padStart(2, "0");
+  const fechaLocal = (d) => `${d.getFullYear()}${dosD(d.getMonth() + 1)}${dosD(d.getDate())}T${dosD(d.getHours())}${dosD(d.getMinutes())}00`;
+  const soloDia = (iso) => iso.replace(/-/g, "");
+  const ahoraUTC = () => new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+
+  /** Los textos del .ics no pueden llevar comas ni saltos sin escapar. */
+  const esc = (s) => String(s || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+
+  const RRULE = { diario: "FREQ=DAILY", semanal: "FREQ=WEEKLY", mensual: "FREQ=MONTHLY" };
+
+  function evento(r) {
+    const lineas = [
+      "BEGIN:VEVENT",
+      `UID:${r.id}@agenda.local`,
+      `DTSTAMP:${ahoraUTC()}`,
+      `SUMMARY:${esc(r.titulo)}`,
+    ];
+    if (r.hora) {
+      const inicio = combinar(r.fecha, r.hora);
+      const fin = new Date(inicio.getTime() + (r.tipo === "reunion" ? 60 : 30) * 60000);
+      lineas.push(`DTSTART:${fechaLocal(inicio)}`, `DTEND:${fechaLocal(fin)}`);
+    } else {
+      lineas.push(`DTSTART;VALUE=DATE:${soloDia(r.fecha)}`);
+    }
+    if (r.nota) lineas.push(`DESCRIPTION:${esc(r.nota)}`);
+    if (RRULE[r.repite]) lineas.push(`RRULE:${RRULE[r.repite]}`);
+    lineas.push(
+      "BEGIN:VALARM",
+      `TRIGGER:-PT${Number(r.aviso) || 0}M`,
+      "ACTION:DISPLAY",
+      `DESCRIPTION:${esc(r.titulo)}`,
+      "END:VALARM",
+      "END:VEVENT",
+    );
+    return lineas;
+  }
+
+  function calendario(recordatorios) {
+    const cuerpo = recordatorios.flatMap(evento);
+    return [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Agenda//ES",
+      "CALSCALE:GREGORIAN",
+      ...cuerpo,
+      "END:VCALENDAR",
+    ].join("\r\n");
+  }
+
+  /**
+   * Algunos visores (por ejemplo el de Claude, cuando la agenda se abre ahí dentro)
+   * no dejan que la página baje archivos sola: hay que pedírselo a ellos.
+   * Devuelve "guardado", el código del problema, o null si no hay visor.
+   */
+  async function guardarConElVisor(nombre, contenido) {
+    if (!window.claude || typeof window.claude.use !== "function") return null;
+    const paciencia = new Promise((listo) => setTimeout(() => listo(null), 3000));
+    const permiso = await Promise.race([Promise.resolve(window.claude.use("downloads")).catch(() => null), paciencia]);
+    if (!permiso) return null;
+    try {
+      await permiso.save({ filename: nombre, data: contenido });
+      return "guardado";
+    } catch (e) {
+      return (e && e.code) || "sin-permiso";
+    }
+  }
+
+  async function descargar(nombre, contenido, tipo = "text/calendar;charset=utf-8") {
+    const porVisor = await guardarConElVisor(nombre, contenido);
+    if (porVisor) return porVisor;
+
+    const url = URL.createObjectURL(new Blob([contenido], { type: tipo }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return "guardado";
+  }
+
+  const nombreArchivo = (t) => (t || "recordatorio").toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "recordatorio";
+
+  Agenda.ics = { calendario, descargar, nombreArchivo };
+})();
+
+/**
+ * Agenda — pantalla principal.
+ * Junta las piezas: fechas.js (entender lo que se escribe), almacen.js (guardar),
+ * avisos.js (notificar) e ics.js (pasar al calendario del celular).
+ */
+(function () {
+  const { fechas, almacen, avisos, ics } = Agenda;
+  const $ = (sel) => document.querySelector(sel);
+
+  const estado = { solapa: "hoy", editando: null };
+  let deshacer = null;      // último borrado, para el botón "Deshacer"
+  let instalador = null;    // evento de instalación de la app (Android/Chrome)
+
+  const TIPOS = { reunion: { emoji: "📅", nombre: "Reunión" }, tarea: { emoji: "✅", nombre: "Tarea" } };
+  const REPITE = { diario: "Todos los días", semanal: "Cada semana", mensual: "Cada mes" };
+  const AVISOS = { 0: "A la hora", 10: "10 min antes", 30: "30 min antes", 60: "1 h antes", 1440: "1 día antes" };
+
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // ============================ arranque ============================
+
+  function iniciar() {
+    aplicarTema(almacen.prefs().tema);
+    $("#fecha-hoy").textContent = fechas.fechaLarga(fechas.hoyISO()).replace(/^./, (c) => c.toUpperCase());
+
+    $("#form-rapido").addEventListener("submit", agregarRapido);
+    $("#entrada").addEventListener("input", mostrarLectura);
+    $("#atajos").addEventListener("click", clickAtajo);
+    $("#solapas").addEventListener("click", clickSolapa);
+    $("#lista").addEventListener("click", clickLista);
+    $("#menu").addEventListener("click", clickMenu);
+    $("#f-guardar").addEventListener("click", guardarFicha);
+    $("#f-cancelar").addEventListener("click", cerrarFicha);
+    $("#btn-tema").addEventListener("click", alternarTema);
+    $("#btn-avisos").addEventListener("click", activarAvisos);
+    $("#archivo").addEventListener("change", restaurarCopia);
+
+    document.addEventListener("click", cerrarDesplegables);
+    document.addEventListener("keydown", atajosTeclado);
+    almacen.suscribir(dibujar);
+
+    avisos.iniciar((r) => {
+      dibujar();
+      brindis(`🔔 ${r.titulo}`);
+    });
+    pintarBotonAvisos();
+    seguirTemaDeAfuera();
+    dibujar();
+    prepararInstalacion();
+    registrarServiceWorker();
+  }
+
+  // ======================== carga de recordatorios ========================
+
+  function agregarRapido(e) {
+    e.preventDefault();
+    const texto = $("#entrada").value.trim();
+    if (!texto) return $("#entrada").focus();
+    const leido = fechas.parseEntrada(texto);
+    if (!leido.titulo) return brindis("Escribí qué querés recordar");
+    const r = almacen.crear({ ...leido, aviso: leido.hora ? 10 : 0 });
+    $("#entrada").value = "";
+    mostrarLectura();
+    mostrarSolapaDe(r);
+    brindis(`Listo: ${resumenCuando(r)}`);
+  }
+
+  /** Deja a la vista la solapa donde quedó el recordatorio recién cargado. */
+  function mostrarSolapaDe(r) {
+    estado.solapa = r.fecha > fechas.hoyISO() ? "proximos" : "hoy";
+    dibujar();
+  }
+
+  /** Muestra debajo del input cómo entendió la fecha (para que no haya sorpresas). */
+  function mostrarLectura() {
+    const texto = $("#entrada").value.trim();
+    const caja = $("#lectura");
+    if (!texto) return void (caja.hidden = true);
+    const r = fechas.parseEntrada(texto);
+    caja.hidden = false;
+    caja.innerHTML = `Se agenda como <strong>${TIPOS[r.tipo].emoji} ${esc(r.titulo || "(sin título)")}</strong> · ${esc(resumenCuando(r))}`;
+  }
+
+  const resumenCuando = (r) =>
+    `${fechas.etiquetaDia(r.fecha).toLowerCase()}${r.hora ? ` a las ${r.hora}` : ", todo el día"}`;
+
+  function clickAtajo(e) {
+    const boton = e.target.closest("[data-atajo]");
+    if (!boton) return;
+    const atajo = boton.dataset.atajo;
+    if (atajo === "opciones") return abrirFicha(null);
+
+    const texto = $("#entrada").value.trim();
+    if (!texto) {
+      $("#entrada").focus();
+      return brindis("Escribí primero qué querés recordar");
+    }
+    const base = fechas.parseEntrada(texto);
+    if (atajo === "hoy") Object.assign(base, { fecha: fechas.hoyISO() });
+    if (atajo === "manana") Object.assign(base, { fecha: fechas.sumarDias(fechas.hoyISO(), 1), hora: "09:00" });
+    if (atajo === "hora") {
+      const d = new Date(Date.now() + 3600000);
+      Object.assign(base, { fecha: fechas.aISO(d), hora: `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` });
+    }
+    const r = almacen.crear({ ...base, aviso: base.hora ? 10 : 0 });
+    $("#entrada").value = "";
+    mostrarLectura();
+    mostrarSolapaDe(r);
+    brindis(`Listo: ${resumenCuando(r)}`);
+  }
+
+  // ============================== ficha ==============================
+
+  function abrirFicha(r) {
+    estado.editando = r ? r.id : null;
+    const texto = $("#entrada").value.trim();
+    const base = r || { ...fechas.parseEntrada(texto || " "), nota: "", aviso: 10, repite: "no" };
+    if (!r && !texto) base.titulo = "";
+
+    $("#ficha-titulo").textContent = r ? "Editar recordatorio" : "Nuevo recordatorio";
+    $("#f-titulo").value = base.titulo || "";
+    $("#f-tipo").value = base.tipo || "tarea";
+    $("#f-fecha").value = base.fecha || fechas.hoyISO();
+    $("#f-hora").value = base.hora || "";
+    $("#f-aviso").value = String(base.aviso ?? 10);
+    $("#f-repite").value = base.repite || "no";
+    $("#f-nota").value = base.nota || "";
+    $("#ficha").hidden = false;
+    $("#f-titulo").focus();
+  }
+
+  function cerrarFicha() {
+    $("#ficha").hidden = true;
+    estado.editando = null;
+  }
+
+  function guardarFicha() {
+    const datos = {
+      titulo: $("#f-titulo").value.trim(),
+      tipo: $("#f-tipo").value,
+      fecha: $("#f-fecha").value || fechas.hoyISO(),
+      hora: $("#f-hora").value || null,
+      aviso: Number($("#f-aviso").value),
+      repite: $("#f-repite").value,
+      nota: $("#f-nota").value.trim(),
+    };
+    if (!datos.titulo) {
+      $("#f-titulo").focus();
+      return brindis("Falta el título");
+    }
+    if (estado.editando) {
+      almacen.actualizar(estado.editando, datos);
+      brindis("Guardado");
+    } else {
+      almacen.crear(datos);
+      $("#entrada").value = "";
+      mostrarLectura();
+      mostrarSolapaDe(datos);
+      brindis(`Listo: ${resumenCuando(datos)}`);
+    }
+    cerrarFicha();
+  }
+
+  // ============================== lista ==============================
+
+  function clickSolapa(e) {
+    const boton = e.target.closest("[data-solapa]");
+    if (!boton) return;
+    estado.solapa = boton.dataset.solapa;
+    dibujar();
+  }
+
+  /** Qué contarle al usuario según cómo salió la descarga. */
+  function avisarDescarga(resultado, exito) {
+    if (resultado === "guardado") return brindis(exito);
+    if (resultado === "declined") return brindis("Cancelado");
+    if (resultado === "rejected_extension" || resultado === "extension_not_enabled")
+      return brindis("Acá no se pueden bajar archivos de calendario. Abrí la agenda en tu navegador para usar esta opción.");
+    brindis("No se pudo bajar el archivo desde acá. Probá abriendo la agenda en tu navegador.");
+  }
+
+  async function clickLista(e) {
+    const accionable = e.target.closest("[data-accion]");
+    const tarjeta = e.target.closest(".tarjeta");
+    if (!accionable || !tarjeta) return;
+    const id = tarjeta.dataset.id;
+    const r = almacen.leer().find((x) => x.id === id);
+    if (!r) return;
+
+    switch (accionable.dataset.accion) {
+      case "hecho":
+        almacen.marcarHecho(id, !r.hecho);
+        brindis(r.hecho ? "Volvió a pendientes" : (r.repite !== "no" ? "Hecho · se agendó el próximo" : "¡Hecho! 🎉"));
+        break;
+      case "editar":
+        abrirFicha(r);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        break;
+      case "posponer": {
+        almacen.posponer(id, accionable.dataset.valor);
+        const nuevo = almacen.leer().find((x) => x.id === id);
+        brindis(`Pospuesto: ${resumenCuando(nuevo)}`);
+        break;
+      }
+      case "ics":
+        avisarDescarga(await ics.descargar(`${ics.nombreArchivo(r.titulo)}.ics`, ics.calendario([r])),
+          "Abrí el archivo para sumarlo a tu calendario");
+        break;
+      case "borrar":
+        deshacer = almacen.borrar(id);
+        brindis("Eliminado", { etiqueta: "Deshacer", accion: () => { almacen.restaurar(deshacer); deshacer = null; } });
+        break;
+    }
+    cerrarDesplegables();
+  }
+
+  function dibujar() {
+    const v = almacen.vistas();
+
+    $("#c-hoy").textContent = v.hoy.length || "";
+    $("#c-proximos").textContent = v.proximos.length || "";
+    document.querySelectorAll("[data-solapa]").forEach((b) =>
+      b.classList.toggle("activa", b.dataset.solapa === estado.solapa));
+
+    const lista = {
+      hoy: v.hoy,
+      proximos: v.proximos,
+      todo: v.pendientes,
+      hechos: v.hechos,
+    }[estado.solapa] || v.hoy;
+
+    const contenedor = $("#lista");
+    if (!lista.length) {
+      contenedor.innerHTML = vacio();
+      return;
+    }
+    contenedor.innerHTML = estado.solapa === "hechos"
+      ? lista.map(tarjeta).join("")
+      : porDia(lista);
+
+    document.title = v.hoy.length ? `(${v.hoy.length}) Mi agenda` : "Mi agenda · recordatorios";
+  }
+
+  /** Agrupa por día con títulos amigables: Hoy, Mañana, Lunes 14 de septiembre… */
+  function porDia(lista) {
+    const hoy = fechas.hoyISO();
+    const grupos = new Map();
+    for (const r of lista) {
+      if (!grupos.has(r.fecha)) grupos.set(r.fecha, []);
+      grupos.get(r.fecha).push(r);
+    }
+    return [...grupos.entries()].map(([fecha, items]) => {
+      const atrasado = fecha < hoy;
+      const titulo = atrasado ? `⚠️ Atrasado · ${fechas.etiquetaDia(fecha)}` : fechas.etiquetaDia(fecha);
+      return `<h2 class="grupo-titulo${atrasado ? " atrasado" : ""}">${esc(titulo)}</h2>${items.map(tarjeta).join("")}`;
+    }).join("");
+  }
+
+  function tarjeta(r) {
+    const tipo = TIPOS[r.tipo] || TIPOS.tarea;
+    const cuando = almacen.momento(r);
+    const vencido = !r.hecho && cuando < new Date() && (r.hora || r.fecha < fechas.hoyISO());
+    const pastillas = [
+      `<span class="pastilla tipo">${tipo.emoji} ${tipo.nombre}</span>`,
+      `<span class="pastilla">${r.hora ? `🕒 ${esc(r.hora)}` : "Todo el día"}</span>`,
+    ];
+    if (r.hecho) {
+      pastillas.push(`<span class="pastilla pronto">Hecho</span>`);
+    } else {
+      const falta = r.hora ? fechas.relativo(cuando) : fechas.relativoDia(r.fecha);
+      pastillas.push(`<span class="pastilla ${vencido ? "tarde" : "pronto"}">${esc(falta)}</span>`);
+      if (r.repite !== "no") pastillas.push(`<span class="pastilla">🔁 ${REPITE[r.repite]}</span>`);
+      if (r.hora || Number(r.aviso)) pastillas.push(`<span class="pastilla">🔔 ${AVISOS[r.aviso] || `${r.aviso} min antes`}</span>`);
+    }
+
+    // A lo ya hecho no tiene sentido ofrecerle "posponer".
+    const opciones = [
+      ...(r.hecho ? [] : [
+        `<button type="button" data-accion="posponer" data-valor="30">⏰ Posponer 30 minutos</button>`,
+        `<button type="button" data-accion="posponer" data-valor="60">⏰ Posponer 1 hora</button>`,
+        `<button type="button" data-accion="posponer" data-valor="manana">📆 Pasar a mañana</button>`,
+        `<button type="button" data-accion="ics">📅 Pasar al calendario</button>`,
+      ]),
+      `<button type="button" data-accion="editar">✏️ Editar</button>`,
+      `<button type="button" data-accion="borrar" class="peligro">🗑️ Eliminar</button>`,
+    ].join("");
+
+    return `
+      <article class="tarjeta${r.hecho ? " lista" : ""}${vencido ? " vencida" : ""}" data-id="${esc(r.id)}">
+        <button type="button" class="tilde" data-accion="hecho"
+          title="${r.hecho ? "Volver a pendientes" : "Marcar como hecho"}"
+          aria-label="${r.hecho ? "Volver a pendientes" : "Marcar como hecho"}">✓</button>
+        <div class="cuerpo" data-accion="editar" title="Tocá para editar">
+          <div class="titulo">${esc(r.titulo)}</div>
+          ${r.nota ? `<div class="nota">${esc(r.nota)}</div>` : ""}
+          <div class="meta">${pastillas.join("")}</div>
+        </div>
+        <details class="acciones">
+          <summary title="Opciones" aria-label="Opciones">⋯</summary>
+          <div class="menu-lista">${opciones}</div>
+        </details>
+      </article>`;
+  }
+
+  function vacio() {
+    const textos = {
+      hoy: ["🎉", "No tenés nada para hoy", "Escribí arriba lo que no querés olvidarte."],
+      proximos: ["🌤️", "Nada agendado más adelante", "Probá con “mañana 15:30 reunión con Juan”."],
+      todo: ["📝", "Todavía no hay recordatorios", "Empezá por el primero, se carga en dos segundos."],
+      hechos: ["✅", "Acá van a aparecer los hechos", "Marcá el círculo de un recordatorio cuando lo termines."],
+    }[estado.solapa];
+    return `<div class="vacio"><span class="emoji">${textos[0]}</span><strong>${textos[1]}</strong><p>${textos[2]}</p></div>`;
+  }
+
+  // ======================== menú y preferencias ========================
+
+  async function clickMenu(e) {
+    const boton = e.target.closest("[data-menu]");
+    if (!boton) return;
+    const pendientes = almacen.vistas().pendientes;
+
+    switch (boton.dataset.menu) {
+      case "calendario":
+        if (!pendientes.length) { brindis("No hay recordatorios pendientes"); break; }
+        cerrarDesplegables();
+        avisarDescarga(await ics.descargar("mi-agenda.ics", ics.calendario(pendientes)),
+          "Abrí el archivo para sumarlos a tu calendario");
+        return;
+      case "exportar":
+        cerrarDesplegables();
+        avisarDescarga(await ics.descargar(`agenda-${fechas.hoyISO()}.json`, almacen.exportar(), "application/json"),
+          "Copia guardada");
+        return;
+      case "importar":
+        $("#archivo").click();
+        break;
+      case "instalar":
+        if (instalador) { instalador.prompt(); instalador = null; }
+        break;
+      case "limpiar": {
+        const hechos = almacen.vistas().hechos;
+        if (!hechos.length) { brindis("No hay nada para limpiar"); break; }
+        if (confirm(`¿Borrar ${hechos.length} recordatorio(s) ya hechos?`)) {
+          hechos.forEach((r) => almacen.borrar(r.id));
+          brindis("Listo, quedó ordenado");
+        }
+        break;
+      }
+      case "ayuda":
+        $("#ayuda").showModal();
+        break;
+    }
+    cerrarDesplegables();
+  }
+
+  function restaurarCopia(e) {
+    const archivo = e.target.files && e.target.files[0];
+    if (!archivo) return;
+    const lector = new FileReader();
+    lector.onload = () => {
+      try {
+        const { total, nuevos } = almacen.importar(String(lector.result));
+        brindis(`Se leyeron ${total} · ${nuevos} nuevos`);
+      } catch (err) {
+        brindis(`No se pudo leer el archivo: ${err.message}`);
+      }
+    };
+    lector.readAsText(archivo);
+    e.target.value = "";
+  }
+
+  /** Si el tema lo cambia quien nos embebe (o el sistema), se actualiza el botón. */
+  function seguirTemaDeAfuera() {
+    new MutationObserver(() => { if (!almacen.prefs().tema) aplicarTema(null); })
+      .observe(document.documentElement, { attributeFilter: ["data-theme"] });
+    if (window.matchMedia) {
+      const consulta = window.matchMedia("(prefers-color-scheme: dark)");
+      const alCambiar = () => { if (!almacen.prefs().tema) aplicarTema(null); };
+      if (consulta.addEventListener) consulta.addEventListener("change", alCambiar);
+    }
+  }
+
+  function aplicarTema(tema) {
+    if (tema) document.documentElement.dataset.tema = tema;
+    else delete document.documentElement.dataset.tema;
+    $("#btn-tema").textContent = estaOscuro() ? "☀️" : "🌙";
+  }
+
+  /** Si no se eligió tema, se sigue al sistema (o al visor que embeba la app). */
+  function estaOscuro() {
+    const tema = document.documentElement.dataset.tema;
+    if (tema) return tema === "oscuro";
+    if (document.documentElement.dataset.theme) return document.documentElement.dataset.theme === "dark";
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  }
+
+  function alternarTema() {
+    const nuevo = estaOscuro() ? "claro" : "oscuro";
+    almacen.prefs({ tema: nuevo });
+    aplicarTema(nuevo);
+  }
+
+  async function activarAvisos() {
+    if (!avisos.soportado()) return brindis("Este navegador no muestra avisos del sistema");
+    const estadoPermiso = await avisos.pedirPermiso();
+    if (estadoPermiso === "granted") {
+      avisos.notificar({ id: "prueba", titulo: "Avisos activados", tipo: "tarea", hora: null, nota: "Te voy a avisar cuando toque." });
+      brindis("Avisos activados 🔔");
+    } else if (estadoPermiso === "denied") {
+      brindis("Los avisos están bloqueados en el navegador. Se pueden permitir desde el candadito de la barra de direcciones.");
+    }
+    pintarBotonAvisos();
+  }
+
+  function pintarBotonAvisos() {
+    const boton = $("#btn-avisos");
+    const p = avisos.permiso();
+    boton.classList.toggle("encendido", p === "granted");
+    boton.title = p === "granted" ? "Los avisos están activados"
+      : p === "denied" ? "Los avisos están bloqueados en el navegador"
+      : "Activar los avisos";
+  }
+
+  // ============================ varios ============================
+
+  let timerBrindis = null;
+  function brindis(texto, accion) {
+    const caja = $("#brindis");
+    caja.innerHTML = `<span>${esc(texto)}</span>`;
+    if (accion) {
+      const boton = document.createElement("button");
+      boton.type = "button";
+      boton.textContent = accion.etiqueta;
+      boton.addEventListener("click", () => { accion.accion(); caja.hidden = true; });
+      caja.appendChild(boton);
+    }
+    caja.hidden = false;
+    clearTimeout(timerBrindis);
+    timerBrindis = setTimeout(() => { caja.hidden = true; }, accion ? 7000 : 3500);
+  }
+
+  /** Cierra los menús ⋯ abiertos (los de las tarjetas y el de la cabecera). */
+  function cerrarDesplegables(e) {
+    document.querySelectorAll("details[open]").forEach((d) => {
+      if (!e || !d.contains(e.target)) d.removeAttribute("open");
+    });
+  }
+
+  function atajosTeclado(e) {
+    if (e.key === "Escape") {
+      cerrarFicha();
+      cerrarDesplegables();
+      return;
+    }
+    const escribiendo = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    if (e.key === "/" && !escribiendo) {
+      e.preventDefault();
+      $("#entrada").focus();
+    }
+  }
+
+  function prepararInstalacion() {
+    window.addEventListener("beforeinstallprompt", (e) => {
+      e.preventDefault();
+      instalador = e;
+      const boton = document.querySelector('[data-menu="instalar"]');
+      if (boton) boton.hidden = false;
+    });
+  }
+
+  function registrarServiceWorker() {
+    if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
+    navigator.serviceWorker.register("sw.js").catch(() => { /* sin modo sin conexión: la agenda igual anda */ });
+  }
+
+  // Arranca ni bien está el HTML (sirva la página como sirva).
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
+  else iniciar();
+})();
+  </script>
+</body>
+</html>

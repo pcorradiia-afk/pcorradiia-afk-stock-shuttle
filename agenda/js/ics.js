@@ -57,7 +57,28 @@ window.Agenda = window.Agenda || {};
     ].join("\r\n");
   }
 
-  function descargar(nombre, contenido, tipo = "text/calendar;charset=utf-8") {
+  /**
+   * Algunos visores (por ejemplo el de Claude, cuando la agenda se abre ahí dentro)
+   * no dejan que la página baje archivos sola: hay que pedírselo a ellos.
+   * Devuelve "guardado", el código del problema, o null si no hay visor.
+   */
+  async function guardarConElVisor(nombre, contenido) {
+    if (!window.claude || typeof window.claude.use !== "function") return null;
+    const paciencia = new Promise((listo) => setTimeout(() => listo(null), 3000));
+    const permiso = await Promise.race([Promise.resolve(window.claude.use("downloads")).catch(() => null), paciencia]);
+    if (!permiso) return null;
+    try {
+      await permiso.save({ filename: nombre, data: contenido });
+      return "guardado";
+    } catch (e) {
+      return (e && e.code) || "sin-permiso";
+    }
+  }
+
+  async function descargar(nombre, contenido, tipo = "text/calendar;charset=utf-8") {
+    const porVisor = await guardarConElVisor(nombre, contenido);
+    if (porVisor) return porVisor;
+
     const url = URL.createObjectURL(new Blob([contenido], { type: tipo }));
     const a = document.createElement("a");
     a.href = url;
@@ -66,6 +87,7 @@ window.Agenda = window.Agenda || {};
     a.click();
     a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return "guardado";
   }
 
   const nombreArchivo = (t) => (t || "recordatorio").toLowerCase()

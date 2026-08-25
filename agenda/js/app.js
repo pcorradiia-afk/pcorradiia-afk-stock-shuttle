@@ -45,6 +45,7 @@
       brindis(`🔔 ${r.titulo}`);
     });
     pintarBotonAvisos();
+    seguirTemaDeAfuera();
     dibujar();
     prepararInstalacion();
     registrarServiceWorker();
@@ -170,7 +171,16 @@
     dibujar();
   }
 
-  function clickLista(e) {
+  /** Qué contarle al usuario según cómo salió la descarga. */
+  function avisarDescarga(resultado, exito) {
+    if (resultado === "guardado") return brindis(exito);
+    if (resultado === "declined") return brindis("Cancelado");
+    if (resultado === "rejected_extension" || resultado === "extension_not_enabled")
+      return brindis("Acá no se pueden bajar archivos de calendario. Abrí la agenda en tu navegador para usar esta opción.");
+    brindis("No se pudo bajar el archivo desde acá. Probá abriendo la agenda en tu navegador.");
+  }
+
+  async function clickLista(e) {
     const accionable = e.target.closest("[data-accion]");
     const tarjeta = e.target.closest(".tarjeta");
     if (!accionable || !tarjeta) return;
@@ -194,8 +204,8 @@
         break;
       }
       case "ics":
-        ics.descargar(`${ics.nombreArchivo(r.titulo)}.ics`, ics.calendario([r]));
-        brindis("Abrí el archivo para sumarlo a tu calendario");
+        avisarDescarga(await ics.descargar(`${ics.nombreArchivo(r.titulo)}.ics`, ics.calendario([r])),
+          "Abrí el archivo para sumarlo a tu calendario");
         break;
       case "borrar":
         deshacer = almacen.borrar(id);
@@ -305,7 +315,7 @@
 
   // ======================== menú y preferencias ========================
 
-  function clickMenu(e) {
+  async function clickMenu(e) {
     const boton = e.target.closest("[data-menu]");
     if (!boton) return;
     const pendientes = almacen.vistas().pendientes;
@@ -313,13 +323,15 @@
     switch (boton.dataset.menu) {
       case "calendario":
         if (!pendientes.length) { brindis("No hay recordatorios pendientes"); break; }
-        ics.descargar("mi-agenda.ics", ics.calendario(pendientes));
-        brindis("Abrí el archivo para sumarlos a tu calendario");
-        break;
+        cerrarDesplegables();
+        avisarDescarga(await ics.descargar("mi-agenda.ics", ics.calendario(pendientes)),
+          "Abrí el archivo para sumarlos a tu calendario");
+        return;
       case "exportar":
-        ics.descargar(`agenda-${fechas.hoyISO()}.json`, almacen.exportar(), "application/json");
-        brindis("Copia guardada");
-        break;
+        cerrarDesplegables();
+        avisarDescarga(await ics.descargar(`agenda-${fechas.hoyISO()}.json`, almacen.exportar(), "application/json"),
+          "Copia guardada");
+        return;
       case "importar":
         $("#archivo").click();
         break;
@@ -358,19 +370,33 @@
     e.target.value = "";
   }
 
+  /** Si el tema lo cambia quien nos embebe (o el sistema), se actualiza el botón. */
+  function seguirTemaDeAfuera() {
+    new MutationObserver(() => { if (!almacen.prefs().tema) aplicarTema(null); })
+      .observe(document.documentElement, { attributeFilter: ["data-theme"] });
+    if (window.matchMedia) {
+      const consulta = window.matchMedia("(prefers-color-scheme: dark)");
+      const alCambiar = () => { if (!almacen.prefs().tema) aplicarTema(null); };
+      if (consulta.addEventListener) consulta.addEventListener("change", alCambiar);
+    }
+  }
+
   function aplicarTema(tema) {
     if (tema) document.documentElement.dataset.tema = tema;
     else delete document.documentElement.dataset.tema;
-    const oscuro = tema === "oscuro"
-      || (!tema && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    $("#btn-tema").textContent = oscuro ? "☀️" : "🌙";
+    $("#btn-tema").textContent = estaOscuro() ? "☀️" : "🌙";
+  }
+
+  /** Si no se eligió tema, se sigue al sistema (o al visor que embeba la app). */
+  function estaOscuro() {
+    const tema = document.documentElement.dataset.tema;
+    if (tema) return tema === "oscuro";
+    if (document.documentElement.dataset.theme) return document.documentElement.dataset.theme === "dark";
+    return !!(window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
   }
 
   function alternarTema() {
-    const actual = document.documentElement.dataset.tema;
-    const oscuroAhora = actual === "oscuro"
-      || (!actual && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    const nuevo = oscuroAhora ? "claro" : "oscuro";
+    const nuevo = estaOscuro() ? "claro" : "oscuro";
     almacen.prefs({ tema: nuevo });
     aplicarTema(nuevo);
   }
@@ -448,5 +474,7 @@
     navigator.serviceWorker.register("sw.js").catch(() => { /* sin modo sin conexión: la agenda igual anda */ });
   }
 
-  document.addEventListener("DOMContentLoaded", iniciar);
+  // Arranca ni bien está el HTML (sirva la página como sirva).
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
+  else iniciar();
 })();

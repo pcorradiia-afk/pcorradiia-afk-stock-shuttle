@@ -56,7 +56,7 @@ guardar una copia de vez en cuando.
 
 ## Para abrirla
 
-- **En la compu, sin instalar nada**: abrí `index.html` con doble clic.
+- **En la compu, sin instalar nada**: abrí `index.html` (o `mi-agenda.html`) con doble clic.
 - **Como si fuera un servidor** (recomendado, habilita instalarla y el modo sin conexión):
 
   ```bash
@@ -69,6 +69,16 @@ guardar una copia de vez en cuando.
   este repo → **Root Directory: `agenda`** → framework *Other*, sin build) y desde el
   navegador del teléfono elegí **“Agregar a la pantalla de inicio”**. Queda como una app,
   con ícono propio y a pantalla completa.
+
+## Una sola página, para compartirla
+
+`mi-agenda.html` es la misma agenda con el CSS y el JavaScript adentro: un único
+archivo que se puede mandar por mail, guardar en el celular o publicar suelto.
+Se regenera desde el código fuente (no se edita a mano):
+
+```bash
+node agenda/construir-una-sola-pagina.mjs
+```
 
 ## Cómo está hecho
 
@@ -86,4 +96,6 @@ agenda/
   manifest.webmanifest    para instalarla en el celular
   sw.js                   caché para que abra sin internet
   icono.svg               ícono
+  construir-una-sola-pagina.mjs  arma mi-agenda.html (todo en un archivo)
+  mi-agenda.html          generado: la agenda entera en una sola página
 ```
